@@ -29,6 +29,9 @@
   .empty-note{color:var(--gray);font-size:13px;padding:30px 0;text-align:center}
 
   .order-card{border:1px solid var(--border);background:var(--white);margin-bottom:12px;overflow:hidden}
+  .recurring-section{margin-bottom:20px}
+  .recurring-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:8px}
+  .recurring-card .order-head{cursor:default}
   .order-head{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
   .order-id{font-weight:700;font-size:13px}
   .order-meta{font-size:11px;color:var(--gray);margin-top:2px}
@@ -130,6 +133,7 @@
 <div class="view active" id="view-active">
   <h2>Active Orders</h2>
   <p class="sub">All active orders in your department — approved and already scheduled.</p>
+  <div id="recurring-list"></div>
   <div id="active-list"><p class="empty-note">Loading…</p></div>
 </div>
 
@@ -204,15 +208,39 @@ if (tech) {
   }
 
   let orders = [];
+  let recurring = [];
 
   async function loadOrders() {
     try {
       const data = await GS.api('/get-my-orders', { body: { techId: tech.id, role: tech.role, division: tech.division } });
       orders = data.orders || [];
+      recurring = data.recurring || [];
+      renderRecurring();
       renderActive();
     } catch (e) {
       $('active-list').innerHTML = '<p class="empty-note">Could not load orders: ' + esc(e.message) + '</p>';
     }
+  }
+
+  /* Trabajos fijos que se repiten cada semana (Janitorial) -- nunca
+     generan una Orden real ni pasan por Scheduling, pero SI cuentan
+     como trabajo asignado en el departamento. */
+  function renderRecurring() {
+    const box = $('recurring-list');
+    if (!recurring.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="recurring-section">' +
+      '<div class="recurring-title">Recurring</div>' +
+      recurring.map(r => `
+        <div class="order-card recurring-card">
+          <div class="order-head">
+            <div>
+              <div class="order-id">${esc(r.businessName)}</div>
+              <div class="order-meta">${esc(r.buildingNumber ? 'Building ' + r.buildingNumber + ' · ' : '')}${esc(r.daysOfWeek)} · ${esc(r.time)}</div>
+            </div>
+            <span class="badge">${(r.hoursAllocated || r.totalHours || 0)}h/wk</span>
+          </div>
+        </div>`).join('') +
+      '</div>';
   }
 
   function renderActive() {

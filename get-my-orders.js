@@ -15,6 +15,7 @@
 
 const {
   ORDERS_LIST, ORDER_SERVICES_LIST, ORDER_ASSIGNMENTS_LIST,
+  TECHS_LIST, RECURRING_SERVICES_LIST, RECURRING_ASSIGNMENTS_LIST, CLIENTS_LIST,
   graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
 
@@ -41,10 +42,14 @@ exports.handler = async (event) => {
     const division = String(b.division || '').trim();
     if (!techId || !role) return jsonResponse(400, { error: 'techId and role are required' });
 
-    const [orderRows, svcRows, assignRows] = await Promise.all([
+    const [orderRows, svcRows, assignRows, techRows, recurringServiceRows, recurringAssignRows, clientRows] = await Promise.all([
       fetchAll(ORDERS_LIST),
       fetchAll(ORDER_SERVICES_LIST),
-      role === 'Employee' ? fetchAll(ORDER_ASSIGNMENTS_LIST) : Promise.resolve([])
+      role === 'Employee' ? fetchAll(ORDER_ASSIGNMENTS_LIST) : Promise.resolve([]),
+      fetchAll(TECHS_LIST),
+      fetchAll(RECURRING_SERVICES_LIST),
+      fetchAll(RECURRING_ASSIGNMENTS_LIST),
+      fetchAll(CLIENTS_LIST)
     ]);
 
     let liveOrders = orderRows.filter(it => it.fields && LIVE_STATUSES.includes(it.fields.Status));
@@ -101,7 +106,61 @@ exports.handler = async (event) => {
       };
     }).sort((a, b) => String(a.DispatchDate || a.EntryDate).localeCompare(String(b.DispatchDate || b.EntryDate)));
 
-    return jsonResponse(200, { orders });
+    /* Recurrentes -- trabajos fijos de Janitorial que no generan una
+       Orden real ni pasan por Scheduling, pero SI cuentan como
+       trabajo asignado. Employee ve solo los suyos (por PayrollID,
+       cruzando su propio renglon en Techs); Supervisor ve todos los
+       de su division, igual que ya hace con las ordenes normales. */
+    const myTech = techRows.find(it => it.id === techId);
+    const myPayrollId = myTech && myTech.fields ? String(myTech.fields.PayrollID || '').trim() : '';
+
+    const businessNameByClient = {};
+    clientRows.forEach(it => {
+      if (it.fields && it.fields.ClientID) businessNameByClient[it.fields.ClientID] = it.fields.Title || it.fields.BusinessName || it.fields.ClientID;
+    });
+
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const activeServices = recurringServiceRows.filter(it => {
+      if (!it.fields || it.fields.Active === false || it.fields.Active === 'false') return false;
+      if (it.fields.ExpirationDate && String(it.fields.ExpirationDate).slice(0, 10) < todayISO) return false;
+      return true;
+    });
+
+    let recurring;
+    if (role === 'Supervisor') {
+      recurring = activeServices
+        .filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase())
+        .map(it => ({
+          id: it.id,
+          clientId: it.fields.ClientID || '',
+          businessName: businessNameByClient[it.fields.ClientID] || it.fields.ClientID || '',
+          buildingNumber: it.fields.BuildingNumber || '',
+          division: it.fields.Division || '',
+          daysOfWeek: it.fields.DaysOfWeek || '',
+          time: it.fields.Time || '',
+          totalHours: Number(it.fields.TotalHours) || 0
+        }));
+    } else {
+      const activeServiceIds = new Set(activeServices.map(it => it.id));
+      recurring = recurringAssignRows
+        .filter(a => a.fields && String(a.fields.PayrollNumber || '').trim() === myPayrollId && activeServiceIds.has(a.fields.RecurringServiceID))
+        .map(a => {
+          const svc = activeServices.find(it => it.id === a.fields.RecurringServiceID);
+          const sf = svc ? svc.fields : {};
+          return {
+            id: svc ? svc.id : a.fields.RecurringServiceID,
+            clientId: sf.ClientID || '',
+            businessName: businessNameByClient[sf.ClientID] || sf.ClientID || '',
+            buildingNumber: sf.BuildingNumber || '',
+            division: sf.Division || '',
+            daysOfWeek: sf.DaysOfWeek || '',
+            time: sf.Time || '',
+            hoursAllocated: Number(a.fields.HoursAllocated) || 0
+          };
+        });
+    }
+
+    return jsonResponse(200, { orders, recurring });
   } catch (e) {
     return jsonResponse(500, { error: e.message });
   }
