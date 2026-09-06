@@ -6,6 +6,7 @@ const handlers = {
   'register-tech': require('../register-tech').handler,
   'login-tech': require('../login-tech').handler,
   'get-my-orders': require('../get-my-orders').handler,
+  'upload-photo': require('../upload-photo').handler,
   'site-image': require('../site-image').handler
 };
 
