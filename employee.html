@@ -45,6 +45,15 @@
   .photo-preview{width:64px;height:64px;border-radius:4px;object-fit:cover;border:1px solid var(--border)}
 
   .coming-soon{border:1px dashed var(--border);background:var(--off);padding:40px;text-align:center;color:var(--gray);font-size:13px}
+
+  .hist-line{font-size:12px;line-height:1.9;margin-top:10px}
+  .hist-line b{color:var(--black)}
+
+  .gallery-group{margin-bottom:26px}
+  .gallery-group-head{font-size:12px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+  .gallery-group-head span{color:var(--gray);font-weight:400;margin-left:8px}
+  .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+  .gallery-thumb{width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;border:1px solid var(--border);cursor:pointer}
 </style>
 </head>
 <body>
@@ -68,12 +77,14 @@
 
 <div class="view" id="view-history">
   <h2>History</h2>
-  <p class="coming-soon">Coming soon — orders you've completed, with their full history.</p>
+  <p class="sub">Orders you've already worked on, with their full status history.</p>
+  <div id="history-list"><p class="empty-note">Loading…</p></div>
 </div>
 
 <div class="view" id="view-gallery">
   <h2>Gallery</h2>
-  <p class="coming-soon">Coming soon — your photos, grouped by order.</p>
+  <p class="sub">Photos you've taken, grouped by order.</p>
+  <div id="gallery-list"><p class="empty-note">Loading…</p></div>
 </div>
 
 <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none">
@@ -104,6 +115,8 @@ if (tech) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     $('view-' + view).classList.add('active');
+    if (view === 'history' && !historyLoaded) loadHistory();
+    if (view === 'gallery' && !galleryLoaded) loadGallery();
   }
 
   function fmtDateTime(iso) {
@@ -208,6 +221,54 @@ if (tech) {
     };
     reader.readAsDataURL(file);
   });
+
+  let historyLoaded = false;
+  async function loadHistory() {
+    historyLoaded = true;
+    try {
+      const data = await GS.api('/get-my-history', { body: { techId: tech.id, role: tech.role, division: tech.division } });
+      const box = $('history-list');
+      const orders = data.orders || [];
+      if (!orders.length) { box.innerHTML = '<p class="empty-note">No completed or cancelled orders yet.</p>'; return; }
+      box.innerHTML = orders.map(o => `
+        <div class="order-card" data-order="${esc(o.OrderID)}">
+          <div class="order-head" onclick="toggleOrder(this)">
+            <div>
+              <div class="order-id">${esc(o.OrderID)}</div>
+              <div class="order-meta">${esc(o.BusinessName)} · ${fmtDate(o.EntryDate)}</div>
+            </div>
+            <span class="badge">${esc(o.Status)}</span>
+          </div>
+          <div class="order-body">
+            <div class="hist-line">
+              ${(o.History || []).map(h => fmtDateTime(h.ChangeDate) + ' — <b>' + esc(h.ChangeType) + '</b>' + (h.Notes ? ' — ' + esc(h.Notes) : '') + (h.ChangedBy ? ' <span style="color:var(--gray)">(' + esc(h.ChangedBy) + ')</span>' : '')).join('<br>') || 'No history recorded.'}
+            </div>
+          </div>
+        </div>`).join('');
+    } catch (e) {
+      $('history-list').innerHTML = '<p class="empty-note">Could not load history: ' + esc(e.message) + '</p>';
+    }
+  }
+
+  let galleryLoaded = false;
+  async function loadGallery() {
+    galleryLoaded = true;
+    try {
+      const data = await GS.api('/get-my-gallery', { body: { techId: tech.id, role: tech.role, division: tech.division } });
+      const box = $('gallery-list');
+      const groups = data.groups || [];
+      if (!groups.length) { box.innerHTML = '<p class="empty-note">No photos yet.</p>'; return; }
+      box.innerHTML = groups.map(g => `
+        <div class="gallery-group">
+          <div class="gallery-group-head">${esc(g.orderId)} <span>${esc(g.clientLabel)} · ${fmtDate(g.date)}</span></div>
+          <div class="gallery-grid">
+            ${g.photos.map(p => '<img class="gallery-thumb" src="' + esc(p.downloadUrl) + '" loading="lazy" onclick="window.open(this.src)">').join('')}
+          </div>
+        </div>`).join('');
+    } catch (e) {
+      $('gallery-list').innerHTML = '<p class="empty-note">Could not load photos: ' + esc(e.message) + '</p>';
+    }
+  }
 
   loadOrders();
 }
