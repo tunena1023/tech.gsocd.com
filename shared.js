@@ -39,7 +39,7 @@ const GS = {
   /* Logo del nav: mismo archivo (Logo.jpg) que ya usan admin.html y el
      portal del cliente -- todos leen de la raiz del mismo SharePoint. */
   async applyLogo() {
-    const img = document.querySelector('nav .logo-diamond');
+    const img = document.querySelector('.logo-diamond');
     if (!img) return;
     const FALLBACK = 'data:image/svg+xml;utf8,' + encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120">' +
