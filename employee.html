@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GS Solutions – Tech Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --black:#111; --gold:#C9A84C; --gold-lt:#E2C97E; --gold-dk:#8C6F2A;
+    --white:#fff; --off:#F7F6F3; --gray:#6B6B6B; --border:#E0D9CC;
+  }
+  body{font-family:'Inter',sans-serif;background:var(--white);color:var(--black);min-height:100vh}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:12px 32px;border-bottom:1px solid var(--border);background-image:url('/api/site-image?name=NavBackground.jpg');background-size:cover;background-position:center;position:sticky;top:0;z-index:100}
+  .logo-diamond{height:48px;object-fit:contain}
+  .nav-user{font-size:12px;color:var(--gray)}
+  .btn-signout{font-size:11px;color:var(--gray);background:none;border:none;cursor:pointer;text-decoration:underline;margin-left:16px}
+
+  .tabs{display:flex;border-bottom:1px solid var(--border);padding:0 32px;background:var(--white)}
+  .tab{padding:14px 18px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);cursor:pointer;border-bottom:2px solid transparent}
+  .tab.active{color:var(--black);border-bottom-color:var(--gold)}
+
+  .view{display:none;padding:28px 32px;max-width:900px}
+  .view.active{display:block}
+  h2{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;margin-bottom:4px}
+  .sub{font-size:12px;color:var(--gray);margin-bottom:22px;line-height:1.6}
+  .empty-note{color:var(--gray);font-size:13px;padding:30px 0;text-align:center}
+
+  .order-card{border:1px solid var(--border);background:var(--white);margin-bottom:12px;overflow:hidden}
+  .order-head{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+  .order-id{font-weight:700;font-size:13px}
+  .order-meta{font-size:11px;color:var(--gray);margin-top:2px}
+  .badge{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:12px;background:#FDF3E0;color:var(--gold-dk);flex-shrink:0}
+  .order-body{display:none;padding:0 18px 18px;border-top:1px solid var(--border)}
+  .order-body.open{display:block}
+  .order-body .row{display:flex;gap:24px;flex-wrap:wrap;font-size:12px;margin:14px 0}
+  .order-body .row div b{display:block;font-size:10px;text-transform:uppercase;color:var(--gray);font-weight:700;margin-bottom:3px}
+  .svc-list{font-size:12px;margin:10px 0;line-height:1.8}
+
+  .photo-btn{display:flex;align-items:center;gap:6px;background:var(--off);border:1px dashed var(--border);padding:10px 16px;border-radius:4px;font-size:12px;color:var(--gray);cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
+  .photo-btn:hover{border-color:var(--gold);color:var(--black)}
+  .photo-preview-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .photo-preview{width:64px;height:64px;border-radius:4px;object-fit:cover;border:1px solid var(--border)}
+
+  .coming-soon{border:1px dashed var(--border);background:var(--off);padding:40px;text-align:center;color:var(--gray);font-size:13px}
+</style>
+</head>
+<body>
+
+<nav>
+  <img src="" alt="GS Solutions" class="logo-diamond">
+  <div><span class="nav-user" id="nav-user"></span><button class="btn-signout" onclick="doSignout()">Sign out</button></div>
+</nav>
+
+<div class="tabs">
+  <div class="tab active" data-view="active" onclick="showTab('active')">Active Orders</div>
+  <div class="tab" data-view="history" onclick="showTab('history')">History</div>
+  <div class="tab" data-view="gallery" onclick="showTab('gallery')">Gallery</div>
+</div>
+
+<div class="view active" id="view-active">
+  <h2>Active Orders</h2>
+  <p class="sub">Orders scheduled to you. Only orders assigned with your name show up here.</p>
+  <div id="active-list"><p class="empty-note">Loading…</p></div>
+</div>
+
+<div class="view" id="view-history">
+  <h2>History</h2>
+  <p class="coming-soon">Coming soon — orders you've completed, with their full history.</p>
+</div>
+
+<div class="view" id="view-gallery">
+  <h2>Gallery</h2>
+  <p class="coming-soon">Coming soon — your photos, grouped by order.</p>
+</div>
+
+<input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none">
+
+<div class="toast" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--white);padding:12px 22px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:all .3s;z-index:500"></div>
+
+<script src="shared.js"></script>
+<script>
+const tech = GS.requireSession('Employee');
+if (tech) {
+
+  const $ = id => document.getElementById(id);
+  function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+  function showToast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; }, 3500);
+  }
+
+  function doSignout() { GS.session.clear(); location.href = 'index.html'; }
+
+  $('nav-user').textContent = tech.firstName + ' ' + tech.lastName + ' · ' + tech.division;
+
+  function showTab(view) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    $('view-' + view).classList.add('active');
+  }
+
+  function fmtDateTime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
+      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  let orders = [];
+
+  async function loadOrders() {
+    try {
+      const data = await GS.api('/get-my-orders', { body: { techId: tech.id, role: tech.role, division: tech.division } });
+      orders = data.orders || [];
+      renderActive();
+    } catch (e) {
+      $('active-list').innerHTML = '<p class="empty-note">Could not load orders: ' + esc(e.message) + '</p>';
+    }
+  }
+
+  function renderActive() {
+    const box = $('active-list');
+    if (!orders.length) { box.innerHTML = '<p class="empty-note">No active orders assigned to you right now.</p>'; return; }
+    box.innerHTML = orders.map(o => {
+      const addr = [o.Address, o.BuildingNumber ? 'Building ' + o.BuildingNumber : '', o.UnitNumber ? 'Unit ' + o.UnitNumber : ''].filter(Boolean).join(' · ');
+      const svcLines = (o.Services || []).map(s => {
+        const lvl = s.Level ? ' — ' + esc(s.Level) : '';
+        return '• ' + esc(s.ServiceName) + lvl;
+      }).join('<br>');
+      return `
+        <div class="order-card" data-order="${esc(o.OrderID)}">
+          <div class="order-head" onclick="toggleOrder(this)">
+            <div>
+              <div class="order-id">${esc(o.OrderID)}</div>
+              <div class="order-meta">${esc(o.BusinessName)} · ${esc(addr)} · ${esc(o.ServiceWindow || fmtDateTime(o.DispatchDate))}</div>
+            </div>
+            <span class="badge">${esc(o.Division)}</span>
+          </div>
+          <div class="order-body">
+            <div class="row">
+              <div><b>Entry</b>${fmtDate(o.EntryDate)}</div>
+              <div><b>Due</b>${fmtDate(o.DueDate)}</div>
+              <div><b>Service Window</b>${esc(o.ServiceWindow || '—')}</div>
+            </div>
+            <div class="svc-list">${svcLines || 'No services recorded.'}</div>
+            <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
+            <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function toggleOrder(headerEl) {
+    headerEl.nextElementSibling.classList.toggle('open');
+  }
+
+  let photoOrderId = null;
+  function takePhoto(orderId) {
+    photoOrderId = orderId;
+    $('camera-input').click();
+  }
+  $('camera-input').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file || !photoOrderId) return;
+    /* En esta primera version solo se muestra la vista previa local --
+       la subida real a SharePoint (Cliente/Orden/Fotos) se conecta en
+       el siguiente paso. */
+    const url = URL.createObjectURL(file);
+    const row = $('photos-' + photoOrderId);
+    if (row) {
+      const img = document.createElement('img');
+      img.src = url; img.className = 'photo-preview';
+      row.appendChild(img);
+    }
+    showToast('Photo captured — upload to SharePoint coming in the next step.');
+    this.value = '';
+    photoOrderId = null;
+  });
+
+  loadOrders();
+}
+</script>
+</body>
+</html>

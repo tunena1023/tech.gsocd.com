@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GS Solutions – Tech Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --black:#111; --gold:#C9A84C; --gold-lt:#E2C97E; --gold-dk:#8C6F2A;
+    --white:#fff; --off:#F7F6F3; --gray:#6B6B6B; --border:#E0D9CC;
+  }
+  body{font-family:'Inter',sans-serif;background:var(--off);color:var(--black);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:var(--white);border:1px solid var(--border);max-width:420px;width:100%;padding:40px}
+  .logo-row{text-align:center;margin-bottom:24px}
+  .logo-row img{height:56px;object-fit:contain}
+  h2{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;text-align:center;margin-bottom:4px}
+  .sub{font-size:12px;color:var(--gray);text-align:center;margin-bottom:26px}
+  .field-wrap{margin-bottom:16px}
+  .field-wrap label{display:block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gray);margin-bottom:6px}
+  .field-wrap input,.field-wrap select{width:100%;padding:11px 12px;border:1.5px solid var(--border);font-size:14px;font-family:inherit}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .btn-gold{width:100%;background:var(--gold);color:var(--black);border:none;padding:13px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;margin-top:6px}
+  .btn-gold:hover{background:var(--gold-lt)}
+  .btn-gold:disabled{opacity:.6;cursor:default}
+  .switch-mode{text-align:center;margin-top:18px;font-size:12px;color:var(--gray)}
+  .switch-mode a{color:var(--gold-dk);text-decoration:underline;cursor:pointer}
+  .error-msg{font-size:12px;color:#B33A3A;text-align:center;margin-top:14px;min-height:14px}
+  .view{display:none}
+  .view.active{display:block}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo-row"><img src="" alt="GS Solutions" class="logo-diamond"></div>
+
+  <!-- SIGN IN -->
+  <div class="view active" id="view-signin">
+    <h2>Tech Portal</h2>
+    <p class="sub">Sign in with your name and the last 4 digits of your phone.</p>
+    <div class="field-row">
+      <div class="field-wrap"><label>First Name</label><input type="text" id="si-first"></div>
+      <div class="field-wrap"><label>Last Name</label><input type="text" id="si-last"></div>
+    </div>
+    <div class="field-wrap"><label>Last 4 digits of your phone</label><input type="text" id="si-temp" maxlength="4" inputmode="numeric" placeholder="e.g. 4021"></div>
+    <button class="btn-gold" id="si-btn" onclick="doSignIn()">Sign In</button>
+    <p class="error-msg" id="si-error"></p>
+    <p class="switch-mode">New here? <a onclick="showView('register')">Create an account</a></p>
+  </div>
+
+  <!-- REGISTER -->
+  <div class="view" id="view-register">
+    <h2>Create Your Account</h2>
+    <p class="sub">You'll use your name and phone digits to sign in from now on.</p>
+    <div class="field-row">
+      <div class="field-wrap"><label>First Name</label><input type="text" id="rg-first"></div>
+      <div class="field-wrap"><label>Last Name</label><input type="text" id="rg-last"></div>
+    </div>
+    <div class="field-wrap"><label>Phone Number</label><input type="text" id="rg-phone" inputmode="tel" placeholder="e.g. (515) 555-4021"></div>
+    <div class="field-wrap"><label>Email</label><input type="text" id="rg-email"></div>
+    <div class="field-wrap">
+      <label>Division</label>
+      <select id="rg-division">
+        <option value="Janitorial">Janitorial</option>
+        <option value="Renovations">Renovations</option>
+        <option value="Exteriors">Exteriors</option>
+      </select>
+    </div>
+    <button class="btn-gold" id="rg-btn" onclick="doRegister()">Create Account</button>
+    <p class="error-msg" id="rg-error"></p>
+    <p class="switch-mode">Already registered? <a onclick="showView('signin')">Sign in</a></p>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+  function showView(v) {
+    document.getElementById('view-signin').classList.toggle('active', v === 'signin');
+    document.getElementById('view-register').classList.toggle('active', v === 'register');
+    document.getElementById('si-error').textContent = '';
+    document.getElementById('rg-error').textContent = '';
+  }
+
+  function goToPortal(tech) {
+    GS.session.set(tech);
+    location.href = tech.role === 'Supervisor' ? 'supervisor.html' : 'employee.html';
+  }
+
+  async function doSignIn() {
+    const firstName = document.getElementById('si-first').value.trim();
+    const lastName = document.getElementById('si-last').value.trim();
+    const tempId = document.getElementById('si-temp').value.trim();
+    const errEl = document.getElementById('si-error');
+    errEl.textContent = '';
+    if (!firstName || !lastName || tempId.length !== 4) {
+      errEl.textContent = 'Please fill in your name and 4 phone digits.';
+      return;
+    }
+    const btn = document.getElementById('si-btn');
+    btn.disabled = true; btn.textContent = 'Signing in…';
+    try {
+      const data = await GS.api('/login-tech', { body: { firstName, lastName, tempId } });
+      goToPortal(data.tech);
+    } catch (e) {
+      errEl.textContent = e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Sign In';
+    }
+  }
+
+  async function doRegister() {
+    const firstName = document.getElementById('rg-first').value.trim();
+    const lastName = document.getElementById('rg-last').value.trim();
+    const phone = document.getElementById('rg-phone').value.trim();
+    const email = document.getElementById('rg-email').value.trim();
+    const division = document.getElementById('rg-division').value;
+    const errEl = document.getElementById('rg-error');
+    errEl.textContent = '';
+    if (!firstName || !lastName || !phone || !email) {
+      errEl.textContent = 'Please fill in all fields.';
+      return;
+    }
+    const btn = document.getElementById('rg-btn');
+    btn.disabled = true; btn.textContent = 'Creating account…';
+    try {
+      const data = await GS.api('/register-tech', { body: { firstName, lastName, phone, email, division } });
+      goToPortal(data.tech);
+    } catch (e) {
+      errEl.textContent = e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Create Account';
+    }
+  }
+
+  GS.applyLogo();
+</script>
+</body>
+</html>
