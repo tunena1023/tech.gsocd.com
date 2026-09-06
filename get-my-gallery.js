@@ -3,7 +3,7 @@
 
    No hay ninguna lista de SharePoint que registre las fotos por
    separado -- todo se deduce leyendo la carpeta directo:
-   TechPhotos/<ClientID> - <BusinessName>/<OrderID>/Fotos/*.jpg
+   TechPhotos/<ClientID> - <BusinessName>/<OrderID>/Photos/*.jpg
    (mismo criterio ya confirmado: no importa quien tomo cada foto).
 
    Employee: solo las ordenes que tiene/tuvo asignadas (OrderAssignments).
@@ -64,7 +64,7 @@ exports.handler = async (event) => {
     const groups = await Promise.all(myOrders.map(async (it) => {
       const f = it.fields;
       const orderId = f.OrderID || f.Title || '';
-      const folderPath = PHOTOS_FOLDER + '/' + clientFolderName(f) + '/' + orderId + '/Fotos';
+      const folderPath = PHOTOS_FOLDER + '/' + clientFolderName(f) + '/' + orderId + '/Photos';
       const kids = await listChildren(folderPath);
       const photos = kids.filter(k => k.isFile).sort((a, b) => a.name.localeCompare(b.name));
       if (!photos.length) return null;

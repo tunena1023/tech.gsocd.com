@@ -48,7 +48,7 @@ exports.handler = async (event) => {
 
     const clientLabel = (String(f.ClientID || '').trim() + ' - ' + String(f.BusinessName || '').trim())
       .replace(/[\\/:*?"<>|]/g, '').trim() || orderId;
-    const folderPath = PHOTOS_FOLDER + '/' + clientLabel + '/' + orderId + '/Fotos';
+    const folderPath = PHOTOS_FOLDER + '/' + clientLabel + '/' + orderId + '/Photos';
 
     const fileName = fileTimestamp(new Date()) + '.jpg';
     const buffer = Buffer.from(imageBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
