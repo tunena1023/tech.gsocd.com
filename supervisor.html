@@ -55,6 +55,53 @@
   .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
   .gallery-thumb{width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;border:1px solid var(--border);cursor:pointer}
 
+  .btn-outline{background:var(--white);border:1px solid var(--border);color:var(--black);padding:9px 16px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;font-family:inherit}
+  .btn-outline:hover{border-color:var(--gold)}
+  .action-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(17,17,17,.6);z-index:500;align-items:center;justify-content:center;padding:16px}
+  .modal-overlay.open{display:flex}
+  .modal-panel{background:var(--white);max-width:480px;width:100%;padding:24px;border-radius:2px;max-height:90vh;overflow-y:auto}
+  .modal-panel h3{font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:6px}
+  .modal-panel p{font-size:12px;color:var(--gray);margin-bottom:14px;line-height:1.6}
+  .modal-btns{display:flex;gap:10px;margin-top:18px}
+  .modal-btns button{flex:1}
+
+  .um-svc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .um-svc-row:last-child{border-bottom:none}
+  .um-svc-name{font-size:12px}
+  .um-svc-controls{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .um-remove-btn{background:none;border:none;color:#B33A3A;font-size:16px;cursor:pointer;line-height:1;padding:2px 4px}
+  .um-svc-row.removed .um-svc-name{text-decoration:line-through;color:var(--gray)}
+  .um-svc-row.removed .lvl-group{opacity:.35;pointer-events:none}
+  .um-undo-btn{background:none;border:none;color:var(--gold-dk);font-size:11px;text-decoration:underline;cursor:pointer;font-family:inherit}
+  .um-removed-note{font-size:11px;color:var(--gray);font-style:italic;margin-top:-4px;margin-bottom:8px}
+
+  .lvl-group{display:flex;border:1px solid var(--border);border-radius:16px;overflow:hidden;flex-shrink:0}
+  .lvl-btn{width:26px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:pointer;color:var(--gray);border-right:1px solid var(--border)}
+  .lvl-btn:last-child{border-right:none}
+  .lvl-btn.active{background:var(--gold);color:var(--black)}
+
+  .um-note-box{background:var(--off);border:1px solid var(--border);padding:12px;margin:6px 0 10px}
+  .um-note-box label{font-size:10px;text-transform:uppercase;color:var(--gray);font-weight:700;display:block;margin-bottom:6px}
+  .um-note-wrap{position:relative}
+  .um-note-wrap textarea{width:100%;padding:10px 40px 10px 10px;border:1px solid var(--border);font-size:12px;font-family:inherit;resize:vertical;min-height:60px}
+  .um-mic-btn{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .um-mic-btn.listening{background:#B33A3A;border-color:#B33A3A;color:#fff}
+  .um-voice-hint{font-size:11px;color:var(--gray);margin-top:6px;line-height:1.5}
+  .um-note-error{font-size:11px;color:#B33A3A;margin-top:6px;display:none}
+  .um-note-btns{display:flex;gap:8px;margin-top:10px}
+  .um-note-btns button{flex:1;padding:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-radius:16px;border:none;cursor:pointer;font-family:inherit}
+  .um-note-cancel{background:var(--white);border:1px solid var(--border)!important;color:var(--black)}
+  .um-note-confirm{background:#B33A3A;color:#fff}
+
+  .um-add-toggle{background:none;border:1px dashed var(--border);width:100%;padding:9px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--gold-dk);cursor:pointer;margin-top:14px;border-radius:2px;font-family:inherit}
+  .um-add-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+  .um-add-chip{border:1px solid var(--border);background:var(--white);padding:8px 10px;font-size:11px;text-align:left;cursor:pointer;border-radius:2px;font-family:inherit}
+  .um-add-chip.picked{background:var(--gold);border-color:var(--gold);font-weight:700}
+
+  @media (max-width: 480px) { .um-add-grid { grid-template-columns: 1fr; } }
+
   @media (max-width: 640px) {
     nav{padding:12px 16px}
     .tabs{padding:0 16px}
@@ -96,6 +143,19 @@
   <h2>Gallery</h2>
   <p class="sub">Photos taken across your department, grouped by order.</p>
   <div id="gallery-list"><p class="empty-note">Loading…</p></div>
+</div>
+
+<div class="modal-overlay" id="update-modal">
+  <div class="modal-panel">
+    <h3>Update Services — <span id="um-order-id"></span></h3>
+    <p>This goes to the office for review — the client won't see it until GS Solutions sends it.</p>
+    <div id="um-current-list"></div>
+    <div id="um-add-section"></div>
+    <div class="modal-btns">
+      <button type="button" class="btn-outline" onclick="closeUpdateModal()">Cancel</button>
+      <button type="button" class="btn-gold" id="um-submit-btn" onclick="submitUpdate()">Send to Office</button>
+    </div>
+  </div>
 </div>
 
 <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none">
@@ -180,6 +240,9 @@ if (tech) {
               <div><b>Service Window</b>${esc(o.ServiceWindow || '—')}</div>
             </div>
             <div class="svc-list">${svcLines || 'No services recorded.'}</div>
+            <div class="action-row">
+              <button type="button" class="btn-outline" onclick="openUpdateModal('${esc(o.OrderID)}')">Update Services</button>
+            </div>
             <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
             <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
           </div>
@@ -278,6 +341,220 @@ if (tech) {
         </div>`).join('');
     } catch (e) {
       $('gallery-list').innerHTML = '<p class="empty-note">Could not load photos: ' + esc(e.message) + '</p>';
+    }
+  }
+
+  /* ===== Update Services (supervisor) =====
+     Quitar servicios pide nota obligatoria (con opcion de dictado por
+     voz), cambiar nivel en Janitorial, agregar servicios del catalogo
+     en Renovations. Al mandar, escribe directo a SharePoint (mismo
+     patron que el modo SOLICITUD de admin-update-order.js) y la orden
+     pasa a Change Requested -- aparece en Review del lado admin. */
+  let umOrder = null;
+  let umServices = [];   // [{ name, sku, level, category, division }]
+  let umRemoved = new Set();
+  let umLevels = {};     // index -> 'Level 1'/'Level 2'/'Level 3'
+  let umNotes = {};      // index -> nota de por que se quito
+  let umAdded = [];      // catalogo agregado: [{ sku, serviceName }]
+  let umNoteBoxOpenFor = null;
+  let umCatalogCache = null;
+  let umRecognition = null;
+  let umListeningFor = null;
+
+  function openUpdateModal(orderId) {
+    umOrder = orders.find(o => o.OrderID === orderId);
+    if (!umOrder) return;
+    umServices = (umOrder.Services || []).map(s => ({
+      name: s.ServiceName, sku: s.SubOption, level: s.Level || '',
+      category: s.Category, division: s.Division || umOrder.Division
+    }));
+    umRemoved = new Set();
+    umLevels = {};
+    umServices.forEach((s, i) => { if (s.level) umLevels[i] = s.level; });
+    umNotes = {};
+    umAdded = [];
+    umNoteBoxOpenFor = null;
+    umCatalogCache = null;
+    $('um-order-id').textContent = orderId;
+    renderUpdateModal();
+    $('update-modal').classList.add('open');
+  }
+
+  function renderUpdateModal() {
+    const isJan = umOrder.Division === 'Janitorial';
+    const showAdd = umOrder.Division === 'Renovations';
+
+    $('um-current-list').innerHTML = umServices.map((s, i) => {
+      const removed = umRemoved.has(i);
+      const lvl = umLevels[i];
+      let html = '<div class="um-svc-row' + (removed ? ' removed' : '') + '">' +
+        '<span class="um-svc-name">' + esc(s.name) + '</span>' +
+        '<div class="um-svc-controls">' +
+        (isJan ? '<div class="lvl-group">' + ['Level 1', 'Level 2', 'Level 3'].map((l, n) =>
+          '<div class="lvl-btn' + (lvl === l ? ' active' : '') + '" onclick="umSetLevel(' + i + ',\'' + l + '\')">L' + (n + 1) + '</div>').join('') + '</div>' : '') +
+        (removed
+          ? '<button type="button" class="um-undo-btn" onclick="umUndoRemove(' + i + ')">Undo</button>'
+          : '<button type="button" class="um-remove-btn" onclick="umStartRemove(' + i + ')" title="Remove service">✕</button>') +
+        '</div></div>';
+      if (removed && umNotes[i]) html += '<div class="um-removed-note">Reason: "' + esc(umNotes[i]) + '"</div>';
+      if (umNoteBoxOpenFor === i) {
+        const hasVoiceApi = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+        html += '<div class="um-note-box">' +
+          '<label>Why are you removing this? (required)</label>' +
+          '<div class="um-note-wrap">' +
+          '<textarea id="um-note-input-' + i + '" rows="3" placeholder="e.g. Client confirmed this area does not need service this visit"></textarea>' +
+          (hasVoiceApi ? '<button type="button" class="um-mic-btn" id="um-mic-' + i + '" onclick="umToggleMic(' + i + ')" title="Speak instead of typing">🎤</button>' : '') +
+          '</div>' +
+          (hasVoiceApi ? '' : '<p class="um-voice-hint">💡 On iPhone: tap the microphone icon on your keyboard to dictate this note.</p>') +
+          '<p class="um-note-error" id="um-note-error-' + i + '">Please add a note explaining why.</p>' +
+          '<div class="um-note-btns">' +
+          '<button type="button" class="um-note-cancel" onclick="umCancelRemove(' + i + ')">Cancel</button>' +
+          '<button type="button" class="um-note-confirm" onclick="umConfirmRemove(' + i + ')">Confirm Remove</button>' +
+          '</div></div>';
+      }
+      return html;
+    }).join('') || '<p class="empty-note">No services on this order.</p>';
+
+    const addSection = $('um-add-section');
+    if (!showAdd) { addSection.innerHTML = ''; return; }
+    addSection.innerHTML =
+      (umAdded.length ? '<div style="margin-top:14px;font-size:11px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.04em">Added</div>' +
+        '<div class="um-add-grid">' + umAdded.map((c, i) => '<button type="button" class="um-add-chip picked" onclick="umRemoveAdded(' + i + ')">' + esc(c.serviceName) + ' ✕</button>').join('') + '</div>' : '') +
+      '<button type="button" class="um-add-toggle" onclick="umShowCatalog()">+ Add a service we found we need</button>' +
+      '<div id="um-catalog-grid"></div>';
+  }
+
+  function umStartRemove(i) {
+    umNoteBoxOpenFor = i;
+    renderUpdateModal();
+    setTimeout(() => { const t = $('um-note-input-' + i); if (t) t.focus(); }, 0);
+  }
+  function umCancelRemove() {
+    umStopMic();
+    umNoteBoxOpenFor = null;
+    renderUpdateModal();
+  }
+  function umConfirmRemove(i) {
+    const val = $('um-note-input-' + i).value.trim();
+    if (!val) { $('um-note-error-' + i).style.display = 'block'; return; }
+    umStopMic();
+    umNotes[i] = val;
+    umRemoved.add(i);
+    umNoteBoxOpenFor = null;
+    renderUpdateModal();
+  }
+  function umUndoRemove(i) {
+    umRemoved.delete(i);
+    delete umNotes[i];
+    renderUpdateModal();
+  }
+  function umSetLevel(i, level) {
+    umLevels[i] = umLevels[i] === level ? '' : level;
+    renderUpdateModal();
+  }
+
+  async function umShowCatalog() {
+    const grid = $('um-catalog-grid');
+    grid.innerHTML = '<p class="empty-note">Loading…</p>';
+    try {
+      if (!umCatalogCache) {
+        const propType = (umServices[0] && umServices[0].category) || '';
+        const data = await GS.api('/get-catalog', { body: { division: umOrder.Division, propertyType: propType } });
+        umCatalogCache = data.catalog || [];
+      }
+      const addedSkus = new Set(umAdded.map(c => c.sku));
+      const currentSkus = new Set(umServices.map(s => s.sku));
+      const remaining = umCatalogCache.filter(c => !addedSkus.has(c.sku) && !currentSkus.has(c.sku));
+      grid.innerHTML = '<div class="um-add-grid" style="margin-top:8px">' +
+        remaining.map(c => '<button type="button" class="um-add-chip" onclick=\'umAddCatalog(' + JSON.stringify(c.sku) + ',' + JSON.stringify(c.serviceName) + ')\'>' + esc(c.serviceName) + '</button>').join('') +
+        '</div>';
+    } catch (e) {
+      grid.innerHTML = '<p class="empty-note">Could not load services: ' + esc(e.message) + '</p>';
+    }
+  }
+  function umAddCatalog(sku, serviceName) {
+    umAdded.push({ sku, serviceName });
+    renderUpdateModal();
+  }
+  function umRemoveAdded(i) {
+    umAdded.splice(i, 1);
+    renderUpdateModal();
+  }
+
+  function umToggleMic(i) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    if (umListeningFor === i) { umStopMic(); return; }
+    umStopMic();
+    umRecognition = new SpeechRecognition();
+    umRecognition.lang = 'en-US';
+    umRecognition.continuous = true;
+    umRecognition.interimResults = false;
+    const textarea = $('um-note-input-' + i);
+    umRecognition.onresult = (e) => {
+      let finalText = '';
+      for (let r = e.resultIndex; r < e.results.length; r++) {
+        if (e.results[r].isFinal) finalText += e.results[r][0].transcript;
+      }
+      if (finalText) textarea.value = (textarea.value ? textarea.value.trim() + ' ' : '') + finalText.trim();
+    };
+    umRecognition.onend = () => {
+      const btn = $('um-mic-' + i);
+      if (btn) btn.classList.remove('listening');
+      umListeningFor = null;
+    };
+    umRecognition.start();
+    umListeningFor = i;
+    const btn = $('um-mic-' + i);
+    if (btn) btn.classList.add('listening');
+  }
+  function umStopMic() {
+    if (umRecognition) { try { umRecognition.stop(); } catch (e) {} umRecognition = null; }
+    umListeningFor = null;
+  }
+
+  function closeUpdateModal() {
+    umStopMic();
+    $('update-modal').classList.remove('open');
+  }
+
+  async function submitUpdate() {
+    const finalServices = [];
+    umServices.forEach((s, i) => {
+      if (umRemoved.has(i)) return;
+      finalServices.push({
+        Category: s.category, ServiceName: s.name, SubOption: s.sku,
+        Division: s.division, Level: umLevels[i] || ''
+      });
+    });
+    umAdded.forEach(c => {
+      const propType = (umServices[0] && umServices[0].category) || 'Commercial';
+      finalServices.push({ Category: propType, ServiceName: c.serviceName, SubOption: c.sku, Division: umOrder.Division, Level: '' });
+    });
+    if (!finalServices.length) {
+      alert('An order needs at least one service — remove fewer, or add one before sending.');
+      return;
+    }
+    const removalNotes = Object.keys(umNotes).map(i => ({ serviceName: umServices[i].name, note: umNotes[i] }));
+
+    const btn = $('um-submit-btn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      await GS.api('/submit-supervisor-update', {
+        body: {
+          orderId: umOrder.OrderID,
+          services: finalServices,
+          removalNotes,
+          actor: tech.firstName + ' ' + tech.lastName
+        }
+      });
+      closeUpdateModal();
+      showToast('Sent to the office for review.');
+      loadOrders();
+    } catch (e) {
+      alert('Could not send this update: ' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Send to Office';
     }
   }
 

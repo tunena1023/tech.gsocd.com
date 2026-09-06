@@ -8,7 +8,9 @@ const handlers = {
   'get-my-orders': require('../get-my-orders').handler,
   'get-my-history': require('../get-my-history').handler,
   'get-my-gallery': require('../get-my-gallery').handler,
+  'get-catalog': require('../get-catalog').handler,
   'upload-photo': require('../upload-photo').handler,
+  'submit-supervisor-update': require('../submit-supervisor-update').handler,
   'site-image': require('../site-image').handler
 };
 
