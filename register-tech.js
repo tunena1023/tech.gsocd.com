@@ -9,6 +9,11 @@
    El rol nunca se auto-selecciona en el registro: todos entran como
    Employee. Pasarlos a Supervisor es una decision de la oficina desde
    el lado admin (pendiente de construir esa pantalla).
+
+   Division tampoco se pide aqui -- es un dato interno (a que
+   departamento pertenece) que la gente que se registra no tiene por
+   que saber ni decidir. La oficina la asigna despues, junto con el
+   rol, desde el mismo panel pendiente.
 ============================================================ */
 
 const { TECHS_LIST, createListItem, graphFetch, siteListPath, jsonResponse } = require('./lib/graph');
@@ -38,12 +43,10 @@ exports.handler = async (event) => {
     const lastName = String(b.lastName || '').trim();
     const phone = String(b.phone || '').trim();
     const email = String(b.email || '').trim();
-    const division = String(b.division || '').trim();
 
     if (!firstName || !lastName) return jsonResponse(400, { error: 'First and last name are required.' });
     if (!phone) return jsonResponse(400, { error: 'Phone number is required.' });
     if (!email) return jsonResponse(400, { error: 'Email is required.' });
-    if (!division) return jsonResponse(400, { error: 'Please select your division.' });
 
     const tempId = last4Digits(phone);
     if (tempId.length !== 4) return jsonResponse(400, { error: 'Please enter a valid phone number.' });
@@ -67,7 +70,7 @@ exports.handler = async (event) => {
       TempID: tempId,
       PayrollID: '',
       Role: 'Employee',
-      Division: division,
+      Division: '',
       Active: true
     });
 
@@ -77,7 +80,7 @@ exports.handler = async (event) => {
         id: created.id,
         firstName, lastName,
         role: 'Employee',
-        division,
+        division: '',
         tempId
       }
     });

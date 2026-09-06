@@ -98,7 +98,7 @@ if (tech) {
 
   function doSignout() { GS.session.clear(); location.href = 'index.html'; }
 
-  $('nav-user').textContent = tech.firstName + ' ' + tech.lastName + ' · ' + tech.division;
+  $('nav-user').textContent = tech.firstName + ' ' + tech.lastName + (tech.division ? ' · ' + tech.division : '');
 
   function showTab(view) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));

@@ -60,14 +60,6 @@
     </div>
     <div class="field-wrap"><label>Phone Number</label><input type="text" id="rg-phone" inputmode="tel" placeholder="e.g. (515) 555-4021"></div>
     <div class="field-wrap"><label>Email</label><input type="text" id="rg-email"></div>
-    <div class="field-wrap">
-      <label>Division</label>
-      <select id="rg-division">
-        <option value="Janitorial">Janitorial</option>
-        <option value="Renovations">Renovations</option>
-        <option value="Exteriors">Exteriors</option>
-      </select>
-    </div>
     <button class="btn-gold" id="rg-btn" onclick="doRegister()">Create Account</button>
     <p class="error-msg" id="rg-error"></p>
     <p class="switch-mode">Already registered? <a onclick="showView('signin')">Sign in</a></p>
@@ -115,7 +107,6 @@
     const lastName = document.getElementById('rg-last').value.trim();
     const phone = document.getElementById('rg-phone').value.trim();
     const email = document.getElementById('rg-email').value.trim();
-    const division = document.getElementById('rg-division').value;
     const errEl = document.getElementById('rg-error');
     errEl.textContent = '';
     if (!firstName || !lastName || !phone || !email) {
@@ -125,7 +116,7 @@
     const btn = document.getElementById('rg-btn');
     btn.disabled = true; btn.textContent = 'Creating account…';
     try {
-      const data = await GS.api('/register-tech', { body: { firstName, lastName, phone, email, division } });
+      const data = await GS.api('/register-tech', { body: { firstName, lastName, phone, email } });
       goToPortal(data.tech);
     } catch (e) {
       errEl.textContent = e.message;
