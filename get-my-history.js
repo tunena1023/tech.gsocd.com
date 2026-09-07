@@ -92,6 +92,8 @@ exports.handler = async (event) => {
         EntryDate: f.EntryDate || '',
         DueDate: f.DueDate || '',
         UnitOccupied: f.UnitOccupied === true || f.UnitOccupied === 'true',
+        NeedsOfficeAccess: f.NeedsOfficeAccess === true || f.NeedsOfficeAccess === 'true',
+        OfficeNeedNotes: f.OfficeNeedNotes || '',
         History: hist
       };
     }).sort((a, b) => String(b.EntryDate).localeCompare(String(a.EntryDate)));
