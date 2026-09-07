@@ -5,7 +5,7 @@
 ============================================================ */
 
 const {
-  ORDERS_LIST, ORDER_HISTORY_LIST, ORDER_ASSIGNMENTS_LIST,
+  ORDERS_LIST, ORDER_HISTORY_LIST, SCHEDULING_LIST, TECHS_LIST,
   graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
 
@@ -46,10 +46,11 @@ exports.handler = async (event) => {
     const division = String(b.division || '').trim();
     if (!techId || !role) return jsonResponse(400, { error: 'techId and role are required' });
 
-    const [orderRows, histRows, assignRows] = await Promise.all([
+    const [orderRows, histRows, schedulingRows, techRows] = await Promise.all([
       fetchAll(ORDERS_LIST),
       fetchAll(ORDER_HISTORY_LIST),
-      role === 'Employee' ? fetchAll(ORDER_ASSIGNMENTS_LIST) : Promise.resolve([])
+      role === 'Employee' ? fetchAll(SCHEDULING_LIST) : Promise.resolve([]),
+      role === 'Employee' ? fetchAll(TECHS_LIST) : Promise.resolve([])
     ]);
 
     let closedOrders = orderRows.filter(it => it.fields && CLOSED_STATUSES.includes(it.fields.Status));
@@ -57,8 +58,14 @@ exports.handler = async (event) => {
     if (role === 'Supervisor') {
       closedOrders = closedOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
     } else {
+      /* Mismo arreglo que get-my-orders.js: Admin guarda la asignacion
+         real en Scheduling con el PayrollNumber del tecnico, nunca en
+         OrderAssignments/TechID (esa lista nunca se llena en el flujo
+         normal). */
+      const myTechRow = techRows.find(it => it.id === techId);
+      const myPayrollId = myTechRow && myTechRow.fields ? String(myTechRow.fields.PayrollID || '').trim() : '';
       const myOrderIds = new Set(
-        assignRows.filter(it => it.fields && String(it.fields.TechID || '') === techId)
+        schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === myPayrollId)
           .map(it => it.fields.OrderID)
       );
       closedOrders = closedOrders.filter(it => myOrderIds.has(it.fields.OrderID || it.fields.Title));

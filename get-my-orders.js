@@ -14,7 +14,7 @@
 ============================================================ */
 
 const {
-  ORDERS_LIST, ORDER_SERVICES_LIST, ORDER_ASSIGNMENTS_LIST,
+  ORDERS_LIST, ORDER_SERVICES_LIST, SCHEDULING_LIST,
   TECHS_LIST, RECURRING_SERVICES_LIST, RECURRING_ASSIGNMENTS_LIST, CLIENTS_LIST,
   graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
@@ -42,23 +42,37 @@ exports.handler = async (event) => {
     const division = String(b.division || '').trim();
     if (!techId || !role) return jsonResponse(400, { error: 'techId and role are required' });
 
-    const [orderRows, svcRows, assignRows, techRows, recurringServiceRows, recurringAssignRows, clientRows] = await Promise.all([
+    const [orderRows, svcRows, schedulingRows, techRows, recurringServiceRows, recurringAssignRows, clientRows] = await Promise.all([
       fetchAll(ORDERS_LIST),
       fetchAll(ORDER_SERVICES_LIST),
-      role === 'Employee' ? fetchAll(ORDER_ASSIGNMENTS_LIST) : Promise.resolve([]),
+      role === 'Employee' ? fetchAll(SCHEDULING_LIST) : Promise.resolve([]),
       fetchAll(TECHS_LIST),
       fetchAll(RECURRING_SERVICES_LIST),
       fetchAll(RECURRING_ASSIGNMENTS_LIST),
       fetchAll(CLIENTS_LIST)
     ]);
 
+    /* PayrollID del empleado logueado -- se necesita ANTES del filtro
+       de ordenes de aqui abajo (Scheduling identifica al tecnico por
+       PayrollNumber, no por TechID) y tambien mas abajo para los
+       Recurrentes -- se calcula una sola vez, aqui arriba. */
+    const myTechRow = techRows.find(it => it.id === techId);
+    const myPayrollId = myTechRow && myTechRow.fields ? String(myTechRow.fields.PayrollID || '').trim() : '';
+
     let liveOrders = orderRows.filter(it => it.fields && LIVE_STATUSES.includes(it.fields.Status));
 
     if (role === 'Supervisor') {
       liveOrders = liveOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
     } else {
+      /* Admin (Scheduling en Admingsocd.com) guarda la asignacion real
+         en la lista Scheduling con el PayrollNumber del tecnico -- NO
+         en OrderAssignments/TechID, que nunca se llena en el flujo
+         normal (confirmado: ninguna funcion de Admin escribe ahi). Por
+         eso un empleado recien asignado nunca aparecia en su propio
+         portal, aunque la asignacion se hubiera guardado bien del
+         lado de Admin. */
       const myOrderIds = new Set(
-        assignRows.filter(it => it.fields && String(it.fields.TechID || '') === techId)
+        schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === myPayrollId)
           .map(it => it.fields.OrderID)
       );
       liveOrders = liveOrders.filter(it => myOrderIds.has(it.fields.OrderID || it.fields.Title));
@@ -113,9 +127,8 @@ exports.handler = async (event) => {
        Orden real ni pasan por Scheduling, pero SI cuentan como
        trabajo asignado. Employee ve solo los suyos (por PayrollID,
        cruzando su propio renglon en Techs); Supervisor ve todos los
-       de su division, igual que ya hace con las ordenes normales. */
-    const myTech = techRows.find(it => it.id === techId);
-    const myPayrollId = myTech && myTech.fields ? String(myTech.fields.PayrollID || '').trim() : '';
+       de su division, igual que ya hace con las ordenes normales.
+       myPayrollId ya se calculo arriba, junto al filtro de ordenes. */
 
     const businessNameByClient = {};
     clientRows.forEach(it => {
