@@ -52,6 +52,24 @@
   .coming-soon{border:1px dashed var(--border);background:var(--off);padding:40px;text-align:center;color:var(--gray);font-size:13px}
 
   .hist-line{font-size:12px;line-height:1.9;margin-top:10px}
+  .hist-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer}
+  .hist-item:last-child{border-bottom:none}
+  .hist-item:not(.has-detail){cursor:default}
+  .hist-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .hist-toggle{font-size:10px;color:var(--gold-dk);white-space:nowrap}
+  .hist-detail{display:none;margin-top:8px;padding:4px 12px;background:var(--off);border-radius:4px;border-left:3px solid var(--gold-dk)}
+  .hist-detail.open{display:block}
+  .change-row{display:flex;align-items:center;gap:10px;padding:6px 0}
+  .change-icon{font-size:13px;flex-shrink:0;width:18px;text-align:center}
+  .change-label{font-size:12px;font-weight:600;width:110px;flex-shrink:0}
+  .change-values{font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .old-val{color:var(--gray);text-decoration:line-through}
+  .arrow{color:var(--gray)}
+  .new-val{color:var(--gold-dk);font-weight:600}
+  .added-val{color:#3F7D4F;font-weight:600}
+  .removed-val{color:#B33A3A;text-decoration:line-through}
+  .plain-val{color:var(--black)}
+  .change-sub{font-size:11px;color:var(--gray);margin-left:28px;font-style:italic}
   .hist-line b{color:var(--black)}
 
   .gallery-group{margin-bottom:26px}
@@ -208,6 +226,123 @@ if (tech) {
     const d = new Date(iso);
     return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
+
+  /* ===== Formato unificado del historial (mismo diseno en los 3
+     repos) -- portado de tracking.html/admin.html. */
+  function isSkuFormat(sub) { return /^\d{3}-\d+$/.test(String(sub || '')); }
+  function svcSubLabel(s) { return isSkuFormat(s.SubOption) ? (s.Level || '') : (s.SubOption || ''); }
+  function parseSvcPayload(value) {
+    const raw = String(value == null ? '' : value).trim();
+    if (!raw) return null;
+    const body = raw.indexOf('SERVICES:') === 0 ? raw.slice('SERVICES:'.length) : raw;
+    if (body.charAt(0) !== '[' && body.charAt(0) !== '{') return null;
+    try {
+      const obj = JSON.parse(body);
+      if (Array.isArray(obj)) return { services: obj, dirtLevel: '' };
+      if (obj && Array.isArray(obj.services)) return { services: obj.services, dirtLevel: obj.dirtLevel || '' };
+      return null;
+    } catch (e) { return null; }
+  }
+  function parseDatesPayload(value) {
+    const raw = String(value == null ? '' : value).trim();
+    if (raw.charAt(0) !== '{') return null;
+    try {
+      const o = JSON.parse(raw);
+      if (o && (o.entryDate || o.dueDate || o.serviceWindow)) return o;
+      return null;
+    } catch (e) { return null; }
+  }
+  function changeRowHtml(icon, label, oldVal, newVal) {
+    const oldStr = oldVal || '', newStr = newVal || '';
+    if (oldStr === newStr) {
+      return '<div class="change-row"><span class="change-icon">' + icon + '</span><span class="change-label">' + esc(label) + '</span><span class="change-values"><span class="plain-val">' + esc(newStr || '—') + '</span></span></div>';
+    }
+    return '<div class="change-row"><span class="change-icon">' + icon + '</span><span class="change-label">' + esc(label) + '</span><span class="change-values"><span class="old-val">' + esc(oldStr || '(none)') + '</span><span class="arrow">→</span><span class="new-val">' + esc(newStr || '(none)') + '</span></span></div>';
+  }
+  function addedRowHtml(icon, label, extra) {
+    return '<div class="change-row"><span class="change-icon">' + icon + '</span><span class="change-label">' + esc(label) + '</span><span class="change-values"><span class="added-val">Added' + (extra ? ' — ' + esc(extra) : '') + '</span></span></div>';
+  }
+  function removedRowHtml(icon, label, extra) {
+    return '<div class="change-row"><span class="change-icon">' + icon + '</span><span class="change-label">' + esc(label) + '</span><span class="change-values"><span class="removed-val">Removed' + (extra ? ' — ' + esc(extra) : '') + '</span></span></div>';
+  }
+  function subLineHtml(text) { return '<div class="change-sub">' + esc(text) + '</div>'; }
+
+  function historyDetailRows(h) {
+    if (String(h.ChangeType || '') === 'Created') return [];
+    const oldPay = parseSvcPayload(h.OldValue);
+    const newPay = parseSvcPayload(h.NewValue);
+    const oldSvcs = oldPay ? oldPay.services : null;
+    const newSvcs = newPay ? newPay.services : null;
+    const oldDates = parseDatesPayload(h.OldValue);
+    const newDates = parseDatesPayload(h.NewValue);
+
+    if (oldDates || newDates) {
+      const old = oldDates || {}, neu = newDates || {};
+      const rows = [];
+      if ((old.entryDate || '') !== (neu.entryDate || ''))
+        rows.push(changeRowHtml('📅', 'Entry', old.entryDate ? fmtDate(old.entryDate) : '', neu.entryDate ? fmtDate(neu.entryDate) : ''));
+      if ((old.dueDate || '') !== (neu.dueDate || ''))
+        rows.push(changeRowHtml('📅', 'Due', old.dueDate ? fmtDate(old.dueDate) : '', neu.dueDate ? fmtDate(neu.dueDate) : ''));
+      if ((old.serviceWindow || '') !== (neu.serviceWindow || ''))
+        rows.push(changeRowHtml('🕐', 'Window', old.serviceWindow || '', neu.serviceWindow || ''));
+      if (rows.length) return rows;
+    }
+
+    if (!Array.isArray(oldSvcs) || !Array.isArray(newSvcs)) {
+      if (String(h.FieldChanged || '') === 'Status') return [];
+      const oldTxt = String(h.OldValue || ''), newTxt = String(h.NewValue || '');
+      if (oldTxt === newTxt || (!oldTxt && !newTxt)) return [];
+      return [changeRowHtml('🔄', h.FieldChanged || 'Changed', oldTxt, newTxt)];
+    }
+
+    const keyOf = s => (s.Category || '') + '|' + (s.ServiceName || '');
+    const isNC = s => s.NotCompleted === true || String(s.NotCompleted) === 'true';
+    const oldMap = {}; oldSvcs.forEach(s => { oldMap[keyOf(s)] = s; });
+    const newMap = {}; newSvcs.forEach(s => { newMap[keyOf(s)] = s; });
+    const rows = [];
+    newSvcs.forEach(s => {
+      const k = keyOf(s);
+      const label = svcSubLabel(s);
+      if (!oldMap[k]) { rows.push(addedRowHtml('➕', s.ServiceName || '', label)); return; }
+      const prevLabel = svcSubLabel(oldMap[k]);
+      if (prevLabel !== label) rows.push(changeRowHtml('🔄', s.ServiceName || '', prevLabel || '(none)', label || '(none)'));
+      const prev = oldMap[k];
+      if (isNC(prev) !== isNC(s)) {
+        rows.push(changeRowHtml(isNC(s) ? '⚠️' : '✅', s.ServiceName || '', isNC(s) ? 'Completed' : 'Not completed', isNC(s) ? 'Not completed' : 'Completed'));
+        if (isNC(s) && s.NotCompletedReason) rows.push(subLineHtml('Reason: ' + s.NotCompletedReason));
+      }
+    });
+    oldSvcs.forEach(s => {
+      const k = keyOf(s);
+      if (!newMap[k]) rows.push(removedRowHtml('➖', s.ServiceName || '', svcSubLabel(s)));
+    });
+    const dOld = (oldPay && oldPay.dirtLevel) || '', dNew = (newPay && newPay.dirtLevel) || '';
+    if (dOld !== dNew && (dOld || dNew)) rows.push(changeRowHtml('🧹', 'Condition', dOld, dNew));
+    return rows;
+  }
+
+  function historyListHtml(history, prefix) {
+    const list = history || [];
+    if (!list.length) return '<p class="empty-note">No history recorded.</p>';
+    return list.map((h, i) => {
+      const rows = historyDetailRows(h);
+      const hasDetail = rows.length > 0;
+      const detailId = 'hist-' + prefix + '-' + i;
+      return '<div class="hist-item' + (hasDetail ? ' has-detail' : '') + '"' +
+        (hasDetail ? ' onclick="toggleTechHistDetail(\'' + detailId + '\')"' : '') + '>' +
+        '<div class="hist-head"><span>' + esc(fmtDateTime(h.ChangeDate)) + ' — <b>' + esc(h.ChangeType || '') + '</b>' +
+        (h.ChangedBy ? ' <span style="color:var(--gray)">(' + esc(h.ChangedBy) + ')</span>' : '') + '</span>' +
+        (hasDetail ? '<span class="hist-toggle">▼ details</span>' : '') + '</div>' +
+        (h.Notes && !hasDetail ? '<div style="color:var(--gray);margin-top:4px">' + esc(h.Notes) + '</div>' : '') +
+        (hasDetail ? '<div id="' + detailId + '" class="hist-detail">' + rows.join('') + '</div>' : '') +
+        '</div>';
+    }).join('');
+  }
+  function toggleTechHistDetail(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('open');
+  }
+
   /* Badge azul de "unidad ocupada" -- mismo diseno aprobado en
      Admin/Cliente/Tech, sin adaptar. Solo lectura aqui. */
   function unitOccupiedBadgeHtml(o) {
@@ -368,7 +503,7 @@ if (tech) {
           </div>
           <div class="order-body">
             <div class="hist-line">
-              ${(o.History || []).map(h => fmtDateTime(h.ChangeDate) + ' — <b>' + esc(h.ChangeType) + '</b>' + (h.Notes ? ' — ' + esc(h.Notes) : '') + (h.ChangedBy ? ' <span style="color:var(--gray)">(' + esc(h.ChangedBy) + ')</span>' : '')).join('<br>') || 'No history recorded.'}
+              ${historyListHtml(o.History, esc(o.OrderID))}
             </div>
           </div>
         </div>`).join('');
