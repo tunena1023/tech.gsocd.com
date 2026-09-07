@@ -39,6 +39,19 @@
   .occupied-dot{width:6px;height:6px;border-radius:50%;background:#2D5F8A}
   .badge-row{display:flex;align-items:center;gap:6px;flex-shrink:0}
   .order-body{display:none;padding:0 18px 18px;border-top:1px solid var(--border)}
+  /* ===== Update Services: 2 columnas inline, no modal (aprobado con mini) ===== */
+  .order-2col{display:grid;grid-template-columns:1fr}
+  .order-2col.open{grid-template-columns:1fr 1fr;gap:20px}
+  .col-left{min-width:0}
+  .col-right{display:none;min-width:0;padding-top:14px;border-top:1px solid var(--border)}
+  .order-2col.open .col-right{display:block;border-top:none;padding-top:0}
+  @media (min-width:701px){
+    .order-2col.open .col-right{border-top:none;border-left:1px solid var(--border);padding-left:20px;padding-top:0}
+  }
+  @media (max-width:700px){
+    .order-2col.open{grid-template-columns:1fr}
+  }
+  .um-add-search{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:inherit;margin-bottom:8px;color:var(--black);background:var(--white)}
   .order-body.open{display:block}
   .order-body .row{display:flex;gap:24px;flex-wrap:wrap;font-size:12px;margin:14px 0}
   .order-body .row div b{display:block;font-size:10px;text-transform:uppercase;color:var(--gray);font-weight:700;margin-bottom:3px}
@@ -82,11 +95,9 @@
   .btn-outline:hover{border-color:var(--gold)}
   .action-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
 
-  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(17,17,17,.6);z-index:500;align-items:center;justify-content:center;padding:16px}
-  .modal-overlay.open{display:flex}
-  .modal-panel{background:var(--white);max-width:480px;width:100%;padding:24px;border-radius:2px;max-height:90vh;overflow-y:auto}
-  .modal-panel h3{font-family:'Cormorant Garamond',serif;font-size:20px;margin-bottom:6px}
-  .modal-panel p{font-size:12px;color:var(--gray);margin-bottom:14px;line-height:1.6}
+  /* Modal generico: ya no se usa para Update Services (ver .order-2col
+     mas abajo), pero puede seguir sirviendo si se agrega otro dialogo
+     simple mas adelante -- se deja el CSS por si acaso. */
   .modal-btns{display:flex;gap:10px;margin-top:18px}
   .modal-btns button{flex:1}
 
@@ -118,6 +129,8 @@
   .um-note-cancel{background:var(--white);border:1px solid var(--border)!important;color:var(--black)}
   .um-note-confirm{background:#B33A3A;color:#fff}
 
+  .panel-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:6px}
+  .panel-note{font-size:11px;color:var(--gray);margin-bottom:14px;line-height:1.5}
   .um-add-toggle{background:none;border:1px dashed var(--border);width:100%;padding:9px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--gold-dk);cursor:pointer;margin-top:14px;border-radius:2px;font-family:inherit}
   .um-add-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
   .um-add-chip{border:1px solid var(--border);background:var(--white);padding:8px 10px;font-size:11px;text-align:left;cursor:pointer;border-radius:2px;font-family:inherit}
@@ -167,19 +180,6 @@
   <h2>Gallery</h2>
   <p class="sub">Photos taken across your department, grouped by order.</p>
   <div id="gallery-list"><p class="empty-note">Loading…</p></div>
-</div>
-
-<div class="modal-overlay" id="update-modal">
-  <div class="modal-panel">
-    <h3>Update Services — <span id="um-order-id"></span></h3>
-    <p>This goes to the office for review — the client won't see it until GS Solutions sends it.</p>
-    <div id="um-current-list"></div>
-    <div id="um-add-section"></div>
-    <div class="modal-btns">
-      <button type="button" class="btn-outline" onclick="closeUpdateModal()">Cancel</button>
-      <button type="button" class="btn-gold" id="um-submit-btn" onclick="submitUpdate()">Send to Office</button>
-    </div>
-  </div>
 </div>
 
 <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none">
@@ -419,17 +419,22 @@ if (tech) {
             </span>
           </div>
           <div class="order-body">
-            <div class="row">
-              <div><b>Entry</b>${fmtDate(o.EntryDate)}</div>
-              <div><b>Due</b>${fmtDate(o.DueDate)}</div>
-              <div><b>Service Window</b>${esc(o.ServiceWindow || '—')}</div>
+            <div class="order-2col" id="ord2col-${esc(o.OrderID)}">
+              <div class="col-left">
+                <div class="row">
+                  <div><b>Entry</b>${fmtDate(o.EntryDate)}</div>
+                  <div><b>Due</b>${fmtDate(o.DueDate)}</div>
+                  <div><b>Service Window</b>${esc(o.ServiceWindow || '—')}</div>
+                </div>
+                <div class="svc-list">${svcLines || 'No services recorded.'}</div>
+                <div class="action-row">
+                  <button type="button" class="btn-outline" onclick="toggleUpdatePanel('${esc(o.OrderID)}')">Update Services</button>
+                </div>
+                <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
+                <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
+              </div>
+              <div class="col-right" id="editpanel-${esc(o.OrderID)}"></div>
             </div>
-            <div class="svc-list">${svcLines || 'No services recorded.'}</div>
-            <div class="action-row">
-              <button type="button" class="btn-outline" onclick="openUpdateModal('${esc(o.OrderID)}')">Update Services</button>
-            </div>
-            <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
-            <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
           </div>
         </div>`;
     }).join('');
@@ -549,7 +554,20 @@ if (tech) {
   let umRecognition = null;
   let umListeningFor = null;
 
-  function openUpdateModal(orderId) {
+  function toggleUpdatePanel(orderId) {
+    const wrap = $('ord2col-' + orderId);
+    if (!wrap) return;
+    if (wrap.classList.contains('open') && umOrder && umOrder.OrderID === orderId) {
+      wrap.classList.remove('open');
+      umOrder = null;
+      return;
+    }
+    /* Si habia otro panel abierto (de otra orden), se cierra primero --
+       solo uno a la vez, igual que las tarjetas mismas. */
+    if (umOrder) {
+      const prevWrap = $('ord2col-' + umOrder.OrderID);
+      if (prevWrap) prevWrap.classList.remove('open');
+    }
     umOrder = orders.find(o => o.OrderID === orderId);
     if (!umOrder) return;
     umServices = (umOrder.Services || []).map(s => ({
@@ -563,16 +581,20 @@ if (tech) {
     umAdded = [];
     umNoteBoxOpenFor = null;
     umCatalogCache = null;
-    $('um-order-id').textContent = orderId;
+    wrap.classList.add('open');
     renderUpdateModal();
-    $('update-modal').classList.add('open');
   }
 
+  function umPanelId(suffix) { return suffix + '-' + (umOrder ? umOrder.OrderID.replace(/[^a-z0-9]/gi, '_') : ''); }
+
   function renderUpdateModal() {
+    if (!umOrder) return;
+    const panel = $('editpanel-' + umOrder.OrderID);
+    if (!panel) return;
     const isJan = umOrder.Division === 'Janitorial';
     const showAdd = umOrder.Division === 'Renovations';
 
-    $('um-current-list').innerHTML = umServices.map((s, i) => {
+    const currentListHtml = umServices.map((s, i) => {
       const removed = umRemoved.has(i);
       const lvl = umLevels[i];
       let html = '<div class="um-svc-row' + (removed ? ' removed' : '') + '">' +
@@ -603,13 +625,24 @@ if (tech) {
       return html;
     }).join('') || '<p class="empty-note">No services on this order.</p>';
 
-    const addSection = $('um-add-section');
-    if (!showAdd) { addSection.innerHTML = ''; return; }
-    addSection.innerHTML =
-      (umAdded.length ? '<div style="margin-top:14px;font-size:11px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.04em">Added</div>' +
-        '<div class="um-add-grid">' + umAdded.map((c, i) => '<button type="button" class="um-add-chip picked" onclick="umRemoveAdded(' + i + ')">' + esc(c.serviceName) + ' ✕</button>').join('') + '</div>' : '') +
+    const addedHtml = umAdded.length ? '<div style="margin-top:14px;font-size:11px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.04em">Added</div>' +
+      '<div class="um-add-grid">' + umAdded.map((c, i) => '<button type="button" class="um-add-chip picked" onclick="umRemoveAdded(' + i + ')">' + esc(c.serviceName) + ' ✕</button>').join('') + '</div>' : '';
+
+    const addSectionHtml = !showAdd ? '' :
+      addedHtml +
+      '<input type="text" class="um-add-search" placeholder="Search the catalog..." oninput="umFilterCatalog(this.value)">' +
       '<button type="button" class="um-add-toggle" onclick="umShowCatalog()">+ Add a service we found we need</button>' +
       '<div id="um-catalog-grid"></div>';
+
+    panel.innerHTML =
+      '<div class="panel-title">Update Services</div>' +
+      '<div class="panel-note">This goes to the office for review — the client won\'t see it until GS Solutions sends it.</div>' +
+      '<div id="um-current-list">' + currentListHtml + '</div>' +
+      '<div id="um-add-section">' + addSectionHtml + '</div>' +
+      '<div class="send-row" style="margin-top:16px;display:flex;gap:10px">' +
+      '<button type="button" class="btn-outline" onclick="toggleUpdatePanel(\'' + esc(umOrder.OrderID) + '\')">Cancel</button>' +
+      '<button type="button" class="btn-gold" id="um-submit-btn" onclick="submitUpdate()">Send to Office</button>' +
+      '</div>';
   }
 
   function umStartRemove(i) {
@@ -650,15 +683,31 @@ if (tech) {
         const data = await GS.api('/get-catalog', { body: { division: umOrder.Division, propertyType: propType } });
         umCatalogCache = data.catalog || [];
       }
-      const addedSkus = new Set(umAdded.map(c => c.sku));
-      const currentSkus = new Set(umServices.map(s => s.sku));
-      const remaining = umCatalogCache.filter(c => !addedSkus.has(c.sku) && !currentSkus.has(c.sku));
-      grid.innerHTML = '<div class="um-add-grid" style="margin-top:8px">' +
-        remaining.map(c => '<button type="button" class="um-add-chip" onclick=\'umAddCatalog(' + JSON.stringify(c.sku) + ',' + JSON.stringify(c.serviceName) + ')\'>' + esc(c.serviceName) + '</button>').join('') +
-        '</div>';
+      umRenderCatalogGrid('');
     } catch (e) {
       grid.innerHTML = '<p class="empty-note">Could not load services: ' + esc(e.message) + '</p>';
     }
+  }
+  /* Buscador real en vez de mostrar todo el catalogo de un jalon --
+     aprobado con mini: filtra mientras se escribe, sin tener que
+     hacer scroll por decenas de servicios para encontrar el que se
+     necesita. */
+  function umRenderCatalogGrid(query) {
+    const grid = $('um-catalog-grid');
+    if (!grid || !umCatalogCache) return;
+    const addedSkus = new Set(umAdded.map(c => c.sku));
+    const currentSkus = new Set(umServices.map(s => s.sku));
+    let remaining = umCatalogCache.filter(c => !addedSkus.has(c.sku) && !currentSkus.has(c.sku));
+    const q = String(query || '').trim().toLowerCase();
+    if (q) remaining = remaining.filter(c => c.serviceName.toLowerCase().indexOf(q) !== -1);
+    grid.innerHTML = '<div class="um-add-grid" style="margin-top:8px">' +
+      remaining.map(c => '<button type="button" class="um-add-chip" onclick=\'umAddCatalog(' + JSON.stringify(c.sku) + ',' + JSON.stringify(c.serviceName) + ')\'>' + esc(c.serviceName) + '</button>').join('') +
+      (remaining.length ? '' : '<p class="empty-note">No matching services.</p>') +
+      '</div>';
+  }
+  function umFilterCatalog(query) {
+    if (!umCatalogCache) return;
+    umRenderCatalogGrid(query);
   }
   function umAddCatalog(sku, serviceName) {
     umAdded.push({ sku, serviceName });
@@ -703,7 +752,11 @@ if (tech) {
 
   function closeUpdateModal() {
     umStopMic();
-    $('update-modal').classList.remove('open');
+    if (umOrder) {
+      const wrap = $('ord2col-' + umOrder.OrderID);
+      if (wrap) wrap.classList.remove('open');
+    }
+    umOrder = null;
   }
 
   async function submitUpdate() {
