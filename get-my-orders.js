@@ -102,6 +102,7 @@ exports.handler = async (event) => {
         DispatchDate: f.DispatchDate || '',
         MaterialsReady: f.MaterialsReady === true || f.MaterialsReady === 'true',
         EntryTime: f.EntryTime || '',
+        UnitOccupied: f.UnitOccupied === true || f.UnitOccupied === 'true',
         Services: servicesByOrder[oid] || []
       };
     }).sort((a, b) => String(a.DispatchDate || a.EntryDate).localeCompare(String(b.DispatchDate || b.EntryDate)));

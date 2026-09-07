@@ -35,6 +35,9 @@
   .order-id{font-weight:700;font-size:13px}
   .order-meta{font-size:11px;color:var(--gray);margin-top:2px}
   .badge{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:12px;background:#FDF3E0;color:var(--gold-dk);flex-shrink:0}
+  .occupied-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:#E8F0FA;color:#2D5F8A;padding:3px 9px;border-radius:20px}
+  .occupied-dot{width:6px;height:6px;border-radius:50%;background:#2D5F8A}
+  .badge-row{display:flex;align-items:center;gap:6px;flex-shrink:0}
   .order-body{display:none;padding:0 18px 18px;border-top:1px solid var(--border)}
   .order-body.open{display:block}
   .order-body .row{display:flex;gap:24px;flex-wrap:wrap;font-size:12px;margin:14px 0}
@@ -205,6 +208,14 @@ if (tech) {
     const d = new Date(iso);
     return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
+  /* Badge azul de "unidad ocupada" -- mismo diseno aprobado en
+     Admin/Cliente/Tech, sin adaptar. Solo lectura aqui. */
+  function unitOccupiedBadgeHtml(o) {
+    const div = String(o.Division || '').toLowerCase();
+    if (div !== 'renovations' && div !== 'janitorial') return '';
+    if (!o.UnitOccupied) return '';
+    return '<span class="occupied-badge"><span class="occupied-dot"></span>Occupied</span>';
+  }
 
   let orders = [];
   let recurring = [];
@@ -267,7 +278,10 @@ if (tech) {
               <div class="order-id">${esc(o.OrderID)}</div>
               <div class="order-meta">${esc(o.BusinessName)} · ${esc(addr)} · ${esc(o.ServiceWindow || fmtDateTime(o.DispatchDate))}</div>
             </div>
-            <span class="badge">${esc(o.Division)}</span>
+            <span class="badge-row">
+              ${unitOccupiedBadgeHtml(o)}
+              <span class="badge">${esc(o.Division)}</span>
+            </span>
           </div>
           <div class="order-body">
             <div class="row">
@@ -347,7 +361,10 @@ if (tech) {
               <div class="order-id">${esc(o.OrderID)}</div>
               <div class="order-meta">${esc(o.BusinessName)} · ${fmtDate(o.EntryDate)}</div>
             </div>
-            <span class="badge">${esc(o.Status)}</span>
+            <span class="badge-row">
+              ${unitOccupiedBadgeHtml(o)}
+              <span class="badge">${esc(o.Status)}</span>
+            </span>
           </div>
           <div class="order-body">
             <div class="hist-line">
