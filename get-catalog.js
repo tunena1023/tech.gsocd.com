@@ -1,7 +1,8 @@
 /* ============================================================
    get-catalog.js — servicios activos del catalogo, filtrados por
-   division. Solo se usa para "agregar un servicio que encontramos
-   que hace falta" en Update Services (Renovations principalmente).
+   division. Se usa para "agregar un servicio que encontramos que
+   hace falta" en Update Services -- disponible para las divisiones
+   que Update Services soporta (Janitorial y Renovations).
 ============================================================ */
 
 const { SERVICES_CATALOG_LIST, graphFetch, siteListPath, jsonResponse } = require('./lib/graph');

@@ -608,7 +608,13 @@ if (tech) {
     const panel = $('editpanel-' + umOrder.OrderID);
     if (!panel) return;
     const isJan = umOrder.Division === 'Janitorial';
-    const showAdd = umOrder.Division === 'Renovations';
+    /* Antes solo se dejaba agregar servicios en Renovations -- el mini
+       original solo enseno el ejemplo de "add" en ese escenario, pero
+       nunca dijo que fuera exclusivo de esa division (confirmado con
+       el usuario). Janitorial necesita lo mismo: reportar un servicio
+       que hizo falta, no solo quitar o cambiar de nivel los que ya
+       estaban. */
+    const showAdd = true;
 
     const currentListHtml = umServices.map((s, i) => {
       const removed = umRemoved.has(i);
