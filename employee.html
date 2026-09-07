@@ -31,7 +31,6 @@
   .order-card{border:1px solid var(--border);background:var(--white);margin-bottom:12px;overflow:hidden}
   .recurring-section{margin-bottom:20px}
   .recurring-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:8px}
-  .recurring-card .order-head{cursor:default}
   .order-head{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
   .order-id{font-weight:700;font-size:13px}
   .order-meta{font-size:11px;color:var(--gray);margin-top:2px}
@@ -172,16 +171,25 @@ if (tech) {
     if (!recurring.length) { box.innerHTML = ''; return; }
     box.innerHTML = '<div class="recurring-section">' +
       '<div class="recurring-title">Recurring</div>' +
-      recurring.map(r => `
+      recurring.map(r => {
+        const svcLines = (r.Services || []).map(s => {
+          const lvl = s.Level ? ' — ' + esc(s.Level) : '';
+          return '• ' + esc(s.ServiceName) + lvl;
+        }).join('<br>');
+        return `
         <div class="order-card recurring-card">
-          <div class="order-head">
+          <div class="order-head" onclick="toggleOrder(this)">
             <div>
               <div class="order-id">${esc(r.businessName)}</div>
               <div class="order-meta">${esc(r.buildingNumber ? 'Building ' + r.buildingNumber + ' · ' : '')}${esc(r.daysOfWeek)} · ${esc(r.time)}</div>
             </div>
             <span class="badge">${(r.hoursAllocated || r.totalHours || 0)}h/wk</span>
           </div>
-        </div>`).join('') +
+          <div class="order-body">
+            <div class="svc-list">${svcLines || 'No services recorded.'}</div>
+          </div>
+        </div>`;
+      }).join('') +
       '</div>';
   }
 

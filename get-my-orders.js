@@ -126,6 +126,15 @@ exports.handler = async (event) => {
       return true;
     });
 
+    /* ServicesJSON: [{sku, serviceName, level}] -- mismo formato
+       exacto que arma recurring.html al guardar. */
+    function parseServicesJson(raw) {
+      try {
+        const arr = JSON.parse(raw || '[]');
+        return Array.isArray(arr) ? arr.map(s => ({ ServiceName: s.serviceName || s.sku || '', Level: s.level || '' })) : [];
+      } catch (e) { return []; }
+    }
+
     let recurring;
     if (role === 'Supervisor') {
       recurring = activeServices
@@ -138,7 +147,8 @@ exports.handler = async (event) => {
           division: it.fields.Division || '',
           daysOfWeek: it.fields.DaysOfWeek || '',
           time: it.fields.Time || '',
-          totalHours: Number(it.fields.TotalHours) || 0
+          totalHours: Number(it.fields.TotalHours) || 0,
+          Services: parseServicesJson(it.fields.ServicesJSON)
         }));
     } else {
       const activeServiceIds = new Set(activeServices.map(it => it.id));
@@ -155,7 +165,8 @@ exports.handler = async (event) => {
             division: sf.Division || '',
             daysOfWeek: sf.DaysOfWeek || '',
             time: sf.Time || '',
-            hoursAllocated: Number(a.fields.HoursAllocated) || 0
+            hoursAllocated: Number(a.fields.HoursAllocated) || 0,
+            Services: parseServicesJson(sf.ServicesJSON)
           };
         });
     }
