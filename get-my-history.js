@@ -11,6 +11,20 @@ const {
 
 const CLOSED_STATUSES = ['Completed', 'Cancelled'];
 
+/* El tecnico solo debe ver CORRECCIONES ya confirmadas -- nunca una
+   peticion todavia sin decidir. Si un cliente pide un cambio de
+   fecha, eso se queda esperando en Review; el tecnico no se entera
+   hasta que la oficina lo aprueba (evento 'Dates Confirmed' o
+   similar). Estos tipos se filtran aqui mismo, del lado del
+   servidor, para que nunca lleguen al frontend por accidente. */
+const PENDING_REQUEST_TYPES = [
+  'Change Requested', 'Cancellation Requested', 'Reschedule Requested', 'Change Requested by Client'
+];
+/* Mismo ruido operativo que ya se oculta en Admin (Active/History) --
+   confirma que un documento se genero o fallo, no un cambio real de
+   la orden. */
+const HIDDEN_HISTORY_TYPES = ['Document Generated', 'Document Failed', 'Archived'];
+
 async function fetchAll(listName) {
   let url = siteListPath(listName) + '?$expand=fields&$top=500';
   const out = [];
@@ -53,11 +67,16 @@ exports.handler = async (event) => {
     const historyByOrder = {};
     histRows.forEach(it => {
       if (!it.fields || !it.fields.OrderID) return;
+      if (PENDING_REQUEST_TYPES.includes(it.fields.ChangeType || '')) return;
+      if (HIDDEN_HISTORY_TYPES.includes(it.fields.ChangeType || '')) return;
       (historyByOrder[it.fields.OrderID] = historyByOrder[it.fields.OrderID] || []).push({
         ChangeDate: it.fields.ChangeDate || '',
         ChangeType: it.fields.ChangeType || '',
         ChangedBy: it.fields.ChangedBy || '',
-        Notes: it.fields.Notes || ''
+        Notes: it.fields.Notes || '',
+        FieldChanged: it.fields.FieldChanged || '',
+        OldValue: it.fields.OldValue || '',
+        NewValue: it.fields.NewValue || ''
       });
     });
 
