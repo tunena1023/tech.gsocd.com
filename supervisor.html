@@ -607,7 +607,11 @@ if (tech) {
        intuitivo. */
     try {
       const propType = (umServices[0] && umServices[0].category) || '';
-      const data = await GS.api('/get-catalog', { body: { division: umOrder.Division, propertyType: propType } });
+      /* Sin filtro de division a proposito -- el usuario confirmo que
+         la busqueda debe mostrar servicios de todas las divisiones,
+         no solo la de esta orden (get-catalog.js ya soporta omitir
+         division para traer todo). */
+      const data = await GS.api('/get-catalog', { body: { propertyType: propType } });
       if (!umOrder || umOrder.OrderID !== orderId) return; /* se cambio de orden mientras cargaba */
       umCatalogCache = data.catalog || [];
     } catch (e) {
