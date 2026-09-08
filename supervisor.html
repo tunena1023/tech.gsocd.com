@@ -822,6 +822,17 @@ if (tech) {
   }
 
   loadOrders();
+
+  /* Exposicion explicita a window -- las funciones normales declaradas
+     dentro de este bloque if(tech){} SI se filtran solas al scope
+     global (compatibilidad legacy de navegadores), pero las async
+     function NUNCA lo hacen (excluidas a proposito por el estandar de
+     JavaScript). Sin esto, cualquier onclick="umShowCatalog()" o
+     onclick="submitUpdate()" truena con 'is not defined' -- exactamente
+     el bug reportado. Mismo patron ya usado correctamente en
+     customer.html/tracking.html/templates.html/profile.html. */
+  window.umShowCatalog = umShowCatalog;
+  window.submitUpdate = submitUpdate;
 }
 </script>
 </body>
