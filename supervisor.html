@@ -61,6 +61,8 @@
   .svc-list{font-size:12px;margin:10px 0;line-height:1.8}
 
   .photo-btn{display:flex;align-items:center;gap:6px;background:var(--off);border:1px dashed var(--border);padding:10px 16px;border-radius:4px;font-size:12px;color:var(--gray);cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
+  .btn-complete{display:flex;align-items:center;gap:6px;background:#2E7D4F;border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
+  .btn-complete:hover{background:#256641}
   .photo-btn:hover{border-color:var(--gold);color:var(--black)}
   .photo-preview-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
   .photo-preview{width:64px;height:64px;border-radius:4px;object-fit:cover;border:1px solid var(--border)}
@@ -448,6 +450,7 @@ if (tech) {
                 </div>
                 <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
                 <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
+                ${isMySupervisorOrder(o) ? '<button type="button" class="btn-complete" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Completed</button>' : ''}
               </div>
               <div class="col-right" id="editpanel-${esc(o.OrderID)}"></div>
             </div>
@@ -456,20 +459,40 @@ if (tech) {
     }).join('');
   }
 
+  /* Un Supervisor ve TODAS las ordenes de su division (para dar
+     seguimiento general), pero solo puede completar las que tiene
+     asignadas a su propio nombre -- confirmado con el usuario. El
+     boton ni siquiera se muestra en las que no son suyas, en vez de
+     dejarlo ahi deshabilitado (Supervisor ve muchas ordenes que no
+     son suyas, se veria saturado). */
+  function isMySupervisorOrder(o) {
+    const myName = (tech.firstName + ' ' + tech.lastName).trim().toLowerCase();
+    return String(o.Supervisor || '').trim().toLowerCase() === myName;
+  }
+
   function toggleOrder(headerEl) {
     headerEl.nextElementSibling.classList.toggle('open');
   }
 
   let photoOrderId = null;
+  let completingAfterPhoto = false;
   function takePhoto(orderId) {
     photoOrderId = orderId;
+    completingAfterPhoto = false;
+    $('camera-input').click();
+  }
+  function markEmployeeCompleted(orderId) {
+    photoOrderId = orderId;
+    completingAfterPhoto = true;
     $('camera-input').click();
   }
   $('camera-input').addEventListener('change', function () {
     const file = this.files[0];
     const orderId = photoOrderId;
+    const shouldComplete = completingAfterPhoto;
     this.value = '';
     photoOrderId = null;
+    completingAfterPhoto = false;
     if (!file || !orderId) return;
 
     /* Vista previa local de inmediato, sin esperar a que suba --
@@ -490,6 +513,7 @@ if (tech) {
         await GS.api('/upload-photo', { body: { orderId, imageBase64: reader.result } });
         if (thumb) thumb.style.opacity = '1';
         showToast('Photo saved to this order.');
+        if (shouldComplete) await finishCompletion(orderId);
       } catch (e) {
         if (thumb) thumb.remove();
         showToast('Could not save the photo: ' + e.message);
@@ -501,6 +525,16 @@ if (tech) {
     };
     reader.readAsDataURL(file);
   });
+
+  async function finishCompletion(orderId) {
+    try {
+      await GS.api('/submit-employee-complete', { body: { orderId, techId: tech.id, role: tech.role } });
+      showToast('Order ' + orderId + ' marked as Completed.');
+      loadOrders();
+    } catch (e) {
+      showToast('Could not mark this order Completed: ' + e.message);
+    }
+  }
 
   let historyLoaded = false;
   async function loadHistory() {

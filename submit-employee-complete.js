@@ -69,6 +69,7 @@ exports.handler = async (event) => {
     const b = JSON.parse(event.body || '{}');
     const orderId = String(b.orderId || '').trim();
     const techId = String(b.techId || '').trim();
+    const role = String(b.role || '').trim();
     if (!orderId) return jsonResponse(400, { error: 'orderId is required' });
     if (!techId) return jsonResponse(400, { error: 'techId is required' });
 
@@ -93,6 +94,16 @@ exports.handler = async (event) => {
     const techRow = techRows.find(t => t.id === techId);
     const techName = techRow && techRow.fields ? (techRow.fields.FirstName + ' ' + techRow.fields.LastName).trim() : '';
     if (!techName) return jsonResponse(400, { error: 'Could not identify the technician completing this order.' });
+
+    /* Un Supervisor ve TODAS las ordenes de su division (para dar
+       seguimiento general), pero solo puede completar las que tiene
+       asignadas a su propio nombre -- confirmado con el usuario. Un
+       Employee siempre completa lo suyo (get-my-orders.js ya solo le
+       muestra sus propias ordenes, no hace falta este chequeo ahi). */
+    if (role === 'Supervisor' &&
+        String(f.Supervisor || '').trim().toLowerCase() !== techName.toLowerCase()) {
+      return jsonResponse(403, { error: 'You can only mark your own assigned orders as Completed.' });
+    }
 
     const hasPhoto = await hasAnyPhoto(f.ClientID, f.BusinessName, orderId);
     if (!hasPhoto) {

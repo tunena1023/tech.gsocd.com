@@ -463,7 +463,7 @@ if (tech) {
 
   async function finishCompletion(orderId) {
     try {
-      await GS.api('/submit-employee-complete', { body: { orderId, techId: tech.id } });
+      await GS.api('/submit-employee-complete', { body: { orderId, techId: tech.id, role: tech.role } });
       showToast('Order ' + orderId + ' marked as Completed.');
       loadOrders();
     } catch (e) {
