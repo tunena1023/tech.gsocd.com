@@ -28,6 +28,8 @@
   .sub{font-size:12px;color:var(--gray);margin-bottom:22px;line-height:1.6}
   .empty-note{color:var(--gray);font-size:13px;padding:30px 0;text-align:center}
 
+  .search-bar{margin-bottom:16px}
+  .search-bar input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:4px;font-size:13px;font-family:inherit;color:var(--black)}
   .order-card{border:1px solid var(--border);background:var(--white);margin-bottom:12px;overflow:hidden}
   .recurring-section{margin-bottom:20px}
   .recurring-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:8px}
@@ -172,6 +174,7 @@
 <div class="view active" id="view-active">
   <h2>Active Orders</h2>
   <p class="sub">All active orders in your department — approved and already scheduled.</p>
+  <div class="search-bar"><input type="text" id="active-search" placeholder="Search by order number or client…" oninput="renderActive()"></div>
   <div id="active-list"><p class="empty-note">Loading…</p></div>
 </div>
 
@@ -205,6 +208,13 @@ if (tech) {
 
   const $ = id => document.getElementById(id);
   function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  /* esc() alcanza para texto visible, pero NO escapa comillas -- un
+     nombre de servicio con apostrofe (ej. "Children's Play Area")
+     rompia el onclick de umAddCatalog en silencio, sin ningun error
+     visible. escAttr() SI escapa ambas comillas, para cuando el
+     texto va a vivir dentro de un atributo HTML. Mismo helper ya
+     usado en tracking.html/customer.html/admin.html. */
+  function escAttr(s) { return esc(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
   function showToast(msg) {
     const t = $('toast');
@@ -418,10 +428,23 @@ if (tech) {
       }).join('');
   }
 
+  /* Mismo criterio de "buscador universal" ya usado en Admin
+     (activeOf en admin.html) -- numero de orden o nombre del
+     negocio/cliente, minusculas, coincidencia parcial. */
+  function activeOf(q) {
+    if (!q) return orders;
+    return orders.filter(o =>
+      String(o.OrderID || '').toLowerCase().includes(q) ||
+      String(o.BusinessName || '').toLowerCase().includes(q));
+  }
+
   function renderActive() {
     const box = $('active-list');
+    const q = ($('active-search').value || '').trim().toLowerCase();
+    const list = activeOf(q);
     if (!orders.length) { box.innerHTML = '<p class="empty-note">No active orders in your department right now.</p>'; return; }
-    box.innerHTML = orders.map(o => {
+    if (!list.length) { box.innerHTML = '<p class="empty-note">No orders match that search.</p>'; return; }
+    box.innerHTML = list.map(o => {
       const addr = [o.Address, o.BuildingNumber ? 'Building ' + o.BuildingNumber : '', o.UnitNumber ? 'Unit ' + o.UnitNumber : ''].filter(Boolean).join(' · ');
       const svcLines = (o.Services || []).map(s => {
         const lvl = s.Level ? ' — ' + esc(s.Level) : '';
@@ -784,15 +807,19 @@ if (tech) {
     let remaining = umCatalogCache.filter(c => !addedSkus.has(c.sku) && !currentSkus.has(c.sku));
     remaining = remaining.filter(c => c.serviceName.toLowerCase().indexOf(q) !== -1);
     grid.innerHTML = '<div class="um-add-grid" style="margin-top:8px">' +
-      remaining.map(c => '<button type="button" class="um-add-chip" onclick=\'umAddCatalog(' + JSON.stringify(c.sku) + ',' + JSON.stringify(c.serviceName) + ')\'>' + esc(c.serviceName) + '</button>').join('') +
+      remaining.map(c => '<button type="button" class="um-add-chip" data-sku="' + escAttr(c.sku) + '" data-name="' + escAttr(c.serviceName) + '" onclick="umAddCatalog(this)">' + esc(c.serviceName) + '</button>').join('') +
       (remaining.length ? '' : '<p class="empty-note">No matching services.</p>') +
       '</div>';
   }
   function umFilterCatalog(query) {
     umRenderCatalogGrid(query);
   }
-  function umAddCatalog(sku, serviceName) {
-    umAdded.push({ sku, serviceName });
+  /* Recibe el boton mismo (no sku/serviceName sueltos) -- lee sus
+     data-attributes, que ya vienen escapados por escAttr(). Antes
+     esto tomaba texto libre directo dentro del onclick, y se rompia
+     en silencio con cualquier nombre de servicio con apostrofe. */
+  function umAddCatalog(btn) {
+    umAdded.push({ sku: btn.dataset.sku, serviceName: btn.dataset.name });
     renderUpdateModal();
   }
   function umRemoveAdded(i) {

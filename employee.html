@@ -28,6 +28,8 @@
   .sub{font-size:12px;color:var(--gray);margin-bottom:22px;line-height:1.6}
   .empty-note{color:var(--gray);font-size:13px;padding:30px 0;text-align:center}
 
+  .search-bar{margin-bottom:16px}
+  .search-bar input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:4px;font-size:13px;font-family:inherit;color:var(--black)}
   .order-card{border:1px solid var(--border);background:var(--white);margin-bottom:12px;overflow:hidden}
   .recurring-section{margin-bottom:20px}
   .recurring-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:8px}
@@ -112,6 +114,7 @@
 <div class="view active" id="view-active">
   <h2>Active Orders</h2>
   <p class="sub">Orders scheduled to you. Only orders assigned with your name show up here.</p>
+  <div class="search-bar"><input type="text" id="active-search" placeholder="Search by order number or client…" oninput="renderActive()"></div>
   <div id="active-list"><p class="empty-note">Loading…</p></div>
 </div>
 
@@ -369,10 +372,23 @@ if (tech) {
       }).join('');
   }
 
+  /* Mismo criterio de "buscador universal" ya usado en Admin
+     (activeOf en admin.html) -- numero de orden o nombre del
+     negocio/cliente, minusculas, coincidencia parcial. */
+  function activeOf(q) {
+    if (!q) return orders;
+    return orders.filter(o =>
+      String(o.OrderID || '').toLowerCase().includes(q) ||
+      String(o.BusinessName || '').toLowerCase().includes(q));
+  }
+
   function renderActive() {
     const box = $('active-list');
+    const q = ($('active-search').value || '').trim().toLowerCase();
+    const list = activeOf(q);
     if (!orders.length) { box.innerHTML = '<p class="empty-note">No active orders assigned to you right now.</p>'; return; }
-    box.innerHTML = orders.map(o => {
+    if (!list.length) { box.innerHTML = '<p class="empty-note">No orders match that search.</p>'; return; }
+    box.innerHTML = list.map(o => {
       const addr = [o.Address, o.BuildingNumber ? 'Building ' + o.BuildingNumber : '', o.UnitNumber ? 'Unit ' + o.UnitNumber : ''].filter(Boolean).join(' · ');
       const svcLines = (o.Services || []).map(s => {
         const lvl = s.Level ? ' — ' + esc(s.Level) : '';
