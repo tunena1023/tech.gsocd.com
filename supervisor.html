@@ -164,6 +164,7 @@
 
 <div class="tabs">
   <div class="tab active" data-view="active" onclick="showTab('active')">Active Orders</div>
+  <div class="tab" data-view="recurring" onclick="showTab('recurring')">Recurring</div>
   <div class="tab" data-view="history" onclick="showTab('history')">History</div>
   <div class="tab" data-view="gallery" onclick="showTab('gallery')">Gallery</div>
 </div>
@@ -171,8 +172,13 @@
 <div class="view active" id="view-active">
   <h2>Active Orders</h2>
   <p class="sub">All active orders in your department — approved and already scheduled.</p>
-  <div id="recurring-list"></div>
   <div id="active-list"><p class="empty-note">Loading…</p></div>
+</div>
+
+<div class="view" id="view-recurring">
+  <h2>Recurring</h2>
+  <p class="sub">Fixed weekly jobs in your department — these don't have a due date, they repeat every week.</p>
+  <div id="recurring-list"><p class="empty-note">Loading…</p></div>
 </div>
 
 <div class="view" id="view-history">
@@ -357,15 +363,13 @@ if (tech) {
     if (!o.UnitOccupied) return '';
     return '<span class="occupied-badge"><span class="occupied-dot"></span>Occupied</span>';
   }
-  /* Badge morado de "necesita algo de la oficina" -- Exteriors
-     unicamente. */
+  /* Badge morado de "necesita algo de la oficina" -- aplica a las 3
+     divisiones (Janitorial, Renovations, Exteriors). */
   function officeNeedBadgeHtml(o) {
-    if (String(o.Division || '').toLowerCase() !== 'exteriors') return '';
     if (!o.NeedsOfficeAccess) return '';
     return '<span class="office-need-badge"><span class="office-need-dot"></span>Office access needed</span>';
   }
   function officeNeedNoteHtml(o) {
-    if (String(o.Division || '').toLowerCase() !== 'exteriors') return '';
     if (!o.NeedsOfficeAccess || !o.OfficeNeedNotes) return '';
     return '<p style="font-size:12px;margin:10px 0;padding:10px 12px;background:#F0E8FA;border-radius:4px;border-left:3px solid #6B3FA0"><b style="color:#6B3FA0">Needed from the office:</b> ' + esc(o.OfficeNeedNotes) + '</p>';
   }
@@ -387,13 +391,13 @@ if (tech) {
 
   /* Trabajos fijos que se repiten cada semana (Janitorial) -- nunca
      generan una Orden real ni pasan por Scheduling, pero SI cuentan
-     como trabajo asignado en el departamento. */
+     como trabajo asignado en el departamento. Ahora viven en su
+     propia pestana -- ya no necesitan su propio titulo interno, el
+     <h2> de la pestana ya dice "Recurring". */
   function renderRecurring() {
     const box = $('recurring-list');
-    if (!recurring.length) { box.innerHTML = ''; return; }
-    box.innerHTML = '<div class="recurring-section">' +
-      '<div class="recurring-title">Recurring</div>' +
-      recurring.map(r => {
+    if (!recurring.length) { box.innerHTML = '<p class="empty-note">No recurring jobs in your department right now.</p>'; return; }
+    box.innerHTML = recurring.map(r => {
         const svcLines = (r.Services || []).map(s => {
           const lvl = s.Level ? ' — ' + esc(s.Level) : '';
           return '• ' + esc(s.ServiceName) + lvl;
@@ -411,8 +415,7 @@ if (tech) {
             <div class="svc-list">${svcLines || 'No services recorded.'}</div>
           </div>
         </div>`;
-      }).join('') +
-      '</div>';
+      }).join('');
   }
 
   function renderActive() {
