@@ -448,6 +448,7 @@ if (tech) {
                 ${officeNeedNoteHtml(o)}
                 <div class="action-row">
                   <button type="button" class="btn-outline" onclick="toggleUpdatePanel('${esc(o.OrderID)}')">Update Services</button>
+                  <button type="button" class="btn-outline" onclick="reportUnitNotReady('${esc(o.OrderID)}')">Report: Unit Not Ready</button>
                 </div>
                 <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
                 <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
@@ -534,6 +535,22 @@ if (tech) {
       loadOrders();
     } catch (e) {
       showToast('Could not mark this order Completed: ' + e.message);
+    }
+  }
+
+  /* Item 18 -- reporte del supervisor de que la unidad no esta lista.
+     No propone fechas nuevas (eso lo decide la oficina al revisarlo);
+     solo avisa con una nota obligatoria. */
+  async function reportUnitNotReady(orderId) {
+    const note = window.prompt('Why is the unit not ready?');
+    if (note === null) return;
+    if (!note.trim()) { showToast('Please add a short note explaining why.'); return; }
+    try {
+      await GS.api('/report-unit-not-ready', { body: { orderId, note: note.trim(), actor: tech.firstName + ' ' + tech.lastName } });
+      showToast('Reported. Our office will review it.');
+      loadOrders();
+    } catch (e) {
+      showToast('Could not send the report: ' + e.message);
     }
   }
 
@@ -876,6 +893,7 @@ if (tech) {
      elimino junto con el boton que le hacia falta. */
   window.toggleUpdatePanel = toggleUpdatePanel;
   window.submitUpdate = submitUpdate;
+  window.reportUnitNotReady = reportUnitNotReady;
 }
 </script>
 </body>
