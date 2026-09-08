@@ -570,7 +570,7 @@ if (tech) {
   let umRecognition = null;
   let umListeningFor = null;
 
-  function toggleUpdatePanel(orderId) {
+  async function toggleUpdatePanel(orderId) {
     const wrap = $('ord2col-' + orderId);
     if (!wrap) return;
     if (wrap.classList.contains('open') && umOrder && umOrder.OrderID === orderId) {
@@ -599,6 +599,20 @@ if (tech) {
     umCatalogCache = null;
     wrap.classList.add('open');
     renderUpdateModal();
+    /* Precargar el catalogo AQUI, apenas se abre el panel -- igual que
+       Create Order en Admin (loadCreateServices se dispara solo al
+       elegir division, nunca hay que darle clic a un boton "cargar"
+       aparte). Asi la caja de busqueda ya funciona desde la primera
+       letra que se escriba, sin exigir un clic previo que no es
+       intuitivo. */
+    try {
+      const propType = (umServices[0] && umServices[0].category) || '';
+      const data = await GS.api('/get-catalog', { body: { division: umOrder.Division, propertyType: propType } });
+      if (!umOrder || umOrder.OrderID !== orderId) return; /* se cambio de orden mientras cargaba */
+      umCatalogCache = data.catalog || [];
+    } catch (e) {
+      umCatalogCache = [];
+    }
   }
 
   function umPanelId(suffix) { return suffix + '-' + (umOrder ? umOrder.OrderID.replace(/[^a-z0-9]/gi, '_') : ''); }
@@ -653,7 +667,6 @@ if (tech) {
     const addSectionHtml = !showAdd ? '' :
       addedHtml +
       '<input type="text" class="um-add-search" placeholder="Search the catalog..." oninput="umFilterCatalog(this.value)">' +
-      '<button type="button" class="um-add-toggle" onclick="umShowCatalog()">+ Add a service we found we need</button>' +
       '<div id="um-catalog-grid"></div>';
 
     panel.innerHTML =
@@ -696,39 +709,27 @@ if (tech) {
     renderUpdateModal();
   }
 
-  async function umShowCatalog() {
-    const grid = $('um-catalog-grid');
-    grid.innerHTML = '<p class="empty-note">Loading…</p>';
-    try {
-      if (!umCatalogCache) {
-        const propType = (umServices[0] && umServices[0].category) || '';
-        const data = await GS.api('/get-catalog', { body: { division: umOrder.Division, propertyType: propType } });
-        umCatalogCache = data.catalog || [];
-      }
-      umRenderCatalogGrid('');
-    } catch (e) {
-      grid.innerHTML = '<p class="empty-note">Could not load services: ' + esc(e.message) + '</p>';
-    }
-  }
   /* Buscador real en vez de mostrar todo el catalogo de un jalon --
-     aprobado con mini: filtra mientras se escribe, sin tener que
-     hacer scroll por decenas de servicios para encontrar el que se
-     necesita. */
+     aprobado con mini: el catalogo se precarga solo al abrir el panel
+     (ver toggleUpdatePanel), y la caja NUNCA muestra nada hasta que
+     se escribe algo -- ahorra espacio, en vez de aventar decenas de
+     servicios de un jalon que nadie pidio ver todavia. */
   function umRenderCatalogGrid(query) {
     const grid = $('um-catalog-grid');
-    if (!grid || !umCatalogCache) return;
+    if (!grid) return;
+    const q = String(query || '').trim().toLowerCase();
+    if (!q) { grid.innerHTML = ''; return; }
+    if (!umCatalogCache) { grid.innerHTML = '<p class="empty-note">Loading…</p>'; return; }
     const addedSkus = new Set(umAdded.map(c => c.sku));
     const currentSkus = new Set(umServices.map(s => s.sku));
     let remaining = umCatalogCache.filter(c => !addedSkus.has(c.sku) && !currentSkus.has(c.sku));
-    const q = String(query || '').trim().toLowerCase();
-    if (q) remaining = remaining.filter(c => c.serviceName.toLowerCase().indexOf(q) !== -1);
+    remaining = remaining.filter(c => c.serviceName.toLowerCase().indexOf(q) !== -1);
     grid.innerHTML = '<div class="um-add-grid" style="margin-top:8px">' +
       remaining.map(c => '<button type="button" class="um-add-chip" onclick=\'umAddCatalog(' + JSON.stringify(c.sku) + ',' + JSON.stringify(c.serviceName) + ')\'>' + esc(c.serviceName) + '</button>').join('') +
       (remaining.length ? '' : '<p class="empty-note">No matching services.</p>') +
       '</div>';
   }
   function umFilterCatalog(query) {
-    if (!umCatalogCache) return;
     umRenderCatalogGrid(query);
   }
   function umAddCatalog(sku, serviceName) {
@@ -827,11 +828,14 @@ if (tech) {
      dentro de este bloque if(tech){} SI se filtran solas al scope
      global (compatibilidad legacy de navegadores), pero las async
      function NUNCA lo hacen (excluidas a proposito por el estandar de
-     JavaScript). Sin esto, cualquier onclick="umShowCatalog()" o
-     onclick="submitUpdate()" truena con 'is not defined' -- exactamente
-     el bug reportado. Mismo patron ya usado correctamente en
-     customer.html/tracking.html/templates.html/profile.html. */
-  window.umShowCatalog = umShowCatalog;
+     JavaScript). Sin esto, cualquier onclick="toggleUpdatePanel(...)"
+     o onclick="submitUpdate()" truena con 'is not defined'. Mismo
+     patron ya usado correctamente en
+     customer.html/tracking.html/templates.html/profile.html.
+     toggleUpdatePanel se agrega aqui porque ahora es async (precarga
+     el catalogo al abrir el panel); umShowCatalog ya no existe, se
+     elimino junto con el boton que le hacia falta. */
+  window.toggleUpdatePanel = toggleUpdatePanel;
   window.submitUpdate = submitUpdate;
 }
 </script>
