@@ -11,6 +11,8 @@ const handlers = {
   'get-catalog': require('../get-catalog').handler,
   'upload-photo': require('../upload-photo').handler,
   'submit-supervisor-update': require('../submit-supervisor-update').handler,
+  'submit-employee-complete': require('../submit-employee-complete').handler,
+  'save-push-subscription': require('../save-push-subscription').handler,
   'site-image': require('../site-image').handler
 };
 

@@ -52,6 +52,45 @@ const GS = {
     } catch (e) {
       img.src = FALLBACK;
     }
+  },
+
+  /* Llave publica VAPID -- segura de exponer (solo la privada, del
+     lado de Admingsocd.com que manda los pushes, debe mantenerse
+     secreta). Pide permiso de notificaciones y suscribe a este
+     navegador/dispositivo, guardando la suscripcion en SharePoint via
+     save-push-subscription.js. Se llama una vez, justo despues de
+     iniciar sesion (employee.html/supervisor.html) -- si el navegador
+     no soporta push, o el usuario ya dijo que no antes, no hace nada
+     ni molesta de nuevo. */
+  VAPID_PUBLIC_KEY: 'BI1jC4_r9hiZyvkQAl6Kyj8Lh2TQPxCxy8APpYF08PmSG-XKGs79wv4xDNUGfrNBCLyMppFLhETkedHERiXOPJw',
+
+  async initPushNotifications(techId) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (Notification.permission === 'denied') return;
+
+    try {
+      if (Notification.permission === 'default') {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') return;
+      }
+      if (Notification.permission !== 'granted') return;
+
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        const key = GS.VAPID_PUBLIC_KEY.replace(/-/g, '+').replace(/_/g, '/');
+        const padded = key + '='.repeat((4 - key.length % 4) % 4);
+        const raw = atob(padded);
+        const appServerKey = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) appServerKey[i] = raw.charCodeAt(i);
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appServerKey });
+      }
+      await GS.api('/save-push-subscription', { body: { techId, subscription: sub.toJSON() } });
+    } catch (e) {
+      /* Nunca debe tumbar el login por esto -- si algo falla (usuario
+         cerro el prompt, navegador raro, etc.), simplemente no hay
+         notificaciones para este dispositivo, sin ningun aviso feo. */
+    }
   }
 };
 

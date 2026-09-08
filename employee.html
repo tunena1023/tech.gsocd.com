@@ -135,6 +135,7 @@
 <script>
 const tech = GS.requireSession('Employee');
 if (tech) {
+  GS.initPushNotifications(tech.id);
 
   const $ = id => document.getElementById(id);
   function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
