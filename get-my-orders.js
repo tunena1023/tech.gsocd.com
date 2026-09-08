@@ -61,7 +61,14 @@ exports.handler = async (event) => {
 
     let liveOrders = orderRows.filter(it => it.fields && LIVE_STATUSES.includes(it.fields.Status));
 
-    if (role === 'Supervisor') {
+    if (role === 'Developer') {
+      /* Ve TODO -- las 3 divisiones, sin filtro de division ni de
+         asignacion individual. Aprobado: un Developer supervisa y
+         revisa desde el portal, no hace el trabajo fisico el mismo
+         (por eso Mark as Completed sigue exigiendo que sea SU propia
+         orden asignada como supervisor, igual que hoy -- ese candado
+         vive en el frontend, isMySupervisorOrder, y no cambia aqui). */
+    } else if (role === 'Supervisor') {
       liveOrders = liveOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
     } else {
       /* Admin (Scheduling en Admingsocd.com) guarda la asignacion real
@@ -152,7 +159,21 @@ exports.handler = async (event) => {
     }
 
     let recurring;
-    if (role === 'Supervisor') {
+    if (role === 'Developer') {
+      /* Igual que Supervisor pero sin filtro de division -- ve los
+         recurrentes de las 3 divisiones. */
+      recurring = activeServices.map(it => ({
+        id: it.id,
+        clientId: it.fields.ClientID || '',
+        businessName: businessNameByClient[it.fields.ClientID] || it.fields.ClientID || '',
+        buildingNumber: it.fields.BuildingNumber || '',
+        division: it.fields.Division || '',
+        daysOfWeek: it.fields.DaysOfWeek || '',
+        time: it.fields.Time || '',
+        totalHours: Number(it.fields.TotalHours) || 0,
+        Services: parseServicesJson(it.fields.ServicesJSON)
+      }));
+    } else if (role === 'Supervisor') {
       recurring = activeServices
         .filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase())
         .map(it => ({

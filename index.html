@@ -83,7 +83,11 @@
 
   function goToPortal(tech) {
     GS.session.set(tech);
-    location.href = tech.role === 'Supervisor' ? 'supervisor.html' : 'employee.html';
+    /* Developer usa las mismas herramientas que Supervisor (Update
+       Services, Report Unit Not Ready) pero sin el candado de una
+       sola division -- misma pantalla, el filtro de division dentro
+       de supervisor.html es lo que cambia su alcance. */
+    location.href = (tech.role === 'Supervisor' || tech.role === 'Developer') ? 'supervisor.html' : 'employee.html';
   }
 
   async function doSignIn() {

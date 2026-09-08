@@ -55,7 +55,9 @@ exports.handler = async (event) => {
 
     let closedOrders = orderRows.filter(it => it.fields && CLOSED_STATUSES.includes(it.fields.Status));
 
-    if (role === 'Supervisor') {
+    if (role === 'Developer') {
+      /* Ve todo -- mismo criterio que get-my-orders.js. */
+    } else if (role === 'Supervisor') {
       closedOrders = closedOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
     } else {
       /* Mismo arreglo que get-my-orders.js: Admin guarda la asignacion

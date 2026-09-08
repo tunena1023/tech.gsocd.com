@@ -30,6 +30,9 @@
 
   .search-bar{margin-bottom:16px}
   .search-bar input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:4px;font-size:13px;font-family:inherit;color:var(--black)}
+  .pill-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .pill{padding:7px 16px;border:1px solid var(--border);border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--gray);cursor:pointer;background:var(--white)}
+  .pill.active{background:var(--gold);color:var(--black);border-color:var(--gold)}
   .order-card{border:1px solid var(--border);background:var(--white);margin-bottom:12px;overflow:hidden}
   .recurring-section{margin-bottom:20px}
   .recurring-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:8px}
@@ -184,7 +187,13 @@
 
 <div class="view active" id="view-active">
   <h2>Active Orders</h2>
-  <p class="sub">All active orders in your department — approved and already scheduled.</p>
+  <p class="sub" id="active-sub">All active orders in your department — approved and already scheduled.</p>
+  <div class="pill-row" id="active-division-pills" style="display:none">
+    <div class="pill active" data-division="">All</div>
+    <div class="pill" data-division="Janitorial">Janitorial</div>
+    <div class="pill" data-division="Renovations">Renovations</div>
+    <div class="pill" data-division="Exteriors">Exteriors</div>
+  </div>
   <div class="search-bar"><input type="text" id="active-search" placeholder="Search by order number or client…" oninput="renderActive()"></div>
   <div id="active-list"><p class="empty-note">Loading…</p></div>
 </div>
@@ -221,7 +230,21 @@
 
 <script src="shared.js"></script>
 <script>
-const tech = GS.requireSession('Supervisor');
+/* GS.requireSession(roleNeeded) solo acepta UN rol exacto -- Developer
+   tambien usa esta pantalla (mismas herramientas que Supervisor, sin
+   el candado de division), asi que se pide la sesion sin exigir rol
+   especifico aqui, y se valida a mano contra los 2 roles permitidos.
+   location.replace() es asincrono -- si solo se llamara sin tocar
+   "tech", el bloque if(tech){...} de aqui abajo seguiria corriendo un
+   instante con un rol invalido (ej. un Employee que entro por URL
+   directa) antes de que la redireccion surta efecto. Se fuerza tech
+   a null en ese caso para que if(tech) no ejecute nada. */
+let tech = GS.requireSession();
+if (tech && tech.role !== 'Supervisor' && tech.role !== 'Developer') {
+  GS.session.clear();
+  location.replace('index.html');
+  tech = null;
+}
 if (tech) {
   GS.initPushNotifications(tech.id);
 
@@ -245,7 +268,24 @@ if (tech) {
 
   function doSignout() { GS.session.clear(); location.href = 'index.html'; }
 
-  $('nav-user').textContent = tech.firstName + ' ' + tech.lastName + (tech.division ? ' · ' + tech.division : '');
+  $('nav-user').textContent = tech.firstName + ' ' + tech.lastName + ' · ' + (tech.role === 'Developer' ? 'Developer' : tech.division || '');
+
+  /* Developer ve las 3 divisiones mezcladas -- el selector solo tiene
+     sentido para el (Supervisor ya esta limitado a la suya desde el
+     backend, mostrarselo tambien no aportaria nada). */
+  let activeDivisionFilter = '';
+  if (tech.role === 'Developer') {
+    $('active-sub').textContent = 'All active orders across every division — approved and already scheduled.';
+    $('active-division-pills').style.display = 'flex';
+    $('active-division-pills').querySelectorAll('.pill').forEach(p => {
+      p.addEventListener('click', () => {
+        $('active-division-pills').querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
+        p.classList.add('active');
+        activeDivisionFilter = p.dataset.division;
+        renderActive();
+      });
+    });
+  }
 
   function showTab(view) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
@@ -449,10 +489,15 @@ if (tech) {
 
   /* Mismo criterio de "buscador universal" ya usado en Admin
      (activeOf en admin.html) -- numero de orden o nombre del
-     negocio/cliente, minusculas, coincidencia parcial. */
+     negocio/cliente, minusculas, coincidencia parcial. Ademas
+     filtra por division si el pill-row esta activo (Developer). */
   function activeOf(q) {
-    if (!q) return orders;
-    return orders.filter(o =>
+    let list = orders;
+    if (activeDivisionFilter) {
+      list = list.filter(o => String(o.Division || '').toLowerCase() === activeDivisionFilter.toLowerCase());
+    }
+    if (!q) return list;
+    return list.filter(o =>
       String(o.OrderID || '').toLowerCase().includes(q) ||
       String(o.BusinessName || '').toLowerCase().includes(q));
   }

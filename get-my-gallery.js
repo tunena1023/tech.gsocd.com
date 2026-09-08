@@ -52,7 +52,9 @@ exports.handler = async (event) => {
     ]);
 
     let myOrders = orderRows.filter(it => it.fields);
-    if (role === 'Supervisor') {
+    if (role === 'Developer') {
+      /* Ve todo -- mismo criterio que get-my-orders.js/get-my-history.js. */
+    } else if (role === 'Supervisor') {
       myOrders = myOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
     } else {
       /* Mismo arreglo que get-my-orders.js/get-my-history.js: Admin
