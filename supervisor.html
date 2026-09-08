@@ -806,8 +806,6 @@ if (tech) {
     }
   }
 
-  function umPanelId(suffix) { return suffix + '-' + (umOrder ? umOrder.OrderID.replace(/[^a-z0-9]/gi, '_') : ''); }
-
   function renderUpdateModal() {
     if (!umOrder) return;
     const panel = $('editpanel-' + umOrder.OrderID);
