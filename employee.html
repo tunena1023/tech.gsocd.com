@@ -48,6 +48,9 @@
 
   .photo-btn{display:flex;align-items:center;gap:6px;background:var(--off);border:1px dashed var(--border);padding:10px 16px;border-radius:4px;font-size:12px;color:var(--gray);cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
   .photo-btn:hover{border-color:var(--gold);color:var(--black)}
+  .btn-complete{display:flex;align-items:center;gap:6px;background:#2E7D4F;border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
+  .btn-complete:hover{background:#256641}
+  .btn-complete:disabled{background:var(--border);color:var(--gray);cursor:not-allowed}
   .photo-preview-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
   .photo-preview{width:64px;height:64px;border-radius:4px;object-fit:cover;border:1px solid var(--border)}
 
@@ -392,6 +395,7 @@ if (tech) {
             ${officeNeedNoteHtml(o)}
             <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
             <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
+            <button type="button" class="btn-complete" onclick="markEmployeeCompleted('${esc(o.OrderID)}')">✓ Mark as Completed</button>
           </div>
         </div>`;
     }).join('');
@@ -402,15 +406,28 @@ if (tech) {
   }
 
   let photoOrderId = null;
+  let completingAfterPhoto = false;
   function takePhoto(orderId) {
     photoOrderId = orderId;
+    completingAfterPhoto = false;
+    $('camera-input').click();
+  }
+  /* "Mark as Completed" siempre pide una foto nueva -- del trabajo ya
+     terminado, no reusa una foto vieja tomada a medio trabajo. Al
+     subirse bien, se completa la orden en automatico (un solo flujo
+     para el empleado, sin tener que darle clic 2 veces). */
+  function markEmployeeCompleted(orderId) {
+    photoOrderId = orderId;
+    completingAfterPhoto = true;
     $('camera-input').click();
   }
   $('camera-input').addEventListener('change', function () {
     const file = this.files[0];
     const orderId = photoOrderId;
+    const shouldComplete = completingAfterPhoto;
     this.value = '';
     photoOrderId = null;
+    completingAfterPhoto = false;
     if (!file || !orderId) return;
 
     /* Vista previa local de inmediato, sin esperar a que suba --
@@ -431,6 +448,7 @@ if (tech) {
         await GS.api('/upload-photo', { body: { orderId, imageBase64: reader.result } });
         if (thumb) thumb.style.opacity = '1';
         showToast('Photo saved to this order.');
+        if (shouldComplete) await finishCompletion(orderId);
       } catch (e) {
         if (thumb) thumb.remove();
         showToast('Could not save the photo: ' + e.message);
@@ -442,6 +460,16 @@ if (tech) {
     };
     reader.readAsDataURL(file);
   });
+
+  async function finishCompletion(orderId) {
+    try {
+      await GS.api('/submit-employee-complete', { body: { orderId, techId: tech.id } });
+      showToast('Order ' + orderId + ' marked as Completed.');
+      loadOrders();
+    } catch (e) {
+      showToast('Could not mark this order Completed: ' + e.message);
+    }
+  }
 
   let historyLoaded = false;
   async function loadHistory() {
