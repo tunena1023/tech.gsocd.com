@@ -388,9 +388,7 @@ if (tech) {
           </div>
           <div class="order-body">
             <div class="row">
-              <div><b>Entry</b>${fmtDate(o.EntryDate)}</div>
-              <div><b>Due</b>${fmtDate(o.DueDate)}</div>
-              <div><b>Service Window</b>${esc(o.ServiceWindow || '—')}</div>
+              <div><b>Service Date</b>${esc(o.ServiceWindow || fmtDateTime(o.DispatchDate))}</div>
             </div>
             <div class="svc-list">${svcLines || 'No services recorded.'}</div>
             ${officeNeedNoteHtml(o)}
