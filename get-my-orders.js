@@ -124,6 +124,7 @@ exports.handler = async (event) => {
         MaterialsReady: f.MaterialsReady === true || f.MaterialsReady === 'true',
         EntryTime: f.EntryTime || '',
         UnitOccupied: f.UnitOccupied === true || f.UnitOccupied === 'true',
+        TechMarkedComplete: f.TechMarkedComplete === true || f.TechMarkedComplete === 'true',
         NeedsOfficeAccess: f.NeedsOfficeAccess === true || f.NeedsOfficeAccess === 'true',
         OfficeNeedNotes: f.OfficeNeedNotes || '',
         Services: servicesByOrder[oid] || []

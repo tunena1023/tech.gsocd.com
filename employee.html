@@ -53,6 +53,7 @@
   .btn-complete{display:flex;align-items:center;gap:6px;background:#2E7D4F;border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
   .btn-complete:hover{background:#256641}
   .btn-complete:disabled{background:var(--border);color:var(--gray);cursor:not-allowed}
+  .tech-done-note{background:#E8F0FE;color:#1A56C4;border:1px solid #C7DBFB;padding:10px 12px;border-radius:4px;font-size:12px;font-weight:600;margin-top:10px;text-align:center}
   .photo-preview-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
   .photo-preview{width:64px;height:64px;border-radius:4px;object-fit:cover;border:1px solid var(--border)}
 
@@ -415,7 +416,9 @@ if (tech) {
             ${officeNeedNoteHtml(o)}
             <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
             <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
-            <button type="button" class="btn-complete" onclick="markEmployeeCompleted('${esc(o.OrderID)}')">✓ Mark as Completed</button>
+            ${o.TechMarkedComplete
+              ? '<p class="tech-done-note">✓ You marked this as done — waiting for the office to confirm and close it.</p>'
+              : '<button type="button" class="btn-complete" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>'}
           </div>
         </div>`;
     }).join('');
@@ -484,7 +487,7 @@ if (tech) {
   async function finishCompletion(orderId) {
     try {
       await GS.api('/submit-employee-complete', { body: { orderId, techId: tech.id, role: tech.role } });
-      showToast('Order ' + orderId + ' marked as Completed.');
+      showToast('Order ' + orderId + ' marked as done — the office will confirm and close it.');
       loadOrders();
     } catch (e) {
       showToast('Could not mark this order Completed: ' + e.message);

@@ -1,6 +1,18 @@
 /* ============================================================
-   submit-employee-complete.js — el empleado marca su propia orden
-   como Completed, desde su portal (nunca desde Admin).
+   submit-employee-complete.js — el empleado marca SU PARTE como
+   terminada, desde su portal (nunca desde Admin).
+
+   YA NO completa la orden de verdad -- eso quedo confirmado que solo
+   lo hace la oficina, con su propio boton en Active. Esto solo pone
+   una marca (TechMarkedComplete=true, Technician=<nombre>) y deja un
+   renglon en el historial -- el boton "Completed" en Active se pone
+   azul en vez de verde para avisar que el tecnico ya dijo que
+   termino, pero el Status real NO cambia aqui, y no se genera PDF.
+
+   La marca se quita sola en cuanto la orden recibe cualquier cambio
+   despues (admin-update-order.js/submit-order.js del lado de Admin y
+   Orders) -- si algo cambio, ya no es cierto que "el tecnico termino
+   exactamente esto".
 
    Requisito de negocio: el frontend NO debe llamar esto sin que el
    empleado ya haya tomado al menos una foto de la orden primero
@@ -8,26 +20,15 @@
    exista al menos una foto en la carpeta de esta orden -- ver
    ensurePhotoExists).
 
-   Mismo patron de historial que usa admin-update-order.js al marcar
-   Completed (Admingsocd.com), para que el timeline se vea identico
-   sin importar quien la completo:
-     1) ChangeType='Completed', FieldChanged='Status'
-     2) ChangeType='Order Details Set', con Technician/CompletedDate
-
-   Tambien regenera el PDF (mismo criterio: CompletedDate es un campo
-   de "control" que siempre lo dispara) -- confirmado con el usuario
-   que el PDF SI debe reflejar cuando el empleado completa la orden.
-
    No se llama al API de otro dominio -- se escribe directo a
    SharePoint, mismo patron que ya usa cada repo por su cuenta.
 ============================================================ */
 
 const {
-  ORDERS_LIST, ORDER_SERVICES_LIST, ORDER_HISTORY_LIST, TECHS_LIST,
+  ORDERS_LIST, ORDER_HISTORY_LIST, TECHS_LIST,
   createListItem, updateListItemByItemId,
   graphFetch, siteListPath, listChildren, jsonResponse
 } = require('./lib/graph');
-const { generateAndSaveOrderPdf } = require('./lib/orderpdf');
 
 const LIVE_STATUSES = ['Assigned', 'Updated'];
 const PHOTOS_FOLDER = process.env.GRAPH_PHOTOS_FOLDER || 'TechPhotos';
@@ -42,10 +43,6 @@ async function fetchByOrderId(listName, orderId) {
     url = data['@odata.nextLink'] || null;
   }
   return out;
-}
-
-function toIsoDate(d) {
-  return new Date(d).toISOString().slice(0, 10);
 }
 
 /* Misma carpeta que arma upload-photo.js -- si esta vacia (o no
@@ -87,7 +84,7 @@ exports.handler = async (event) => {
 
     if (LIVE_STATUSES.indexOf(f.Status || '') === -1) {
       return jsonResponse(400, {
-        error: 'This order is not in a state that can be completed right now (status: ' + (f.Status || '') + ').'
+        error: 'This order is not in a state that can be marked done right now (status: ' + (f.Status || '') + ').'
       });
     }
 
@@ -96,75 +93,38 @@ exports.handler = async (event) => {
     if (!techName) return jsonResponse(400, { error: 'Could not identify the technician completing this order.' });
 
     /* Un Supervisor ve TODAS las ordenes de su division (para dar
-       seguimiento general), pero solo puede completar las que tiene
+       seguimiento general), pero solo puede marcar las que tiene
        asignadas a su propio nombre -- confirmado con el usuario. Un
-       Employee siempre completa lo suyo (get-my-orders.js ya solo le
+       Employee siempre marca lo suyo (get-my-orders.js ya solo le
        muestra sus propias ordenes, no hace falta este chequeo ahi). */
     if (role === 'Supervisor' &&
         String(f.Supervisor || '').trim().toLowerCase() !== techName.toLowerCase()) {
-      return jsonResponse(403, { error: 'You can only mark your own assigned orders as Completed.' });
+      return jsonResponse(403, { error: 'You can only mark your own assigned orders as done.' });
     }
 
     const hasPhoto = await hasAnyPhoto(f.ClientID, f.BusinessName, orderId);
     if (!hasPhoto) {
-      return jsonResponse(400, { error: 'Take at least one photo of the finished work before marking this order Completed.' });
+      return jsonResponse(400, { error: 'Take at least one photo of the finished work before marking this order done.' });
     }
 
-    const completedDate = toIsoDate(new Date());
-    const oldStatus = f.Status || '';
-
-    let patch;
     try {
-      patch = { Status: 'Completed', Technician: techName, CompletedDate: completedDate };
-      await updateListItemByItemId(ORDERS_LIST, item.id, patch);
+      await updateListItemByItemId(ORDERS_LIST, item.id, { TechMarkedComplete: true, Technician: techName });
     } catch (patchErr) {
-      /* Mismo respaldo que admin-update-order.js -- Technician/
-         CompletedDate se agregaron a mano en SharePoint, Graph
-         rechaza el PATCH completo si la columna no existe todavia. */
-      await updateListItemByItemId(ORDERS_LIST, item.id, { Status: 'Completed' });
+      /* Respaldo si TechMarkedComplete todavia no existe como columna
+         en SharePoint -- al menos deja el nombre del tecnico. */
+      await updateListItemByItemId(ORDERS_LIST, item.id, { Technician: techName });
     }
 
-    const now = new Date().toISOString();
-    await createListItem(ORDER_HISTORY_LIST, {
-      OrderID: orderId, ChangedBy: techName, ChangeDate: completedDate + 'T12:00:00.000Z',
-      Title: orderId + '-completed-status', ChangeType: 'Completed', FieldChanged: 'Status',
-      Notes: '', OldValue: oldStatus, NewValue: 'Completed'
-    });
-    await createListItem(ORDER_HISTORY_LIST, {
-      OrderID: orderId, ChangedBy: techName, ChangeDate: now,
-      Title: orderId + '-completed-details', ChangeType: 'Order Details Set', FieldChanged: '',
-      Notes: 'Technician: ' + techName + ' · Completed Date: ' + completedDate,
-      OldValue: '', NewValue: ''
-    });
-
-    /* PDF: CompletedDate es un campo de "control" (mismo criterio que
-       admin-update-order.js) -- siempre regenera. */
-    let pdf = null;
-    try {
-      const [freshSvc, freshHist] = await Promise.all([
-        fetchByOrderId(ORDER_SERVICES_LIST, orderId),
-        fetchByOrderId(ORDER_HISTORY_LIST, orderId)
-      ]);
-      pdf = await generateAndSaveOrderPdf({
-        order: Object.assign({}, f, patch, { OrderID: orderId }),
-        services: freshSvc.filter(r => r.fields).map(r => r.fields),
-        history: freshHist.filter(r => r.fields).map(r => r.fields)
-          .sort((a, b) => new Date(a.ChangeDate || 0) - new Date(b.ChangeDate || 0))
-      });
-    } catch (e) {
-      pdf = { ok: false, error: e.message };
-    }
     await createListItem(ORDER_HISTORY_LIST, {
       OrderID: orderId, ChangedBy: techName, ChangeDate: new Date().toISOString(),
-      Title: orderId + '-completed-doc', ChangeType: pdf.ok ? 'Document Generated' : 'Document Failed',
-      FieldChanged: 'Document',
-      Notes: pdf.ok ? 'Order document saved. The client will receive it by email.'
-                    : ('The order document could not be generated: ' + (pdf.error || '')),
-      OldValue: '', NewValue: ''
+      Title: orderId + '-tech-marked-done', ChangeType: 'Tech Marked Complete', FieldChanged: 'TechMarkedComplete',
+      Notes: techName + ' marked their work as done. The office still needs to confirm and close the order.',
+      OldValue: 'false', NewValue: 'true'
     });
 
-    return jsonResponse(200, { success: true, status: 'Completed' });
+    return jsonResponse(200, { success: true, techMarkedComplete: true });
   } catch (e) {
     return jsonResponse(500, { error: e.message });
   }
 };
+

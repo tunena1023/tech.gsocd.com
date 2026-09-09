@@ -104,7 +104,11 @@ exports.handler = async (event) => {
       })
     ));
 
-    await updateListItemByItemId(ORDERS_LIST, item.id, { Status: 'Change Requested' });
+    try {
+      await updateListItemByItemId(ORDERS_LIST, item.id, { Status: 'Change Requested', TechMarkedComplete: false });
+    } catch (patchErr) {
+      await updateListItemByItemId(ORDERS_LIST, item.id, { Status: 'Change Requested' });
+    }
 
     const histRows = await fetchByOrderId(ORDER_HISTORY_LIST, orderId);
     const prefix = orderId + '-sup';
