@@ -84,26 +84,10 @@ exports.handler = async (event) => {
     const division = f.Division || '';
     const oldServices = snapshotServices(svcRows, division);
 
-    /* Aplicar de una vez los servicios nuevos -- igual que hace
-       admin-update-order.js, si el director rechaza mas tarde, se
-       revierte leyendo el snapshot que se guarda abajo. */
-    if (svcRows.length) {
-      await Promise.all(svcRows.map(row => deleteListItem(ORDER_SERVICES_LIST, row.id)));
-    }
-    await Promise.all(services.map(s =>
-      createListItem(ORDER_SERVICES_LIST, {
-        Title:              s.ServiceName || '',
-        OrderID:            orderId,
-        Category:           s.Category    || '',
-        ServiceName:        s.ServiceName || '',
-        SubOption:          s.SubOption   || '',
-        Division:           s.Division    || division,
-        Level:              s.Level       || '',
-        NotCompleted:       false,
-        NotCompletedReason: ''
-      })
-    ));
-
+    /* CAMBIO DE DISENO (confirmado con el usuario): la sugerencia del
+       supervisor ya NO se aplica a los servicios reales hasta que se
+       apruebe -- vive solo en el snapshot del renglon de historial de
+       abajo, hasta que Reassign/Reschedule la aplique de verdad. */
     try {
       await updateListItemByItemId(ORDERS_LIST, item.id, { Status: 'Change Requested', TechMarkedComplete: false });
     } catch (patchErr) {
