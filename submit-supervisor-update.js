@@ -126,7 +126,7 @@ exports.handler = async (event) => {
       ChangeType:   'Change Requested',
       FieldChanged: 'Supervisor Update',
       Notes:        notes,
-      OldValue:     JSON.stringify(oldServices),
+      OldValue:     JSON.stringify({ services: oldServices, status: f.Status || '' }),
       NewValue:     JSON.stringify(services)
     });
 
