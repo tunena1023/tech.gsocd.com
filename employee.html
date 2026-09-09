@@ -37,10 +37,8 @@
   .order-id{font-weight:700;font-size:13px}
   .order-meta{font-size:11px;color:var(--gray);margin-top:2px}
   .badge{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 10px;border-radius:12px;background:#FDF3E0;color:var(--gold-dk);flex-shrink:0}
-  .occupied-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:#E8F0FA;color:#2D5F8A;padding:3px 9px;border-radius:20px}
-  .occupied-dot{width:6px;height:6px;border-radius:50%;background:#2D5F8A}
-  .office-need-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:#F0E8FA;color:#6B3FA0;padding:3px 9px;border-radius:20px}
-  .office-need-dot{width:6px;height:6px;border-radius:50%;background:#6B3FA0}
+  /* El CSS de los badges ahora lo trae GSOrderBadges (gsocd-shared) --
+     sin margen local, badge-row ya trae su propio gap. */
   .badge-row{display:flex;align-items:center;gap:6px;flex-shrink:0}
   .order-body{display:none;padding:0 18px 18px;border-top:1px solid var(--border)}
   .order-body.open{display:block}
@@ -127,6 +125,7 @@
 <script src="shared.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.6.0/order-history/order-history.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.7.0/order-badges/order-badges.js"></script>
 <script>
 const tech = GS.requireSession('Employee');
 if (tech) {
@@ -176,24 +175,9 @@ if (tech) {
      Admin/Cliente/Tech, sin adaptar. Lo pone el cliente, aqui es
      solo de lectura para que el tecnico sepa antes de tocar la
      puerta. Renovations + Janitorial unicamente. */
-  function unitOccupiedBadgeHtml(o) {
-    const div = String(o.Division || '').toLowerCase();
-    if (div !== 'renovations' && div !== 'janitorial') return '';
-    if (!o.UnitOccupied) return '';
-    return '<span class="occupied-badge"><span class="occupied-dot"></span>Occupied</span>';
-  }
-  /* Badge morado de "necesita algo de la oficina" -- aplica a las 3
-     divisiones (Janitorial, Renovations, Exteriors). El cliente
-     puede marcar esto sin importar la division de la orden, asi que
-     el tecnico debe verlo sin importar cual sea tampoco. */
-  function officeNeedBadgeHtml(o) {
-    if (!o.NeedsOfficeAccess) return '';
-    return '<span class="office-need-badge"><span class="office-need-dot"></span>Office access needed</span>';
-  }
-  function officeNeedNoteHtml(o) {
-    if (!o.NeedsOfficeAccess || !o.OfficeNeedNotes) return '';
-    return '<p style="font-size:12px;margin:10px 0;padding:10px 12px;background:#F0E8FA;border-radius:4px;border-left:3px solid #6B3FA0"><b style="color:#6B3FA0">Needed from the office:</b> ' + esc(o.OfficeNeedNotes) + '</p>';
-  }
+  /* Los badges de unidad ocupada y "se necesita algo de la oficina"
+     ahora vienen de GSOrderBadges (gsocd-shared) -- una sola pieza
+     compartida entre Admin/Tech/Orders. */
 
   let orders = [];
   let recurring = [];
@@ -270,7 +254,7 @@ if (tech) {
               <div class="order-meta">${esc(o.BusinessName)} · ${esc(addr)} · ${esc(o.ServiceWindow || fmtDateTime(o.DispatchDate))}</div>
             </div>
             <span class="badge-row">
-              ${unitOccupiedBadgeHtml(o)}${officeNeedBadgeHtml(o)}
+              ${GSOrderBadges.occupied(o)}${GSOrderBadges.officeNeed(o)}
               <span class="badge">${esc(o.Division)}</span>
             </span>
           </div>
@@ -279,7 +263,7 @@ if (tech) {
               <div><b>Service Date</b>${esc(o.ServiceWindow || fmtDateTime(o.DispatchDate))}</div>
             </div>
             <div class="svc-list">${svcLines || 'No services recorded.'}</div>
-            ${officeNeedNoteHtml(o)}
+            ${GSOrderBadges.officeNeedNote(o)}
             <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
             <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
             ${o.TechMarkedComplete
@@ -376,7 +360,7 @@ if (tech) {
               <div class="order-meta">${esc(o.BusinessName)} · ${fmtDate(o.EntryDate)}</div>
             </div>
             <span class="badge-row">
-              ${unitOccupiedBadgeHtml(o)}${officeNeedBadgeHtml(o)}
+              ${GSOrderBadges.occupied(o)}${GSOrderBadges.officeNeed(o)}
               <span class="badge">${esc(o.Status)}</span>
             </span>
           </div>
