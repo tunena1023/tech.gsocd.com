@@ -5,6 +5,7 @@ const { toVercel } = require('../lib/vercel-adapter');
 const handlers = {
   'register-tech': require('../register-tech').handler,
   'login-tech': require('../login-tech').handler,
+  'device-auth': require('../device-auth').handler,
   'get-my-orders': require('../get-my-orders').handler,
   'get-my-history': require('../get-my-history').handler,
   'get-my-gallery': require('../get-my-gallery').handler,

@@ -42,8 +42,13 @@
 <div class="card">
   <div class="logo-row"><img src="" alt="GS Solutions" class="logo-diamond"></div>
 
+  <!-- CHECKING FOR SAVED DEVICE ACCESS -->
+  <div class="view active" id="view-checking">
+    <p class="sub" style="margin-bottom:0">Checking this phone…</p>
+  </div>
+
   <!-- SIGN IN -->
-  <div class="view active" id="view-signin">
+  <div class="view" id="view-signin">
     <h2>Tech Portal</h2>
     <p class="sub">Sign in with your name and the last 4 digits of your phone.</p>
     <div class="field-row">
@@ -75,6 +80,7 @@
 <script src="shared.js"></script>
 <script>
   function showView(v) {
+    document.getElementById('view-checking').classList.toggle('active', v === 'checking');
     document.getElementById('view-signin').classList.toggle('active', v === 'signin');
     document.getElementById('view-register').classList.toggle('active', v === 'register');
     document.getElementById('si-error').textContent = '';
@@ -89,6 +95,25 @@
        de supervisor.html es lo que cambia su alcance. */
     location.href = (tech.role === 'Supervisor' || tech.role === 'Developer') ? 'supervisor.html' : 'employee.html';
   }
+
+  /* Acceso por QR -- confirmado con el usuario: el icono que la
+     oficina le deja en el celular del empleado apunta AQUI, no
+     directo a employee.html/supervisor.html. Si ya tiene un
+     DeviceToken guardado (de cuando la oficina le hizo el QR en
+     persona), entra derecho a sus ordenes sin ver el login nunca --
+     si no tiene, o si se lo revocaron, cae al formulario normal de
+     siempre. */
+  (async () => {
+    const deviceToken = localStorage.getItem('gs_device_token');
+    if (!deviceToken) { showView('signin'); return; }
+    try {
+      const res = await GS.api('/device-auth', { body: { action: 'verify-device', deviceToken } });
+      goToPortal(res.tech);
+    } catch (e) {
+      localStorage.removeItem('gs_device_token');
+      showView('signin');
+    }
+  })();
 
   async function doSignIn() {
     const firstName = document.getElementById('si-first').value.trim();

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GS Solutions – Set Up This Phone</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --black:#111; --gold:#C9A84C; --gold-lt:#E2C97E; --gold-dk:#8C6F2A;
+    --white:#fff; --off:#F7F6F3; --gray:#6B6B6B; --border:#E0D9CC;
+  }
+  body{font-family:'Inter',sans-serif;background-color:var(--black);background-image:url('/api/site-image?name=LoginBackground.jpg');background-repeat:repeat;color:var(--black);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:var(--white);border:1px solid var(--border);max-width:420px;width:100%;padding:40px;text-align:center}
+  .logo-row{text-align:center;margin-bottom:24px}
+  .logo-row img{height:56px;object-fit:contain}
+  h2{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;margin-bottom:8px}
+  .sub{font-size:13px;color:var(--gray);line-height:1.6;margin-bottom:28px}
+  .btn-gold{width:100%;background:var(--gold);color:var(--black);border:none;padding:14px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+  .btn-gold:hover{background:var(--gold-lt)}
+  .btn-gold:disabled{opacity:.6;cursor:default}
+  .error-msg{font-size:13px;color:#B33A3A;margin-top:16px;line-height:1.6}
+  .spinner-note{font-size:13px;color:var(--gray)}
+  .view{display:none}
+  .view.active{display:block}
+
+  @media (max-width: 480px) {
+    body{padding:12px}
+    .card{padding:28px 20px}
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo-row"><img src="" alt="GS Solutions" class="logo-diamond"></div>
+
+  <div class="view active" id="view-loading">
+    <p class="spinner-note">Checking your link…</p>
+  </div>
+
+  <div class="view" id="view-confirm">
+    <h2>Hi, <span id="tech-name"></span></h2>
+    <p class="sub">Tap below to set up this phone. You'll only need to do this once — after that, this icon will take you straight to your orders.</p>
+    <button class="btn-gold" id="confirm-btn" onclick="confirmIdentity()">Confirm — This Is Me</button>
+  </div>
+
+  <div class="view" id="view-error">
+    <h2>Something's not right</h2>
+    <p class="error-msg" id="error-text"></p>
+  </div>
+
+  <div class="view" id="view-done">
+    <h2>You're all set</h2>
+    <p class="sub" id="done-text">Taking you to your orders…</p>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+  GS.applyLogo();
+
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+  }
+
+  function showError(msg) {
+    document.getElementById('error-text').textContent = msg;
+    showView('error');
+  }
+
+  const params = new URLSearchParams(location.search);
+  const setupToken = params.get('setup');
+
+  if (!setupToken) {
+    showError('This link is missing information. Please ask the office for a new QR code.');
+  } else {
+    (async () => {
+      try {
+        const res = await GS.api('/device-auth', { body: { action: 'verify-setup', setupToken } });
+        document.getElementById('tech-name').textContent = res.firstName;
+        showView('confirm');
+      } catch (e) {
+        showError(e.message);
+      }
+    })();
+  }
+
+  async function confirmIdentity() {
+    const btn = document.getElementById('confirm-btn');
+    btn.disabled = true;
+    btn.textContent = 'Setting up…';
+    try {
+      const res = await GS.api('/device-auth', { body: { action: 'activate-device', setupToken } });
+      localStorage.setItem('gs_device_token', res.deviceToken);
+      GS.session.set(res.tech);
+      showView('done');
+      setTimeout(() => {
+        location.href = (res.tech.role === 'Supervisor' || res.tech.role === 'Developer') ? 'supervisor.html' : 'employee.html';
+      }, 900);
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Confirm — This Is Me';
+      showError(e.message);
+    }
+  }
+</script>
+</body>
+</html>
