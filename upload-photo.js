@@ -1,22 +1,29 @@
 /* ============================================================
-   upload-photo.js — sube una foto tomada en sitio a SharePoint.
+   upload-photo.js — sube una foto O VIDEO tomado en sitio a
+   SharePoint, y deja un registro aparte (TechPhotoLog) con quien lo
+   subio, cuando, y donde -- confirmado con el usuario: la foto/video
+   sigue siendo obligatoria como siempre, pero ahora ademas guarda su
+   ubicacion real (con permiso del navegador, pedido una sola vez)
+   para el reporte de Times and Routes (pendiente).
 
    Estructura (raiz del drive):
-     <ClientID> - <BusinessName> / <OrderID> / Fotos / <fecha-hora>.jpg
+     TechPhotos / <ClientID> - <BusinessName> / <OrderID> / Photos / <fecha-hora>.jpg|mp4
 
-   Mismo patron que ya usa la carpeta de PDFs de ordenes (ORDERS_FOLDER)
-   en los otros 2 repos, pero como carpeta aparte en la raiz (no dentro
-   de esa misma) para no mezclar PDFs con fotos.
-
-   No importa quien tomo la foto -- el nombre del archivo es solo la
-   fecha y hora en que se tomo, sin nombre de empleado.
+   El nombre del archivo sigue siendo solo fecha-hora, sin nombre de
+   empleado -- quien lo subio vive en TechPhotoLog, no en el nombre
+   del archivo (mismo criterio de siempre, solo que ahora si queda
+   registrado en algun lado).
 ============================================================ */
 
 const {
-  ORDERS_LIST, ensureFolder, uploadFile, graphFetch, siteListPath, jsonResponse
+  ORDERS_LIST, TECH_PHOTO_LOG_LIST, ensureFolder, uploadFile, createListItem, graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
 
 const PHOTOS_FOLDER = process.env.GRAPH_PHOTOS_FOLDER || 'TechPhotos';
+const MAX_VIDEO_BYTES = 60 * 1024 * 1024; /* ~60MB, respaldo de servidor -- el limite real
+   de 5 minutos se revisa del lado del navegador (ve la duracion real
+   del video); esto es solo para no aceptar algo absurdamente grande
+   si por lo que sea ese chequeo no corrio. */
 
 async function fetchByField(listName, fieldName, value) {
   const filter = encodeURIComponent(`fields/${fieldName} eq '${value}'`);
@@ -37,9 +44,14 @@ exports.handler = async (event) => {
   try {
     const b = JSON.parse(event.body || '{}');
     const orderId = String(b.orderId || '').trim();
-    const imageBase64 = b.imageBase64;
+    const fileBase64 = b.imageBase64 || b.fileBase64;
+    const isVideo = !!b.isVideo;
+    const techId = String(b.techId || '').trim();
+    const latitude = (b.latitude !== undefined && b.latitude !== null) ? Number(b.latitude) : null;
+    const longitude = (b.longitude !== undefined && b.longitude !== null) ? Number(b.longitude) : null;
+
     if (!orderId) return jsonResponse(400, { error: 'orderId is required' });
-    if (!imageBase64) return jsonResponse(400, { error: 'No image data received' });
+    if (!fileBase64) return jsonResponse(400, { error: 'No file data received' });
 
     const rows = await fetchByField(ORDERS_LIST, 'OrderID', orderId);
     const orderItem = rows.find(it => it.fields);
@@ -50,14 +62,40 @@ exports.handler = async (event) => {
       .replace(/[\\/:*?"<>|]/g, '').trim() || orderId;
     const folderPath = PHOTOS_FOLDER + '/' + clientLabel + '/' + orderId + '/Photos';
 
-    const fileName = fileTimestamp(new Date()) + '.jpg';
-    const buffer = Buffer.from(imageBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+    const buffer = Buffer.from(fileBase64.replace(/^data:[^;]+;base64,/, ''), 'base64');
+    if (isVideo && buffer.length > MAX_VIDEO_BYTES) {
+      return jsonResponse(400, { error: 'That video is too large. Please keep videos under 5 minutes.' });
+    }
+
+    const now = new Date();
+    const ext = isVideo ? 'mp4' : 'jpg';
+    const contentType = isVideo ? 'video/mp4' : 'image/jpeg';
+    const fileName = fileTimestamp(now) + '.' + ext;
 
     await ensureFolder(folderPath);
-    const result = await uploadFile(folderPath, fileName, buffer, 'image/jpeg');
+    const result = await uploadFile(folderPath, fileName, buffer, contentType);
+
+    /* Registro aparte con quien/cuando/donde -- si esto falla, no
+       tumba la subida (el archivo ya se guardo bien, que es lo que
+       de verdad importa para el trabajo del dia a dia). */
+    try {
+      await createListItem(TECH_PHOTO_LOG_LIST, {
+        Title: orderId + ' - ' + fileName,
+        OrderID: orderId,
+        TechId: techId,
+        FileName: fileName,
+        IsVideo: isVideo,
+        Latitude: latitude,
+        Longitude: longitude,
+        CapturedDate: now.toISOString()
+      });
+    } catch (logErr) {
+      console.error('TechPhotoLog write failed:', logErr.message);
+    }
 
     return jsonResponse(200, { success: true, fileName, webUrl: result.webUrl });
   } catch (e) {
     return jsonResponse(500, { error: e.message });
   }
 };
+
