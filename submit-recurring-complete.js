@@ -84,12 +84,22 @@ exports.handler = async (event) => {
        ya mando una desviacion (Pending Review) para hoy, este mark-
        done normal se quedaba callado como si ya no hubiera nada que
        hacer -- cuando en realidad hay algo esperando decision en
-       Review. Y si el renglon anterior fue Rejected, ahora si se
-       puede volver a marcar limpio (un intento nuevo, no el mismo
-       problema de antes). */
-    const already = logRows.find(it => it.fields &&
+       Review.
+
+       Ademas: si hoy ya se mando "Sent Back" (oficina dijo que no
+       esta listo), el tecnico debe poder reintentar el mismo dia --
+       se crea un renglon NUEVO (Title con sufijo unico) en vez de
+       pisar el renglon de Sent Back, para que ese Send Back se quede
+       visible en el historial para siempre, no se pierda. Se toma
+       el renglon MAS RECIENTE de hoy (no el primero que aparezca)
+       para decidir el estatus actual. */
+    const todayRows = logRows.filter(it => it.fields &&
       String(it.fields.RecurringServiceID) === recurringServiceId &&
       String(it.fields.VisitDate) === visitDate);
+    const already = todayRows.length
+      ? todayRows.reduce((a, b) => (new Date(a.createdDateTime) > new Date(b.createdDateTime) ? a : b))
+      : null;
+
     if (already && already.fields.Status === 'Pending Review') {
       return jsonResponse(200, { success: true, pendingReview: true });
     }
@@ -98,7 +108,7 @@ exports.handler = async (event) => {
     }
 
     await createListItem(RECURRING_LOG_LIST, {
-      Title: recurringServiceId + '-' + visitDate,
+      Title: recurringServiceId + '-' + visitDate + (already ? '-retry-' + Date.now() : ''),
       RecurringServiceID: recurringServiceId,
       VisitDate: visitDate,
       Status: 'Field Confirmed',
