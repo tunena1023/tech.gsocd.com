@@ -492,6 +492,17 @@ if (tech) {
     if (btn) btn.textContent = 'Cancel';
     const r = recurring.find(x => x.id === id);
     if (!r) return;
+
+    /* Abrir Update Services reactiva TODO -- confirmado con el
+       usuario: no nomas la camara, tambien se quita la marca visual
+       de "esperando a oficina", porque en cuanto se manda una
+       correccion el estatus real ya cambia a Pending Review (el
+       backend ya lo hace asi), la tarjeta no debe seguir mostrando
+       la notita vieja como si nada. */
+    recurringMarkedDone.delete(id);
+    const actionEl = $('recurring-action-' + id);
+    if (actionEl) actionEl.innerHTML = recurringActionHtml(r, visitDate);
+
     wrap.innerHTML = renderRcUpdatePanel(r, visitDate);
     mountRcUpdatePicker(r);
   }
