@@ -1196,6 +1196,18 @@ if (tech) {
   window.toggleUpdatePanel = toggleUpdatePanel;
   window.submitUpdate = submitUpdate;
   window.reportUnitNotReady = reportUnitNotReady;
+  /* BUG REAL DE RAIZ encontrado el 10/09: el onclick de estos 2
+     botones tronaba con "ReferenceError: markRecurringDone is not
+     defined" -- nunca se expusieron a window, igual que ya se hacia
+     arriba con toggleUpdatePanel/submitUpdate/reportUnitNotReady.
+     ESTA era la razon real de que el boton "nunca funcionara", no el
+     rol Developer (ese fix tambien era necesario, pero no era
+     suficiente sin este). */
+  window.markRecurringDone = markRecurringDone;
+  window.debugRecurringComplete = debugRecurringComplete;
+  window.takeRecurringPhoto = takeRecurringPhoto;
+  window.toggleRcUpdate = toggleRcUpdate;
+  window.saveRcUpdate = saveRcUpdate;
 }
 </script>
 </body>
