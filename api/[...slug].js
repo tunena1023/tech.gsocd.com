@@ -15,7 +15,10 @@ const handlers = {
   'submit-employee-complete': require('../submit-employee-complete').handler,
   'report-unit-not-ready': require('../report-unit-not-ready').handler,
   'save-push-subscription': require('../save-push-subscription').handler,
-  'site-image': require('../site-image').handler
+  'site-image': require('../site-image').handler,
+  'submit-recurring-complete': require('../submit-recurring-complete').handler,
+  'submit-recurring-update': require('../submit-recurring-update').handler,
+  'upload-recurring-photo': require('../upload-recurring-photo').handler
 };
 
 module.exports = async (req, res) => {
