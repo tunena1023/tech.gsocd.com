@@ -414,24 +414,9 @@ if (tech) {
       return '<p class="recurring-done-note">✓ Marked done — waiting for the office to confirm and close it.</p>';
     }
     return '<button type="button" class="photo-btn" onclick="takeRecurringPhoto(\'' + esc(r.id) + '\',\'' + visitDate + '\')">📷 Add a photo (optional)</button>' +
-      '<button type="button" class="recurring-mark-done" onclick="markRecurringDone(\'' + esc(r.id) + '\',\'' + visitDate + '\')">✓ Mark as Done</button>' +
-      '<button type="button" class="btn-outline" style="width:100%;margin-top:6px;font-size:11px" onclick="debugRecurringComplete(\'' + esc(r.id) + '\',\'' + visitDate + '\')">🔍 Debug: why is this not working?</button>' +
-      '<pre id="debug-out-' + esc(r.id) + '" style="font-size:10px;white-space:pre-wrap;background:var(--off);padding:8px;border-radius:4px;margin-top:6px;display:none"></pre>';
+      '<button type="button" class="recurring-mark-done" onclick="markRecurringDone(\'' + esc(r.id) + '\',\'' + visitDate + '\')">✓ Mark as Done</button>';
   }
 
-  /* Boton de diagnostico temporal -- se puede borrar cuando ya no
-     haga falta. Mismo criterio que employee.html. */
-  async function debugRecurringComplete(recurringServiceId, visitDate) {
-    const out = $('debug-out-' + recurringServiceId);
-    out.style.display = 'block';
-    out.textContent = 'Checking…';
-    try {
-      const res = await GS.api('/submit-recurring-complete', { body: { recurringServiceId, visitDate, techId: tech.id, role: tech.role, debug: true } });
-      out.textContent = JSON.stringify(res, null, 2);
-    } catch (e) {
-      out.textContent = 'Error calling debug: ' + e.message;
-    }
-  }
 
   async function markRecurringDone(recurringServiceId, visitDate) {
     try {
@@ -1215,7 +1200,6 @@ if (tech) {
      rol Developer (ese fix tambien era necesario, pero no era
      suficiente sin este). */
   window.markRecurringDone = markRecurringDone;
-  window.debugRecurringComplete = debugRecurringComplete;
   window.takeRecurringPhoto = takeRecurringPhoto;
   window.toggleRcUpdate = toggleRcUpdate;
   window.saveRcUpdate = saveRcUpdate;
