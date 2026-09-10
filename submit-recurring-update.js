@@ -52,7 +52,7 @@ exports.handler = async (event) => {
     if (!recurringServiceId) return jsonResponse(400, { error: 'recurringServiceId is required' });
     if (!visitDate) return jsonResponse(400, { error: 'visitDate is required' });
     if (!techId) return jsonResponse(400, { error: 'techId is required' });
-    if (role !== 'Supervisor') return jsonResponse(403, { error: 'Only a supervisor can report a service change for a recurring visit.' });
+    if (role !== 'Supervisor' && role !== 'Developer') return jsonResponse(403, { error: 'Only a supervisor can report a service change for a recurring visit.' });
     if (!services.length && !removedNotes.length) return jsonResponse(400, { error: 'Nothing was changed.' });
     /* Cada quitado necesita su nota -- mismo requisito obligatorio
        que ya exige el patron de supervisor.html para ordenes. */
