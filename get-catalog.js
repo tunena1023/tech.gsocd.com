@@ -34,6 +34,7 @@ exports.handler = async (event) => {
         serviceName: it.fields.ServiceName || '',
         division: it.fields.Division || '',
         propertyType: it.fields.PropertyType || '',
+        category: it.fields.Category || '',
         active: it.fields.Active === undefined ? true : (it.fields.Active === true || it.fields.Active === 'true')
       }))
       .filter(s => s.active
