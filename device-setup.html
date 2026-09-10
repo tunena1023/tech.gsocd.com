@@ -20,7 +20,7 @@
   .btn-gold{width:100%;background:var(--gold);color:var(--black);border:none;padding:14px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
   .btn-gold:hover{background:var(--gold-lt)}
   .btn-gold:disabled{opacity:.6;cursor:default}
-  .error-msg{font-size:13px;color:#B33A3A;margin-top:16px;line-height:1.6}
+  .error-msg{font-size:13px;color:#B33A3A;margin-top:16px;line-height:1.6;white-space:pre-line;text-align:left}
   .spinner-note{font-size:13px;color:var(--gray)}
   .view{display:none}
   .view.active{display:block}
@@ -82,7 +82,13 @@
         document.getElementById('tech-name').textContent = res.firstName;
         showView('confirm');
       } catch (e) {
-        showError(e.message);
+        let msg = e.message;
+        if (e.debug) {
+          msg += '\n\n[DEBUG TEMPORAL]\nTitle guardado: "' + e.debug.titleValue + '" (' + e.debug.titleType + ')\n'
+            + 'Techs encontrados: ' + e.debug.techCount + '\n'
+            + 'IDs de techs: ' + e.debug.techIds.join(', ');
+        }
+        showError(msg);
       }
     })();
   }

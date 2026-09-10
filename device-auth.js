@@ -64,8 +64,17 @@ exports.handler = async (event) => {
       if (!setupRow) return jsonResponse(404, { error: 'This link is not valid. Please ask the office for a new one.' });
       if (truthy(setupRow.fields.SetupTokenUsed)) return jsonResponse(409, { error: 'This link was already used. Please ask the office for a new one.' });
 
-      const techRow = techRows.find(it => it.id === String(setupRow.fields.TechId || ''));
-      if (!techRow) return jsonResponse(404, { error: 'Could not find that account. Please ask the office for a new link.' });
+      const techRow = techRows.find(it => it.id === String(setupRow.fields.Title || ''));
+      if (!techRow) return jsonResponse(404, {
+        error: 'Could not find that account. Please ask the office for a new link.',
+        /* Diagnostico temporal -- se quita en cuanto se resuelva. */
+        debug: {
+          titleValue: setupRow.fields.Title,
+          titleType: typeof setupRow.fields.Title,
+          techCount: techRows.length,
+          techIds: techRows.filter(it => it.fields).map(it => it.id)
+        }
+      });
 
       return jsonResponse(200, { firstName: techRow.fields.FirstName || '', lastName: techRow.fields.LastName || '' });
     }
@@ -79,7 +88,7 @@ exports.handler = async (event) => {
       if (!setupRow) return jsonResponse(404, { error: 'This link is not valid. Please ask the office for a new one.' });
       if (truthy(setupRow.fields.SetupTokenUsed)) return jsonResponse(409, { error: 'This link was already used. Please ask the office for a new one.' });
 
-      const techId = String(setupRow.fields.TechId || '');
+      const techId = String(setupRow.fields.Title || '');
       const techRow = techRows.find(it => it.id === techId);
       if (!techRow) return jsonResponse(404, { error: 'Could not find that account. Please ask the office for a new link.' });
       if (techRow.fields.Active === false || techRow.fields.Active === 'false') {
@@ -90,7 +99,7 @@ exports.handler = async (event) => {
          cualquier otro que ya estuviera activo (celular viejo deja
          de servir en cuanto se confirma el nuevo, no antes). */
       const otherActive = deviceRows.filter(it =>
-        it.fields && String(it.fields.TechId || '') === techId && it.id !== setupRow.id && truthy(it.fields.Active));
+        it.fields && String(it.fields.Title || '') === techId && it.id !== setupRow.id && truthy(it.fields.Active));
       const deviceToken = require('crypto').randomBytes(24).toString('hex');
       const now = new Date().toISOString();
 
@@ -114,7 +123,7 @@ exports.handler = async (event) => {
         return jsonResponse(403, { error: 'This device was disconnected. Please visit the office for a new QR code.' });
       }
 
-      const techRow = techRows.find(it => it.id === String(deviceRow.fields.TechId || ''));
+      const techRow = techRows.find(it => it.id === String(deviceRow.fields.Title || ''));
       if (!techRow) return jsonResponse(404, { error: 'Could not find that account. Please contact the office.' });
       if (techRow.fields.Active === false || techRow.fields.Active === 'false') {
         return jsonResponse(403, { error: 'This account is inactive. Please contact the office.' });

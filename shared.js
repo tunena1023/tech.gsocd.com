@@ -32,7 +32,11 @@ const GS = {
     });
     let data = {};
     try { data = await res.json(); } catch (e) { /* body no-JSON */ }
-    if (!res.ok) throw new Error(data.error || ('Request failed (' + res.status + ')'));
+    if (!res.ok) {
+      const err = new Error(data.error || ('Request failed (' + res.status + ')'));
+      if (data.debug) err.debug = data.debug;
+      throw err;
+    }
     return data;
   },
 
