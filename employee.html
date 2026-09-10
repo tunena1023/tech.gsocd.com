@@ -585,6 +585,14 @@ if (tech) {
     GSLightbox.open(galleryGroups[groupIdx].photos, photoIdx);
   }
 
+  /* Defensivo -- por seguridad, tras encontrar en supervisor.html que
+     estas mismas funciones necesitaban exposicion explicita a window
+     para que el onclick las alcanzara. Aqui no daba el mismo error,
+     pero no cuesta nada blindarlo igual. */
+  window.markRecurringDone = markRecurringDone;
+  window.debugRecurringComplete = debugRecurringComplete;
+  window.takeRecurringPhoto = takeRecurringPhoto;
+
   loadOrders();
 }
 </script>
