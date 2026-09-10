@@ -80,8 +80,7 @@ exports.handler = async (event) => {
        de verdad importa para el trabajo del dia a dia). */
     try {
       await createListItem(TECH_PHOTO_LOG_LIST, {
-        Title: orderId + ' - ' + fileName,
-        OrderID: orderId,
+        Title: orderId,
         TechId: techId,
         FileName: fileName,
         IsVideo: isVideo,
