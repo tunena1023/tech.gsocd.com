@@ -63,28 +63,6 @@ exports.handler = async (event) => {
     const svc = svcRows.find(it => it.id === recurringServiceId);
     if (!svc || !svc.fields) return jsonResponse(404, { error: 'Recurring contract not found.' });
 
-    /* Modo debug -- se puede borrar cuando ya no haga falta. Regresa
-       exactamente lo que el servidor detecto (rol, PayrollID, si
-       encontro un renglon de asignacion que haga match), SIN escribir
-       nada, para no tener que ir a perseguir columnas en SharePoint a
-       mano. */
-    if (b.debug) {
-      const matchingAssignments = assignRows
-        .filter(a => a.fields && String(a.fields.RecurringServiceID) === recurringServiceId)
-        .map(a => ({ payrollNumber: a.fields.PayrollNumber, matchesMe: String(a.fields.PayrollNumber || '').trim() === String(myPayrollId).trim() }));
-      return jsonResponse(200, {
-        debug: true,
-        techId, techName,
-        roleReceived: role,
-        roleWouldBypassCheck: (role === 'Supervisor' || role === 'Developer'),
-        myPayrollId,
-        recurringServiceId,
-        contractFound: true,
-        assignmentsForThisContract: matchingAssignments,
-        wouldPass: (role === 'Supervisor' || role === 'Developer') || matchingAssignments.some(a => a.matchesMe)
-      });
-    }
-
     /* Employee: solo puede marcar lo que tiene asignado a el mismo
        (mismo criterio que ya usa submit-employee-complete.js).
        Supervisor y Developer: sin restriccion -- mismo patron que ya
