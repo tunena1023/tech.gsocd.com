@@ -260,12 +260,44 @@ if (tech) {
           </div>
           <div class="order-body">
             <div class="svc-list">${svcLines || 'No services recorded.'}</div>
+            <button type="button" class="btn-outline" style="width:100%;margin-top:8px" id="rc-hist-btn-${esc(r.id)}" onclick="event.stopPropagation(); toggleRecurringHistory('${esc(r.id)}')">View History</button>
+            <div id="rc-hist-${esc(r.id)}" style="display:none;margin-top:8px"></div>
             ${isToday
-              ? `<div id="recurring-action-${esc(r.id)}">${recurringActionHtml(r, visitDate)}</div>`
+              ? `<div id="recurring-action-${esc(r.id)}" style="margin-top:8px">${recurringActionHtml(r, visitDate)}</div>`
               : `<p class="recurring-done-note">Not due yet — comes up ${countdownLabel(r.daysUntil).toLowerCase()}.</p>`}
           </div>
         </div>`;
       }).join('');
+  }
+
+  let rcHistoryOpenFor = null;
+  async function toggleRecurringHistory(id) {
+    const box = $('rc-hist-' + id);
+    const btn = $('rc-hist-btn-' + id);
+    if (!box) return;
+    if (rcHistoryOpenFor === id) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      if (btn) btn.textContent = 'View History';
+      rcHistoryOpenFor = null;
+      return;
+    }
+    if (rcHistoryOpenFor) {
+      const prevBox = $('rc-hist-' + rcHistoryOpenFor);
+      const prevBtn = $('rc-hist-btn-' + rcHistoryOpenFor);
+      if (prevBox) { prevBox.style.display = 'none'; prevBox.innerHTML = ''; }
+      if (prevBtn) prevBtn.textContent = 'View History';
+    }
+    rcHistoryOpenFor = id;
+    if (btn) btn.textContent = 'Hide History';
+    box.style.display = 'block';
+    box.innerHTML = '<p class="empty-note">Loading…</p>';
+    try {
+      const res = await GS.api('/get-recurring-history', { body: { recurringServiceId: id, techId: tech.id, role: tech.role } });
+      box.innerHTML = GSOrderHistory.html('RC-' + id, res.history || [], { mode: 'staff' });
+    } catch (e) {
+      box.innerHTML = '<p class="empty-note">Could not load history: ' + esc(e.message) + '</p>';
+    }
   }
 
   function recurringActionHtml(r, visitDate) {
@@ -571,6 +603,7 @@ if (tech) {
      para que el onclick las alcanzara. Aqui no daba el mismo error,
      pero no cuesta nada blindarlo igual. */
   window.markRecurringDone = markRecurringDone;
+  window.toggleRecurringHistory = toggleRecurringHistory;
   window.takeRecurringPhoto = takeRecurringPhoto;
 
   loadOrders();
