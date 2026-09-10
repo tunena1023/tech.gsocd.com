@@ -215,6 +215,7 @@
 </div>
 
 <input type="file" id="camera-input" accept="image/*,video/*" capture="environment" style="display:none">
+<input type="file" id="recurring-camera-input" accept="image/*" capture="environment" style="display:none">
 
 <div class="toast" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--white);padding:12px 22px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:all .3s;z-index:500"></div>
 
@@ -368,7 +369,6 @@ if (tech) {
         }).join('<br>');
         const isToday = r.daysUntil === 0;
         const visitDate = nextVisitDateISO(r.daysUntil);
-        const alreadyDone = recurringMarkedDone.has(r.id);
         return `
         <div class="order-card recurring-card">
           <div class="order-head" onclick="toggleOrder(this)">
@@ -386,28 +386,49 @@ if (tech) {
           <div class="order-body">
             <div class="svc-list">${svcLines || 'No services recorded.'}</div>
             ${isToday ? `
-              <button type="button" class="photo-btn" onclick="takeRecurringPhoto('${esc(r.id)}','${visitDate}')">📷 Add a photo (optional)</button>
-              ${alreadyDone
-                ? '<p class="recurring-done-note">✓ Marked done — waiting for the office to confirm and close it.</p>'
-                : `<button type="button" class="recurring-mark-done" onclick="markRecurringDone('${esc(r.id)}','${visitDate}')">✓ Mark as Done</button>`}
-              <button type="button" class="btn-outline" style="width:100%;margin-top:8px" onclick="toggleRcUpdate('${esc(r.id)}')">${rcUpdateOpenFor === r.id ? 'Cancel' : 'Update Services'}</button>
-              ${rcUpdateOpenFor === r.id ? renderRcUpdatePanel(r, visitDate) : ''}
+              <div id="recurring-action-${esc(r.id)}">${recurringActionHtml(r, visitDate)}</div>
+              <button type="button" class="btn-outline" style="width:100%;margin-top:8px" id="rc-update-btn-${esc(r.id)}" onclick="toggleRcUpdate('${esc(r.id)}','${visitDate}')">Update Services</button>
+              <div id="rc-update-wrap-${esc(r.id)}"></div>
             ` : `<p class="recurring-done-note">Not due yet — comes up ${countdownLabel(r.daysUntil).toLowerCase()}.</p>`}
           </div>
         </div>`;
       }).join('');
+    /* A proposito: nada aqui vuelve a abrir un panel que ya estaba
+       abierto -- BUG REAL encontrado por el usuario y arreglado:
+       antes, cualquier accion (marcar hecho, abrir Update Services)
+       llamaba a esta misma funcion para "refrescar", lo que
+       reconstruia TODA la lista de tarjetas de un jalon -- y como
+       "tarjeta abierta o cerrada" nunca se guardaba en ningun lado
+       (toggleOrder solo le pone una clase CSS al elemento, no
+       actualiza ninguna variable), la tarjeta se veia cerrada de
+       golpe aunque el panel de adentro si se hubiera abierto. Mismo
+       problema que tenia (y ya resolvia bien) toggleUpdatePanel para
+       ordenes normales: ese nunca reconstruye la lista, solo
+       manipula directo el contenedor de esa orden en especifico.
+       Las funciones de abajo ahora hacen lo mismo -- renderRecurring
+       solo se llama una vez, al cargar. */
+  }
 
-    if (rcUpdateOpenFor) {
-      const r = recurring.find(x => x.id === rcUpdateOpenFor);
-      if (r) mountRcUpdatePicker(r);
+  function recurringActionHtml(r, visitDate) {
+    if (recurringMarkedDone.has(r.id)) {
+      return '<p class="recurring-done-note">✓ Marked done — waiting for the office to confirm and close it.</p>';
     }
+    return '<button type="button" class="photo-btn" onclick="takeRecurringPhoto(\'' + esc(r.id) + '\',\'' + visitDate + '\')">📷 Add a photo (optional)</button>' +
+      '<button type="button" class="recurring-mark-done" onclick="markRecurringDone(\'' + esc(r.id) + '\',\'' + visitDate + '\')">✓ Mark as Done</button>';
   }
 
   async function markRecurringDone(recurringServiceId, visitDate) {
     try {
       const res = await GS.api('/submit-recurring-complete', { body: { recurringServiceId, visitDate, techId: tech.id, role: tech.role } });
       recurringMarkedDone.add(recurringServiceId);
-      renderRecurring();
+      /* Actualiza SOLO el contenedor de esta tarjeta -- no toca las
+         demas, no reconstruye la lista, la tarjeta se queda abierta
+         tal como estaba. */
+      const actionEl = $('recurring-action-' + recurringServiceId);
+      if (actionEl) {
+        const r = recurring.find(x => x.id === recurringServiceId);
+        actionEl.innerHTML = recurringActionHtml(r, visitDate);
+      }
       showToast(res.pendingReview
         ? 'A change for this visit is already waiting on the office — no need to mark it again.'
         : 'Marked done — the office will confirm and close it.');
@@ -422,11 +443,41 @@ if (tech) {
      compartido real que ya se uso en Admin (Log Visit), con el
      mismo diff + nota obligatoria por quitado. Se manda como
      SUGERENCIA (submit-recurring-update.js) -- nunca se aplica
-     sola, cae en Review. */
-  function toggleRcUpdate(id) {
-    rcUpdateOpenFor = (rcUpdateOpenFor === id) ? null : id;
-    rcUpdatePicker = null;
-    renderRecurring();
+     sola, cae en Review.
+
+     BUG REAL arreglado: esto llamaba a renderRecurring() para
+     "refrescar" y eso cerraba la tarjeta entera de golpe (ver nota
+     arriba). Ahora manipula directo el contenedor fijo de esta
+     tarjeta (rc-update-wrap-<id>), igual que ya hace
+     toggleUpdatePanel con ord2col-<orderId> para ordenes normales --
+     nunca toca las demas tarjetas ni el estado de abierto/cerrado. */
+  function toggleRcUpdate(id, visitDate) {
+    const wrap = $('rc-update-wrap-' + id);
+    const btn = $('rc-update-btn-' + id);
+    if (!wrap) return;
+
+    if (rcUpdateOpenFor === id) {
+      wrap.innerHTML = '';
+      if (btn) btn.textContent = 'Update Services';
+      rcUpdateOpenFor = null;
+      rcUpdatePicker = null;
+      return;
+    }
+    /* Si habia otro panel abierto (de otra tarjeta), se cierra
+       primero -- solo uno a la vez, igual que las ordenes normales. */
+    if (rcUpdateOpenFor) {
+      const prevWrap = $('rc-update-wrap-' + rcUpdateOpenFor);
+      const prevBtn = $('rc-update-btn-' + rcUpdateOpenFor);
+      if (prevWrap) prevWrap.innerHTML = '';
+      if (prevBtn) prevBtn.textContent = 'Update Services';
+    }
+
+    rcUpdateOpenFor = id;
+    if (btn) btn.textContent = 'Cancel';
+    const r = recurring.find(x => x.id === id);
+    if (!r) return;
+    wrap.innerHTML = renderRcUpdatePanel(r, visitDate);
+    mountRcUpdatePicker(r);
   }
 
   function renderRcUpdatePanel(r, visitDate) {
@@ -529,8 +580,12 @@ if (tech) {
           removedNotes
         }
       });
+      const wrap = $('rc-update-wrap-' + id);
+      const btn = $('rc-update-btn-' + id);
+      if (wrap) wrap.innerHTML = '';
+      if (btn) btn.textContent = 'Update Services';
       rcUpdateOpenFor = null;
-      renderRecurring();
+      rcUpdatePicker = null;
       showToast('Sent to the office for review.');
     } catch (e) {
       showToast('Error: ' + e.message);
@@ -622,10 +677,15 @@ if (tech) {
 
   let photoOrderId = null;
   let completingAfterPhoto = false;
-  let photoRecurringTarget = null; // {recurringServiceId, visitDate} -- separado, nunca se mezcla con photoOrderId
+  /* BUG REAL encontrado por el usuario: el boton de Recurring abria
+     la galeria en vez de la camara. Separado del <input> de ordenes
+     normales a proposito -- ese sigue igual. Solo imagen (sin
+     video/*), documentado como mas confiable para que Android
+     brinque directo a la camara con capture="environment". */
+  let photoRecurringTarget = null; // {recurringServiceId, visitDate}
   function takeRecurringPhoto(recurringServiceId, visitDate) {
     photoRecurringTarget = { recurringServiceId, visitDate };
-    $('camera-input').click();
+    $('recurring-camera-input').click();
   }
   function takePhoto(orderId) {
     photoOrderId = orderId;
@@ -661,33 +721,32 @@ if (tech) {
     });
   }
 
+  $('recurring-camera-input').addEventListener('change', async function () {
+    const file = this.files[0];
+    const target = photoRecurringTarget;
+    this.value = '';
+    photoRecurringTarget = null;
+    if (!file || !target) return;
+    const locR = await getLocationSafe();
+    const readerR = new FileReader();
+    readerR.onload = async () => {
+      try {
+        await GS.api('/upload-recurring-photo', { body: {
+          recurringServiceId: target.recurringServiceId, visitDate: target.visitDate,
+          imageBase64: readerR.result, isVideo: false, techId: tech.id,
+          latitude: locR ? locR.lat : null, longitude: locR ? locR.lon : null
+        } });
+        showToast('Photo saved.');
+      } catch (e) {
+        showToast('Could not save that: ' + e.message);
+      }
+    };
+    readerR.onerror = () => showToast('Could not read that file — please try again.');
+    readerR.readAsDataURL(file);
+  });
+
   $('camera-input').addEventListener('change', async function () {
     const file = this.files[0];
-
-    if (photoRecurringTarget) {
-      const target = photoRecurringTarget;
-      this.value = '';
-      photoRecurringTarget = null;
-      if (!file) return;
-      const isVideoR = file.type.indexOf('video/') === 0;
-      const locR = await getLocationSafe();
-      const readerR = new FileReader();
-      readerR.onload = async () => {
-        try {
-          await GS.api('/upload-recurring-photo', { body: {
-            recurringServiceId: target.recurringServiceId, visitDate: target.visitDate,
-            imageBase64: readerR.result, isVideo: isVideoR, techId: tech.id,
-            latitude: locR ? locR.lat : null, longitude: locR ? locR.lon : null
-          } });
-          showToast(isVideoR ? 'Video saved.' : 'Photo saved.');
-        } catch (e) {
-          showToast('Could not save that: ' + e.message);
-        }
-      };
-      readerR.onerror = () => showToast('Could not read that file — please try again.');
-      readerR.readAsDataURL(file);
-      return;
-    }
 
     const orderId = photoOrderId;
     const shouldComplete = completingAfterPhoto;
