@@ -385,14 +385,19 @@ if (tech) {
           </div>
           <div class="order-body">
             <div class="svc-list">${svcLines || 'No services recorded.'}</div>
+            <button type="button" class="btn-outline" style="width:100%;margin-top:8px" id="rc-hist-btn-${esc(r.id)}" onclick="event.stopPropagation(); toggleRecurringHistory('${esc(r.id)}')">View History</button>
+            <div id="rc-hist-${esc(r.id)}" style="display:none;margin-top:8px"></div>
             ${isToday ? `
-              <div id="recurring-action-${esc(r.id)}">${recurringActionHtml(r, visitDate)}</div>
+              <div id="recurring-action-${esc(r.id)}" style="margin-top:8px">${recurringActionHtml(r, visitDate)}</div>
               <button type="button" class="btn-outline" style="width:100%;margin-top:8px" id="rc-update-btn-${esc(r.id)}" onclick="toggleRcUpdate('${esc(r.id)}','${visitDate}')">Update Services</button>
               <div id="rc-update-wrap-${esc(r.id)}"></div>
             ` : `<p class="recurring-done-note">Not due yet — comes up ${countdownLabel(r.daysUntil).toLowerCase()}.</p>`}
           </div>
         </div>`;
       }).join('');
+
+    /* Boton "View History" -- mismo patron de contenedor fijo que ya
+       usa Update Services, nunca reconstruye la lista completa. */
     /* A proposito: nada aqui vuelve a abrir un panel que ya estaba
        abierto -- BUG REAL encontrado por el usuario y arreglado:
        antes, cualquier accion (marcar hecho, abrir Update Services)
@@ -407,6 +412,36 @@ if (tech) {
        manipula directo el contenedor de esa orden en especifico.
        Las funciones de abajo ahora hacen lo mismo -- renderRecurring
        solo se llama una vez, al cargar. */
+  }
+
+  let rcHistoryOpenFor = null;
+  async function toggleRecurringHistory(id) {
+    const box = $('rc-hist-' + id);
+    const btn = $('rc-hist-btn-' + id);
+    if (!box) return;
+    if (rcHistoryOpenFor === id) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+      if (btn) btn.textContent = 'View History';
+      rcHistoryOpenFor = null;
+      return;
+    }
+    if (rcHistoryOpenFor) {
+      const prevBox = $('rc-hist-' + rcHistoryOpenFor);
+      const prevBtn = $('rc-hist-btn-' + rcHistoryOpenFor);
+      if (prevBox) { prevBox.style.display = 'none'; prevBox.innerHTML = ''; }
+      if (prevBtn) prevBtn.textContent = 'View History';
+    }
+    rcHistoryOpenFor = id;
+    if (btn) btn.textContent = 'Hide History';
+    box.style.display = 'block';
+    box.innerHTML = '<p class="empty-note">Loading…</p>';
+    try {
+      const res = await GS.api('/get-recurring-history', { body: { recurringServiceId: id, techId: tech.id, role: tech.role } });
+      box.innerHTML = GSOrderHistory.html('RC-' + id, res.history || [], { mode: 'staff' });
+    } catch (e) {
+      box.innerHTML = '<p class="empty-note">Could not load history: ' + esc(e.message) + '</p>';
+    }
   }
 
   function recurringActionHtml(r, visitDate) {
@@ -1200,6 +1235,7 @@ if (tech) {
      rol Developer (ese fix tambien era necesario, pero no era
      suficiente sin este). */
   window.markRecurringDone = markRecurringDone;
+  window.toggleRecurringHistory = toggleRecurringHistory;
   window.takeRecurringPhoto = takeRecurringPhoto;
   window.toggleRcUpdate = toggleRcUpdate;
   window.saveRcUpdate = saveRcUpdate;
