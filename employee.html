@@ -77,6 +77,17 @@
     .order-body .row{gap:14px}
     .gallery-grid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
   }
+  /* ===== Recurring: contador de dias + day-pills chicos, mismos
+     patrones validados en el mini con el usuario. Reusa el .badge
+     que ya existia, no inventa una pieza visual nueva. ===== */
+  .badge.countdown-today{background:#FBEAEA;color:#B33A3A}
+  .badge.countdown-soon{background:#FDF3E0;color:var(--gold-dk)}
+  .day-pills-mini{display:flex;gap:3px}
+  .day-pill-mini{width:18px;height:18px;border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gray);background:var(--white);flex-shrink:0}
+  .day-pill-mini.active{background:var(--gold);color:var(--black);border-color:var(--gold)}
+  .recurring-mark-done{display:flex;align-items:center;gap:6px;background:#2E7D4F;border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
+  .recurring-mark-done:hover{background:#256641}
+  .recurring-done-note{font-size:12px;color:var(--gray);font-style:italic;margin-top:8px}
 </style>
 </head>
 <body>
@@ -200,28 +211,77 @@ if (tech) {
      compartian espacio arriba de Active Orders) -- ya no necesitan
      su propio titulo interno, el <h2> de la pestana ya dice
      "Recurring". */
+  /* ===== Contador de dias + day-pills -- mismos helpers validados
+     en el mini con el usuario. ===== */
+  function countdownLabel(daysUntil) {
+    if (daysUntil === 0) return 'Today';
+    if (daysUntil === 1) return 'In 1 day';
+    return 'In ' + daysUntil + ' days';
+  }
+  function countdownClass(daysUntil) {
+    return daysUntil === 0 ? 'countdown-today' : 'countdown-soon';
+  }
+  function dayPillsMini(daysOfWeek) {
+    const active = String(daysOfWeek || '').split(',').map(d => d.trim());
+    const map = { Sun: 'S', Mon: 'M', Tue: 'T', Wed: 'W', Thu: 'T', Fri: 'F', Sat: 'S' };
+    return '<div class="day-pills-mini">' + active.map(full =>
+      '<span class="day-pill-mini active">' + (map[full] || full[0] || '') + '</span>').join('') + '</div>';
+  }
+  function nextVisitDateISO(daysUntil) {
+    return new Date(Date.now() + (Number(daysUntil) || 0) * 86400000).toISOString().slice(0, 10);
+  }
+
+  let recurringMarkedDone = new Set(); // ids ya marcados en esta sesion, para no repetir el click
+
   function renderRecurring() {
     const box = $('recurring-list');
-    if (!recurring.length) { box.innerHTML = '<p class="empty-note">No recurring jobs assigned to you right now.</p>'; return; }
+    if (!recurring.length) { box.innerHTML = '<p class="empty-note">No recurring jobs coming up in the next 3 days.</p>'; return; }
     box.innerHTML = recurring.map(r => {
         const svcLines = (r.Services || []).map(s => {
           const lvl = s.Level ? ' — ' + esc(s.Level) : '';
           return '• ' + esc(s.ServiceName) + lvl;
         }).join('<br>');
+        const isToday = r.daysUntil === 0;
+        const visitDate = nextVisitDateISO(r.daysUntil);
+        const alreadyDone = recurringMarkedDone.has(r.id);
         return `
         <div class="order-card recurring-card">
           <div class="order-head" onclick="toggleOrder(this)">
             <div>
               <div class="order-id">${esc(r.businessName)}</div>
-              <div class="order-meta">${esc(r.buildingNumber ? 'Building ' + r.buildingNumber + ' · ' : '')}${esc(r.daysOfWeek)} · ${esc(r.time)}</div>
+              <div class="order-meta">${esc(r.address || '')}${r.buildingNumber ? ' · Bldg ' + esc(r.buildingNumber) : ''}</div>
+              <div class="order-meta">${esc(r.daysOfWeek)} · ${esc(r.time)}</div>
             </div>
-            <span class="badge">${(r.hoursAllocated || r.totalHours || 0)}h/wk</span>
+            <span class="badge-row">
+              ${dayPillsMini(r.daysOfWeek)}
+              <span class="badge ${countdownClass(r.daysUntil)}">${countdownLabel(r.daysUntil)}</span>
+              <span class="badge">${(r.hoursAllocated || r.totalHours || 0)}h/wk</span>
+            </span>
           </div>
           <div class="order-body">
             <div class="svc-list">${svcLines || 'No services recorded.'}</div>
+            ${isToday ? `
+              <button type="button" class="photo-btn" onclick="takeRecurringPhoto('${esc(r.id)}','${visitDate}')">📷 Add a photo (optional)</button>
+              ${alreadyDone
+                ? '<p class="recurring-done-note">✓ Marked done — waiting for the office to confirm and close it.</p>'
+                : `<button type="button" class="recurring-mark-done" onclick="markRecurringDone('${esc(r.id)}','${visitDate}')">✓ Mark as Done</button>`}
+            ` : `<p class="recurring-done-note">Not due yet — comes up ${countdownLabel(r.daysUntil).toLowerCase()}.</p>`}
           </div>
         </div>`;
       }).join('');
+  }
+
+  async function markRecurringDone(recurringServiceId, visitDate) {
+    try {
+      const res = await GS.api('/submit-recurring-complete', { body: { recurringServiceId, visitDate, techId: tech.id, role: tech.role } });
+      recurringMarkedDone.add(recurringServiceId);
+      renderRecurring();
+      showToast(res.pendingReview
+        ? 'A change for this visit is already waiting on the office — no need to mark it again.'
+        : 'Marked done — the office will confirm and close it.');
+    } catch (e) {
+      showToast('Could not mark this done: ' + e.message);
+    }
   }
 
   /* Mismo criterio de "buscador universal" ya usado en Admin
@@ -280,6 +340,15 @@ if (tech) {
 
   let photoOrderId = null;
   let completingAfterPhoto = false;
+  /* Target separado para fotos de Recurring -- NUNCA se mezcla con
+     photoOrderId, para no arriesgar el flujo ya probado de fotos de
+     ordenes normales. Mismo <input id="camera-input"> se reusa (uno
+     solo a la vez, uno u otro). */
+  let photoRecurringTarget = null; // {recurringServiceId, visitDate}
+  function takeRecurringPhoto(recurringServiceId, visitDate) {
+    photoRecurringTarget = { recurringServiceId, visitDate };
+    $('camera-input').click();
+  }
   function takePhoto(orderId) {
     photoOrderId = orderId;
     completingAfterPhoto = false;
@@ -327,6 +396,37 @@ if (tech) {
 
   $('camera-input').addEventListener('change', async function () {
     const file = this.files[0];
+
+    /* Rama de Recurring -- separada por completo del flujo de
+       ordenes de abajo, para no arriesgarlo. Foto opcional, sin
+       "shouldComplete" (Recurring nunca completa automatico al
+       subir foto -- son 2 acciones independientes: subir foto, y
+       aparte, marcar hecho). */
+    if (photoRecurringTarget) {
+      const target = photoRecurringTarget;
+      this.value = '';
+      photoRecurringTarget = null;
+      if (!file) return;
+      const isVideoR = file.type.indexOf('video/') === 0;
+      const locR = await getLocationSafe();
+      const readerR = new FileReader();
+      readerR.onload = async () => {
+        try {
+          await GS.api('/upload-recurring-photo', { body: {
+            recurringServiceId: target.recurringServiceId, visitDate: target.visitDate,
+            imageBase64: readerR.result, isVideo: isVideoR, techId: tech.id,
+            latitude: locR ? locR.lat : null, longitude: locR ? locR.lon : null
+          } });
+          showToast(isVideoR ? 'Video saved.' : 'Photo saved.');
+        } catch (e) {
+          showToast('Could not save that: ' + e.message);
+        }
+      };
+      readerR.onerror = () => showToast('Could not read that file — please try again.');
+      readerR.readAsDataURL(file);
+      return;
+    }
+
     const orderId = photoOrderId;
     const shouldComplete = completingAfterPhoto;
     this.value = '';
