@@ -65,9 +65,12 @@ exports.handler = async (event) => {
 
     /* Employee: solo puede marcar lo que tiene asignado a el mismo
        (mismo criterio que ya usa submit-employee-complete.js).
-       Supervisor: puede marcar cualquiera de su division. */
-    if (role === 'Supervisor') {
-      // sin candado adicional -- Supervisor ya ve todo su departamento
+       Supervisor y Developer: sin restriccion -- mismo patron que ya
+       usa get-my-orders.js (Developer ve/puede TODO, sin filtro de
+       asignacion individual ni de division). BUG REAL: esto se me
+       habia olvidado agregar aqui, solo contemplaba Supervisor. */
+    if (role === 'Supervisor' || role === 'Developer') {
+      // sin candado adicional -- ven todo, sin filtro de asignacion
     } else {
       const assigned = assignRows.some(a => a.fields &&
         String(a.fields.RecurringServiceID) === recurringServiceId &&
