@@ -139,9 +139,36 @@ exports.handler = async (event) => {
        myPayrollId ya se calculo arriba, junto al filtro de ordenes. */
 
     const businessNameByClient = {};
+    const addressByClient = {};
     clientRows.forEach(it => {
-      if (it.fields && it.fields.ClientID) businessNameByClient[it.fields.ClientID] = it.fields.Title || it.fields.BusinessName || it.fields.ClientID;
+      if (!it.fields || !it.fields.ClientID) return;
+      businessNameByClient[it.fields.ClientID] = it.fields.Title || it.fields.BusinessName || it.fields.ClientID;
+      /* Direccion real del cliente -- mismo dato que ya usa Admin
+         para Create Order, nunca se invento un campo nuevo. */
+      addressByClient[it.fields.ClientID] = [it.fields.Address || '', it.fields.Suite || '', it.fields.City || '', it.fields.Zip || '']
+        .filter(Boolean).join(', ');
     });
+
+    /* Cuantos dias faltan para la PROXIMA ocurrencia de este
+       contrato (puede ser hoy mismo). null si el contrato no tiene
+       ningun dia valido configurado. Confirmado con el usuario: el
+       recurrente aparece en Tech desde 3 dias antes de que toque. */
+    const DAY_INDEX = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    function daysUntilNextOccurrence(daysOfWeekStr) {
+      const days = String(daysOfWeekStr || '').split(',').map(d => d.trim()).filter(Boolean);
+      if (!days.length) return null;
+      const todayIdx = new Date().getDay();
+      let min = null;
+      days.forEach(d => {
+        const idx = DAY_INDEX[d];
+        if (idx === undefined) return;
+        let diff = idx - todayIdx;
+        if (diff < 0) diff += 7;
+        if (min === null || diff < min) min = diff;
+      });
+      return min;
+    }
+    const RECURRING_VISIBILITY_WINDOW_DAYS = 3;
 
     const todayISO = new Date().toISOString().slice(0, 10);
     const activeServices = recurringServiceRows.filter(it => {
@@ -162,33 +189,45 @@ exports.handler = async (event) => {
     let recurring;
     if (role === 'Developer') {
       /* Igual que Supervisor pero sin filtro de division -- ve los
-         recurrentes de las 3 divisiones. */
+         recurrentes de las 3 divisiones. Sin ventana de 3 dias a
+         proposito -- ya veia TODO sin filtro individual, es una
+         vista de supervision, no una lista personal de trabajo. */
       recurring = activeServices.map(it => ({
         id: it.id,
         clientId: it.fields.ClientID || '',
         businessName: businessNameByClient[it.fields.ClientID] || it.fields.ClientID || '',
+        address: addressByClient[it.fields.ClientID] || '',
         buildingNumber: it.fields.BuildingNumber || '',
         division: it.fields.Division || '',
         daysOfWeek: it.fields.DaysOfWeek || '',
         time: it.fields.Time || '',
         totalHours: Number(it.fields.TotalHours) || 0,
+        daysUntil: daysUntilNextOccurrence(it.fields.DaysOfWeek),
         Services: parseServicesJson(it.fields.ServicesJSON)
       }));
     } else if (role === 'Supervisor') {
+      /* Ve todo el departamento, sin ventana de 3 dias -- mismo
+         criterio que ya tenia (vista de supervision). */
       recurring = activeServices
         .filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase())
         .map(it => ({
           id: it.id,
           clientId: it.fields.ClientID || '',
           businessName: businessNameByClient[it.fields.ClientID] || it.fields.ClientID || '',
+          address: addressByClient[it.fields.ClientID] || '',
           buildingNumber: it.fields.BuildingNumber || '',
           division: it.fields.Division || '',
           daysOfWeek: it.fields.DaysOfWeek || '',
           time: it.fields.Time || '',
           totalHours: Number(it.fields.TotalHours) || 0,
+          daysUntil: daysUntilNextOccurrence(it.fields.DaysOfWeek),
           Services: parseServicesJson(it.fields.ServicesJSON)
         }));
     } else {
+      /* Employee -- su lista PERSONAL de trabajo. Aqui SI aplica la
+         ventana de 3 dias (confirmado con el usuario): sin esto,
+         un contrato recurrente se veria clavado ahi todos los dias
+         de la semana, incluso cuando no le toca. */
       const activeServiceIds = new Set(activeServices.map(it => it.id));
       recurring = recurringAssignRows
         .filter(a => a.fields && String(a.fields.PayrollNumber || '').trim() === myPayrollId && activeServiceIds.has(a.fields.RecurringServiceID))
@@ -199,14 +238,17 @@ exports.handler = async (event) => {
             id: svc ? svc.id : a.fields.RecurringServiceID,
             clientId: sf.ClientID || '',
             businessName: businessNameByClient[sf.ClientID] || sf.ClientID || '',
+            address: addressByClient[sf.ClientID] || '',
             buildingNumber: sf.BuildingNumber || '',
             division: sf.Division || '',
             daysOfWeek: sf.DaysOfWeek || '',
             time: sf.Time || '',
             hoursAllocated: Number(a.fields.HoursAllocated) || 0,
+            daysUntil: daysUntilNextOccurrence(sf.DaysOfWeek),
             Services: parseServicesJson(sf.ServicesJSON)
           };
-        });
+        })
+        .filter(r => r.daysUntil !== null && r.daysUntil <= RECURRING_VISIBILITY_WINDOW_DAYS);
     }
 
     return jsonResponse(200, { orders, recurring });
