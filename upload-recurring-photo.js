@@ -10,7 +10,7 @@
 ============================================================ */
 
 const {
-  RECURRING_SERVICES_LIST, CLIENTS_LIST, TECH_PHOTO_LOG_LIST,
+  RECURRING_SERVICES_LIST, RECURRING_ASSIGNMENTS_LIST, CLIENTS_LIST, TECHS_LIST, TECH_PHOTO_LOG_LIST,
   ensureFolder, uploadFile, createListItem, graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
 
@@ -44,6 +44,7 @@ exports.handler = async (event) => {
     const fileBase64 = b.imageBase64 || b.fileBase64;
     const isVideo = !!b.isVideo;
     const techId = String(b.techId || '').trim();
+    const role = String(b.role || '').trim();
     const latitude = (b.latitude !== undefined && b.latitude !== null) ? Number(b.latitude) : null;
     const longitude = (b.longitude !== undefined && b.longitude !== null) ? Number(b.longitude) : null;
 
@@ -51,9 +52,26 @@ exports.handler = async (event) => {
     if (!visitDate) return jsonResponse(400, { error: 'visitDate is required' });
     if (!fileBase64) return jsonResponse(400, { error: 'No file data received' });
 
-    const [svcRows, clientRows] = await Promise.all([fetchAll(RECURRING_SERVICES_LIST), fetchAll(CLIENTS_LIST)]);
+    const [svcRows, clientRows, techRows, assignRows] = await Promise.all([
+      fetchAll(RECURRING_SERVICES_LIST), fetchAll(CLIENTS_LIST), fetchAll(TECHS_LIST), fetchAll(RECURRING_ASSIGNMENTS_LIST)
+    ]);
     const svc = svcRows.find(it => it.id === recurringServiceId);
     if (!svc || !svc.fields) return jsonResponse(404, { error: 'Recurring contract not found.' });
+
+    /* BUG REAL encontrado en revision general: este endpoint aceptaba
+       cualquier techId sin verificar asignacion -- a diferencia de
+       submit-recurring-complete.js y get-recurring-history.js, que SI
+       exigen que un Employee este asignado al contrato. Se agrega el
+       mismo candado aqui, por consistencia. */
+    if (role !== 'Supervisor' && role !== 'Developer') {
+      const techRow = techRows.find(t => t.id === techId);
+      const myPayrollId = techRow && techRow.fields ? techRow.fields.PayrollID || '' : '';
+      const assigned = assignRows.some(a => a.fields &&
+        String(a.fields.RecurringServiceID) === recurringServiceId &&
+        String(a.fields.PayrollNumber || '').trim() === String(myPayrollId).trim());
+      if (!assigned) return jsonResponse(403, { error: 'You are not assigned to this recurring contract.' });
+    }
+
     const clientRow = clientRows.find(it => it.fields && it.fields.ClientID === svc.fields.ClientID);
     const businessName = clientRow && clientRow.fields ? (clientRow.fields.Title || clientRow.fields.BusinessName || '') : '';
 
