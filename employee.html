@@ -9,7 +9,7 @@
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   :root{
     --black:#111; --gold:#C9A84C; --gold-lt:#E2C97E; --gold-dk:#8C6F2A;
-    --white:#fff; --off:#F7F6F3; --gray:#6B6B6B; --border:#E0D9CC;
+    --white:#fff; --off:#F7F6F3; --gray:#6B6B6B; --border:#E0D9CC; --red:#c0392b; --green:#27ae60;
   }
   body{font-family:'Inter',sans-serif;background:var(--white);color:var(--black);min-height:100vh}
 
@@ -52,7 +52,7 @@
 
   .photo-btn{display:flex;align-items:center;gap:6px;background:var(--off);border:1px dashed var(--border);padding:10px 16px;border-radius:4px;font-size:12px;color:var(--gray);cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
   .photo-btn:hover{border-color:var(--gold);color:var(--black)}
-  .btn-complete{display:flex;align-items:center;gap:6px;background:#2E7D4F;border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
+  .btn-complete{display:flex;align-items:center;gap:6px;background:var(--green);border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
   .btn-complete:hover{background:#256641}
   .btn-complete:disabled{background:var(--border);color:var(--gray);cursor:not-allowed}
   .tech-done-note{background:#E8F0FE;color:#1A56C4;border:1px solid #C7DBFB;padding:10px 12px;border-radius:4px;font-size:12px;font-weight:600;margin-top:10px;text-align:center}
@@ -84,13 +84,13 @@
   /* ===== Recurring: contador de dias + day-pills chicos, mismos
      patrones validados en el mini con el usuario. Reusa el .badge
      que ya existia, no inventa una pieza visual nueva. ===== */
-  .badge.countdown-today{background:#FBEAEA;color:#B33A3A}
+  .badge.countdown-today{background:#FBEAEA;color:var(--red)}
   .badge.countdown-soon{background:#FDF3E0;color:var(--gold-dk)}
   .day-pills-mini{display:flex;gap:3px}
   .day-pill-mini{width:18px;height:18px;border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gray);background:var(--white);flex-shrink:0}
   .day-pill-mini.active{background:var(--gold);color:var(--black);border-color:var(--gold)}
-  .recurring-mark-done{display:flex;align-items:center;gap:6px;background:#2E7D4F;border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
-  .recurring-mark-done:hover{background:#256641}
+  .recurring-mark-done{display:flex;align-items:center;gap:6px;background:var(--green);border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
+  .recurring-mark-done:hover{background:#1e8449}
   .recurring-done-note{font-size:12px;color:var(--gray);font-style:italic;margin-top:8px}
 </style>
 </head>
@@ -461,7 +461,7 @@ if (tech) {
     readerR.onload = async () => {
       try {
         await GS.api('/upload-recurring-photo', { body: {
-          recurringServiceId: target.recurringServiceId, visitDate: target.visitDate,
+          recurringServiceId: target.recurringServiceId, visitDate: target.visitDate, role: tech.role,
           imageBase64: readerR.result, isVideo: false, techId: tech.id,
           latitude: locR ? locR.lat : null, longitude: locR ? locR.lon : null
         } });
