@@ -338,7 +338,7 @@ if (tech) {
         actionEl.innerHTML = recurringActionHtml(r, visitDate);
       }
       showToast(res.pendingReview
-        ? 'A change for this visit is already waiting on the office — no need to mark it again.'
+        ? 'A change for this visit is already waiting on the office.'
         : 'Marked done — the office will confirm and close it.');
     } catch (e) {
       showToast('Could not mark this done: ' + e.message);
