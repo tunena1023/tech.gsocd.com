@@ -9,7 +9,7 @@
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   :root{
     --black:#111; --gold:#C9A84C; --gold-lt:#E2C97E; --gold-dk:#8C6F2A;
-    --white:#fff; --off:#F7F6F3; --gray:#6B6B6B; --border:#E0D9CC;
+    --white:#fff; --off:#F7F6F3; --gray:#6B6B6B; --border:#E0D9CC; --red:#c0392b; --green:#27ae60;
   }
   body{font-family:'Inter',sans-serif;background:var(--white);color:var(--black);min-height:100vh}
 
@@ -66,7 +66,7 @@
   .svc-list{font-size:12px;margin:10px 0;line-height:1.8}
 
   .photo-btn{display:flex;align-items:center;gap:6px;background:var(--off);border:1px dashed var(--border);padding:10px 16px;border-radius:4px;font-size:12px;color:var(--gray);cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
-  .btn-complete{display:flex;align-items:center;gap:6px;background:#2E7D4F;border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
+  .btn-complete{display:flex;align-items:center;gap:6px;background:var(--green);border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
   .btn-complete:hover{background:#256641}
   .tech-done-note{background:#E8F0FE;color:#1A56C4;border:1px solid #C7DBFB;padding:10px 12px;border-radius:4px;font-size:12px;font-weight:600;margin-top:10px;text-align:center}
   .photo-btn:hover{border-color:var(--gold);color:var(--black)}
@@ -99,7 +99,7 @@
   .um-svc-row:last-child{border-bottom:none}
   .um-svc-name{font-size:12px}
   .um-svc-controls{display:flex;align-items:center;gap:10px;flex-shrink:0}
-  .um-remove-btn{background:none;border:none;color:#B33A3A;font-size:16px;cursor:pointer;line-height:1;padding:2px 4px}
+  .um-remove-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;line-height:1;padding:2px 4px}
   .um-svc-row.removed .um-svc-name{text-decoration:line-through;color:var(--gray)}
   .um-svc-row.removed .lvl-group{opacity:.35;pointer-events:none}
   .um-undo-btn{background:none;border:none;color:var(--gold-dk);font-size:11px;text-decoration:underline;cursor:pointer;font-family:inherit}
@@ -115,13 +115,13 @@
   .um-note-wrap{position:relative}
   .um-note-wrap textarea{width:100%;padding:10px 40px 10px 10px;border:1px solid var(--border);font-size:12px;font-family:inherit;resize:vertical;min-height:60px}
   .um-mic-btn{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:1px solid var(--border);background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px}
-  .um-mic-btn.listening{background:#B33A3A;border-color:#B33A3A;color:#fff}
+  .um-mic-btn.listening{background:var(--red);border-color:var(--red);color:#fff}
   .um-voice-hint{font-size:11px;color:var(--gray);margin-top:6px;line-height:1.5}
-  .um-note-error{font-size:11px;color:#B33A3A;margin-top:6px;display:none}
+  .um-note-error{font-size:11px;color:var(--red);margin-top:6px;display:none}
   .um-note-btns{display:flex;gap:8px;margin-top:10px}
   .um-note-btns button{flex:1;padding:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-radius:16px;border:none;cursor:pointer;font-family:inherit}
   .um-note-cancel{background:var(--white);border:1px solid var(--border)!important;color:var(--black)}
-  .um-note-confirm{background:#B33A3A;color:#fff}
+  .um-note-confirm{background:var(--red);color:#fff}
 
   .panel-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:6px}
   .panel-note{font-size:11px;color:var(--gray);margin-bottom:14px;line-height:1.5}
@@ -144,13 +144,13 @@
   }
   /* ===== Recurring: contador de dias + day-pills chicos, mismos
      patrones validados en el mini con el usuario. ===== */
-  .badge.countdown-today{background:#FBEAEA;color:#B33A3A}
+  .badge.countdown-today{background:#FBEAEA;color:var(--red)}
   .badge.countdown-soon{background:#FDF3E0;color:var(--gold-dk)}
   .day-pills-mini{display:flex;gap:3px}
   .day-pill-mini{width:18px;height:18px;border:1px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gray);background:var(--white);flex-shrink:0}
   .day-pill-mini.active{background:var(--gold);color:var(--black);border-color:var(--gold)}
-  .recurring-mark-done{display:flex;align-items:center;gap:6px;background:#2E7D4F;border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
-  .recurring-mark-done:hover{background:#256641}
+  .recurring-mark-done{display:flex;align-items:center;gap:6px;background:var(--green);border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
+  .recurring-mark-done:hover{background:#1e8449}
   .recurring-done-note{font-size:12px;color:var(--gray);font-style:italic;margin-top:8px}
 
   /* ===== Panel "Update Services" para Recurring (solo Supervisor) --
@@ -162,12 +162,12 @@
   .rc-update-title{font-size:12px;font-weight:700;margin-bottom:10px}
   .diff-box{background:var(--white);border:1px solid var(--border);padding:12px 14px;margin:12px 0;border-radius:4px}
   .diff-line{font-size:12px;margin-bottom:4px}
-  .diff-line.removed{color:#B33A3A}
-  .diff-line.added{color:#2E7D4F}
+  .diff-line.removed{color:var(--red)}
+  .diff-line.added{color:var(--green)}
   .diff-empty{font-size:12px;color:var(--gray)}
   .rc-update-actions{display:flex;gap:8px;margin-top:12px}
   .rc-update-actions button{flex:1;padding:10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-radius:4px;border:none;cursor:pointer;font-family:inherit}
-  .rc-update-save{background:#B33A3A;color:#fff}
+  .rc-update-save{background:var(--red);color:#fff}
   .rc-update-cancel{background:var(--white);border:1px solid var(--border)!important;color:var(--black)}
 </style>
 </head>
@@ -777,7 +777,7 @@ if (tech) {
     readerR.onload = async () => {
       try {
         await GS.api('/upload-recurring-photo', { body: {
-          recurringServiceId: target.recurringServiceId, visitDate: target.visitDate,
+          recurringServiceId: target.recurringServiceId, visitDate: target.visitDate, role: tech.role,
           imageBase64: readerR.result, isVideo: false, techId: tech.id,
           latitude: locR ? locR.lat : null, longitude: locR ? locR.lon : null
         } });
