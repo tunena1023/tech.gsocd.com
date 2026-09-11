@@ -562,7 +562,14 @@ if (tech) {
       const box = $('history-list');
       const orders = data.orders || [];
       if (!orders.length) { box.innerHTML = '<p class="empty-note">No completed or cancelled orders yet.</p>'; return; }
-      box.innerHTML = orders.map(o => `
+      box.innerHTML = orders.map(o => {
+        const addr = [o.Address, o.Suite, o.City, o.Zip].filter(Boolean).join(' ');
+        const bldg = [o.BuildingNumber ? 'Building ' + o.BuildingNumber : '', o.UnitNumber ? 'Unit ' + o.UnitNumber : ''].filter(Boolean).join(' · ');
+        const svcLines = (o.Services || []).map(s => {
+          const nc = s.NotCompleted ? ' — not completed' + (s.NotCompletedReason ? ': ' + esc(s.NotCompletedReason) : '') : '';
+          return '• ' + esc(s.ServiceName) + esc(nc);
+        }).join('<br>');
+        return `
         <div class="order-card" data-order="${esc(o.OrderID)}">
           <div class="order-head" onclick="toggleOrder(this)">
             <div>
@@ -575,11 +582,27 @@ if (tech) {
             </span>
           </div>
           <div class="order-body">
-            <div class="hist-line">
-              ${GSOrderHistory.html(o.OrderID, o.History, { mode: 'staff' })}
+            <div class="detail-grid">
+              <div>
+                ${addr ? `<div class="row"><div><b>Address</b>${esc(addr)}${bldg ? ' · ' + esc(bldg) : ''}</div></div>` : ''}
+                <div class="row">
+                  <div><b>Entry</b>${fmtDate(o.EntryDate)}</div>
+                  <div><b>Due</b>${fmtDate(o.DueDate)}</div>
+                  ${o.Supervisor ? `<div><b>Supervisor</b>${esc(o.Supervisor)}</div>` : ''}
+                </div>
+                ${(o.Bedrooms || o.Bathrooms) ? `<div class="row"><div><b>Bed / Bath</b>${esc(o.Bedrooms || '—')} / ${esc(o.Bathrooms || '—')}</div></div>` : ''}
+                ${o.ServiceWindow ? `<div class="row"><div><b>Service window</b>${esc(o.ServiceWindow)}</div></div>` : ''}
+                ${o.Contact ? `<div class="row"><div><b>Contact</b>${esc(o.Contact)}</div></div>` : ''}
+                <div class="svc-list">${svcLines || 'No services recorded.'}</div>
+                ${o.Notes ? `<p class="order-meta" style="margin-top:8px">Notes: ${esc(o.Notes)}</p>` : ''}
+              </div>
+              <div>
+                ${GSOrderHistory.html(o.OrderID, o.History, { mode: 'staff' })}
+              </div>
             </div>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     } catch (e) {
       $('history-list').innerHTML = '<p class="empty-note">Could not load history: ' + esc(e.message) + '</p>';
     }

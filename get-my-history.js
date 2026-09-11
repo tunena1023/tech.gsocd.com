@@ -5,7 +5,7 @@
 ============================================================ */
 
 const {
-  ORDERS_LIST, ORDER_HISTORY_LIST, SCHEDULING_LIST, TECHS_LIST,
+  ORDERS_LIST, ORDER_SERVICES_LIST, ORDER_HISTORY_LIST, SCHEDULING_LIST, TECHS_LIST,
   graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
 
@@ -46,8 +46,9 @@ exports.handler = async (event) => {
     const division = String(b.division || '').trim();
     if (!techId || !role) return jsonResponse(400, { error: 'techId and role are required' });
 
-    const [orderRows, histRows, schedulingRows, techRows] = await Promise.all([
+    const [orderRows, svcRows, histRows, schedulingRows, techRows] = await Promise.all([
       fetchAll(ORDERS_LIST),
+      fetchAll(ORDER_SERVICES_LIST),
       fetchAll(ORDER_HISTORY_LIST),
       role === 'Employee' ? fetchAll(SCHEDULING_LIST) : Promise.resolve([]),
       role === 'Employee' ? fetchAll(TECHS_LIST) : Promise.resolve([])
@@ -89,6 +90,20 @@ exports.handler = async (event) => {
       });
     });
 
+    /* Servicios por orden -- mismo agrupado que ya se hace con el
+       historial, para no repetir una llamada aparte por cada tarjeta. */
+    const servicesByOrder = {};
+    svcRows.forEach(it => {
+      if (!it.fields || !it.fields.OrderID) return;
+      (servicesByOrder[it.fields.OrderID] = servicesByOrder[it.fields.OrderID] || []).push({
+        Category: it.fields.Category || '',
+        ServiceName: it.fields.ServiceName || '',
+        SubOption: it.fields.SubOption || '',
+        NotCompleted: it.fields.NotCompleted === true || String(it.fields.NotCompleted) === 'true',
+        NotCompletedReason: it.fields.NotCompletedReason || ''
+      });
+    });
+
     const orders = closedOrders.map(it => {
       const f = it.fields;
       const oid = f.OrderID || f.Title || '';
@@ -103,6 +118,23 @@ exports.handler = async (event) => {
         UnitOccupied: f.UnitOccupied === true || f.UnitOccupied === 'true',
         NeedsOfficeAccess: f.NeedsOfficeAccess === true || f.NeedsOfficeAccess === 'true',
         OfficeNeedNotes: f.OfficeNeedNotes || '',
+        /* Mismos campos que ya recibe Admin en get-order-detail.js,
+           para que el tech pueda pintar el mismo detalle de la orden
+           junto al historial (antes no llegaban -- por eso History
+           en tech solo mostraba el historial solo). */
+        Address: f.Address || '',
+        Suite: f.Suite || '',
+        City: f.City || '',
+        Zip: f.Zip || '',
+        Contact: f.Contact || '',
+        Supervisor: f.Supervisor || '',
+        BuildingNumber: f.BuildingNumber || '',
+        UnitNumber: f.UnitNumber || '',
+        Bedrooms: f.Bedrooms || '',
+        Bathrooms: f.Bathrooms || '',
+        ServiceWindow: f.ServiceWindow || '',
+        Notes: f.Notes || '',
+        Services: servicesByOrder[oid] || [],
         History: hist
       };
     }).sort((a, b) => String(b.EntryDate).localeCompare(String(a.EntryDate)));
