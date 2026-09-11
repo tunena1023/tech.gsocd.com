@@ -44,6 +44,10 @@
   .order-body.open{display:block}
   .order-body .row{display:flex;gap:24px;flex-wrap:wrap;font-size:12px;margin:14px 0}
   .order-body .row div b{display:block;font-size:10px;text-transform:uppercase;color:var(--gray);font-weight:700;margin-bottom:3px}
+  /* Copiado exacto de admin.html -- mismo patron 2 columnas (Details
+     izquierda / History derecha) que ya usa toda orden real. */
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 14px 0 0; }
+  @media (max-width: 700px) { .detail-grid { grid-template-columns: 1fr; } }
   .svc-list{font-size:12px;margin:10px 0;line-height:1.8}
 
   .photo-btn{display:flex;align-items:center;gap:6px;background:var(--off);border:1px dashed var(--border);padding:10px 16px;border-radius:4px;font-size:12px;color:var(--gray);cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
@@ -246,7 +250,7 @@ if (tech) {
         const visitDate = nextVisitDateISO(r.daysUntil);
         return `
         <div class="order-card recurring-card">
-          <div class="order-head" onclick="toggleOrder(this)">
+          <div class="order-head" onclick="toggleRecurringCard(this, '${esc(r.id)}')">
             <div>
               <div class="order-id">${esc(r.businessName)}</div>
               <div class="order-meta">${esc(r.address || '')}${r.buildingNumber ? ' · Bldg ' + esc(r.buildingNumber) : ''}</div>
@@ -259,39 +263,39 @@ if (tech) {
             </span>
           </div>
           <div class="order-body">
-            <div class="svc-list">${svcLines || 'No services recorded.'}</div>
-            <button type="button" class="btn-outline" style="width:100%;margin-top:8px" id="rc-hist-btn-${esc(r.id)}" onclick="event.stopPropagation(); toggleRecurringHistory('${esc(r.id)}')">View History</button>
-            <div id="rc-hist-${esc(r.id)}" style="display:none;margin-top:8px"></div>
-            ${isToday
-              ? `<div id="recurring-action-${esc(r.id)}" style="margin-top:8px">${recurringActionHtml(r, visitDate)}</div>`
-              : `<p class="recurring-done-note">Not due yet — comes up ${countdownLabel(r.daysUntil).toLowerCase()}.</p>`}
+            <div class="detail-grid">
+              <div>
+                <div class="svc-list">${svcLines || 'No services recorded.'}</div>
+                ${isToday
+                  ? `<div id="recurring-action-${esc(r.id)}" style="margin-top:8px">${recurringActionHtml(r, visitDate)}</div>`
+                  : `<p class="recurring-done-note">Not due yet — comes up ${countdownLabel(r.daysUntil).toLowerCase()}.</p>`}
+              </div>
+              <div id="rc-hist-${esc(r.id)}"><p class="empty-note">Loading history…</p></div>
+            </div>
           </div>
         </div>`;
       }).join('');
   }
 
-  let rcHistoryOpenFor = null;
-  async function toggleRecurringHistory(id) {
+  /* BUG REAL encontrado por el usuario: el historial se veia
+     apilado ABAJO, con un boton para mostrarlo/ocultarlo -- en toda
+     orden real (Admin, Orders) el historial SIEMPRE va a la derecha,
+     en 2 columnas (mismo .detail-grid real), nunca escondido detras
+     de un boton aparte. Se corrige: se carga solo al abrir la
+     tarjeta, se queda a la derecha siempre visible, igual que
+     cualquier orden. */
+  const rcHistoryLoaded = new Set();
+  function toggleRecurringCard(headerEl, id) {
+    toggleOrder(headerEl);
+    if (!rcHistoryLoaded.has(id)) {
+      rcHistoryLoaded.add(id);
+      loadRecurringHistoryInto(id);
+    }
+  }
+
+  async function loadRecurringHistoryInto(id) {
     const box = $('rc-hist-' + id);
-    const btn = $('rc-hist-btn-' + id);
     if (!box) return;
-    if (rcHistoryOpenFor === id) {
-      box.style.display = 'none';
-      box.innerHTML = '';
-      if (btn) btn.textContent = 'View History';
-      rcHistoryOpenFor = null;
-      return;
-    }
-    if (rcHistoryOpenFor) {
-      const prevBox = $('rc-hist-' + rcHistoryOpenFor);
-      const prevBtn = $('rc-hist-btn-' + rcHistoryOpenFor);
-      if (prevBox) { prevBox.style.display = 'none'; prevBox.innerHTML = ''; }
-      if (prevBtn) prevBtn.textContent = 'View History';
-    }
-    rcHistoryOpenFor = id;
-    if (btn) btn.textContent = 'Hide History';
-    box.style.display = 'block';
-    box.innerHTML = '<p class="empty-note">Loading…</p>';
     try {
       const res = await GS.api('/get-recurring-history', { body: { recurringServiceId: id, techId: tech.id, role: tech.role } });
       box.innerHTML = GSOrderHistory.html('RC-' + id, res.history || [], { mode: 'staff' });
@@ -603,7 +607,7 @@ if (tech) {
      para que el onclick las alcanzara. Aqui no daba el mismo error,
      pero no cuesta nada blindarlo igual. */
   window.markRecurringDone = markRecurringDone;
-  window.toggleRecurringHistory = toggleRecurringHistory;
+  window.toggleRecurringCard = toggleRecurringCard;
   window.takeRecurringPhoto = takeRecurringPhoto;
 
   loadOrders();
