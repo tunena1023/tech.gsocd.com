@@ -32,10 +32,19 @@ async function fetchAll(listName) {
   return out;
 }
 
-function parseServicesJson(raw) {
+function parseServicesForHistory(raw) {
   try {
     const arr = JSON.parse(raw || '[]');
-    return Array.isArray(arr) ? arr.map(s => (s.serviceName || s.sku || '') + (s.level ? ' — ' + s.level : '')) : [];
+    /* Mismo formato JSON exacto que espera GSOrderHistory para
+       ChangeType "Created" (parseServicesPayload/detailLinesFor) --
+       Category + ServiceName + Level, no un texto plano. Recurring
+       siempre es Commercial (confirmado con el usuario desde el
+       diseno original), por eso se fija asi. */
+    return Array.isArray(arr) ? arr.map(s => ({
+      Category: 'Commercial',
+      ServiceName: s.serviceName || s.sku || '',
+      Level: s.level || ''
+    })) : [];
   } catch (e) { return []; }
 }
 
@@ -76,12 +85,15 @@ exports.handler = async (event) => {
     /* Primer renglon -- no es un evento guardado de verdad (el
        contrato no "nace" cada dia), es un snapshot armado con la
        fecha en que se creo el contrato, para dar contexto de que
-       servicios trae. */
+       servicios trae. ChangeType "Created" (no "Order Assigned" --
+       ese esperaba supervisor/dispatchDate, campos que Recurring ni
+       tiene) para que el componente real arme la lista de servicios
+       con vineta, una por linea, igual que una orden normal. */
     history.push({
-      ChangeType: 'Order Assigned',
+      ChangeType: 'Created',
       ChangeDate: svc.createdDateTime || new Date().toISOString(),
       ChangedBy: 'Office',
-      Notes: 'Services: ' + parseServicesJson(svc.fields.ServicesJSON).join(', ')
+      NewValue: JSON.stringify({ services: parseServicesForHistory(svc.fields.ServicesJSON) })
     });
 
     const myLogRows = logRows
