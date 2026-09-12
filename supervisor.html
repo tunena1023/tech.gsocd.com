@@ -182,12 +182,7 @@
   <div><span class="nav-user" id="nav-user"></span><button class="btn-signout" onclick="doSignout()">Sign out</button></div>
 </nav>
 
-<div class="tabs">
-  <div class="tab active" data-view="active" onclick="showTab('active')">Active Orders</div>
-  <div class="tab" data-view="recurring" onclick="showTab('recurring')">Recurring</div>
-  <div class="tab" data-view="history" onclick="showTab('history')">History</div>
-  <div class="tab" data-view="gallery" onclick="showTab('gallery')">Gallery</div>
-</div>
+<div id="gsNav"></div>
 
 <div class="view active" id="view-active">
   <h2>Active Orders</h2>
@@ -226,6 +221,7 @@
 <div class="toast" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--white);padding:12px 22px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:all .3s;z-index:500"></div>
 
 <script src="shared.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.20.2/nav-premium/nav-premium.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.6.0/order-history/order-history.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.8.0/order-badges/order-badges.js"></script>
@@ -271,6 +267,13 @@ if (tech) {
 
   $('nav-user').textContent = tech.firstName + ' ' + tech.lastName + ' · ' + (tech.role === 'Developer' ? 'Developer' : tech.division || '');
 
+  GSNavPremium.init('gsNav', [
+    { label: 'Active Orders', dataView: 'active', onclick: "showTab('active')", active: true },
+    { label: 'Recurring', dataView: 'recurring', onclick: "showTab('recurring')" },
+    { label: 'History', dataView: 'history', onclick: "showTab('history')" },
+    { label: 'Gallery', dataView: 'gallery', onclick: "showTab('gallery')" }
+  ]);
+
   /* Developer ve las 3 divisiones mezcladas -- el selector solo tiene
      sentido para el (Supervisor ya esta limitado a la suya desde el
      backend, mostrarselo tambien no aportaria nada). */
@@ -289,7 +292,7 @@ if (tech) {
   }
 
   function showTab(view) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+    document.querySelectorAll('[data-view]').forEach(t => t.classList.toggle('active', t.dataset.view === view));
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     $('view-' + view).classList.add('active');
     if (view === 'history' && !historyLoaded) loadHistory();
