@@ -136,7 +136,7 @@
   <div id="gallery-list"><p class="empty-note">Loading…</p></div>
 </div>
 
-<input type="file" id="camera-input" accept="image/*,video/*" capture="environment" style="display:none">
+<input type="file" id="camera-input" accept="image/*,video/*" style="display:none">
 <input type="file" id="recurring-camera-input" accept="image/*" capture="environment" style="display:none">
 
 <div class="toast" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--white);padding:12px 22px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:all .3s;z-index:500"></div>
@@ -406,11 +406,23 @@ if (tech) {
   let completingAfterPhoto = false;
   /* BUG REAL encontrado por el usuario: el boton de Recurring abria
      la galeria en vez de la camara. Se separo del <input> de ordenes
-     normales a proposito -- ese sigue exactamente igual, sin tocar.
-     Este nuevo (#recurring-camera-input) solo acepta imagen (sin
-     video/*), que es lo documentado como mas confiable para que
-     Android brinque directo a la camara con capture="environment"
-     en vez de mostrar el selector completo. */
+     normales a proposito. Este nuevo (#recurring-camera-input) solo
+     acepta imagen (sin video/*), que es lo documentado como mas
+     confiable para que Android brinque directo a la camara con
+     capture="environment" en vez de mostrar el selector completo.
+
+     El mismo bug real aparecio despues en #camera-input (el de ver/
+     completar una orden) -- ese SI necesita foto o video (limite de
+     5 min, etc.), asi que no se le puede quitar video/* como al de
+     arriba. Con accept mixto (imagen+video), capture="environment"
+     deja de ser confiable -- Android no sabe a que app brincar y
+     termina aterrizando en la galeria. Se probaron 2 vias antes de
+     esta (separar en 2 botones, y un menu propio de Foto/Video) y el
+     usuario prefirio esta tercera: quitarle el capture por completo
+     a #camera-input, para que salga el selector NATIVO del telefono
+     (con "Camara" como opcion visible) en vez de aterrizar derecho
+     en la galeria. No es "directo a camara" pero ya no es "solo
+     galeria" tampoco -- es la eleccion real del telefono. */
   let photoRecurringTarget = null; // {recurringServiceId, visitDate}
   function takeRecurringPhoto(recurringServiceId, visitDate) {
     photoRecurringTarget = { recurringServiceId, visitDate };

@@ -215,7 +215,7 @@
   <div id="gallery-list"><p class="empty-note">Loading…</p></div>
 </div>
 
-<input type="file" id="camera-input" accept="image/*,video/*" capture="environment" style="display:none">
+<input type="file" id="camera-input" accept="image/*,video/*" style="display:none">
 <input type="file" id="recurring-camera-input" accept="image/*" capture="environment" style="display:none">
 
 <div class="toast" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--white);padding:12px 22px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:all .3s;z-index:500"></div>
@@ -731,9 +731,17 @@ if (tech) {
   let completingAfterPhoto = false;
   /* BUG REAL encontrado por el usuario: el boton de Recurring abria
      la galeria en vez de la camara. Separado del <input> de ordenes
-     normales a proposito -- ese sigue igual. Solo imagen (sin
-     video/*), documentado como mas confiable para que Android
-     brinque directo a la camara con capture="environment". */
+     normales a proposito. Solo imagen (sin video/*), documentado
+     como mas confiable para que Android brinque directo a la camara
+     con capture="environment".
+
+     El mismo bug real aparecio despues en #camera-input (el de ver/
+     completar una orden) -- ese SI necesita foto o video, asi que no
+     se le puede quitar video/*. Con accept mixto, capture deja de
+     ser confiable en Android. Se le quito el capture por completo a
+     ese input (no se le agrego boton ni menu propio, a peticion del
+     usuario) para que salga el selector NATIVO del telefono en vez
+     de aterrizar derecho en la galeria. */
   let photoRecurringTarget = null; // {recurringServiceId, visitDate}
   function takeRecurringPhoto(recurringServiceId, visitDate) {
     photoRecurringTarget = { recurringServiceId, visitDate };
