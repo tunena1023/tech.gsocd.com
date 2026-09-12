@@ -13,8 +13,7 @@
   }
   body{font-family:'Inter',sans-serif;background:var(--white);color:var(--black);min-height:100vh}
 
-  nav{display:flex;align-items:center;justify-content:space-between;padding:12px 32px;border-bottom:1px solid var(--border);background-image:url('/api/site-image?name=NavBackground.jpg');background-size:cover;background-position:center;position:sticky;top:0;z-index:100}
-  .logo-diamond{height:48px;object-fit:contain}
+  nav{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background-image:url('/api/site-image?name=NavBackground.jpg');background-size:cover;background-position:center;position:sticky;top:0;z-index:100}
   .nav-user{font-size:12px;color:var(--gray)}
   .btn-signout{font-size:11px;color:var(--gray);background:none;border:none;cursor:pointer;text-decoration:underline;margin-left:16px}
 
@@ -80,7 +79,7 @@
   .gallery-thumb{width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;border:1px solid var(--border);cursor:pointer}
 
   @media (max-width: 640px) {
-    nav{padding:12px 16px}
+    
     .tabs{padding:0 16px}
     .tab{padding:12px 10px;font-size:11px}
     .view{padding:20px 16px}
@@ -143,7 +142,7 @@
 <div class="toast" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--white);padding:12px 22px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:all .3s;z-index:500"></div>
 
 <script src="shared.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.20.4/nav-premium/nav-premium.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.24.0/nav-premium/nav-premium.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.21.0/gallery-groups/gallery-groups.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.6.0/order-history/order-history.js"></script>
@@ -151,6 +150,7 @@
 <script>
 const tech = GS.requireSession('Employee');
 if (tech) {
+  GSNavPremium.applyChrome();
   GS.initPushNotifications(tech.id);
 
   const $ = id => document.getElementById(id);
