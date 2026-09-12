@@ -212,6 +212,7 @@
 <div class="view" id="view-gallery">
   <h2>Gallery</h2>
   <p class="sub">Photos taken across your department, grouped by order.</p>
+  <div id="gallery-search-wrap"></div>
   <div id="gallery-list"><p class="empty-note">Loading…</p></div>
 </div>
 
@@ -223,6 +224,7 @@
 <script src="shared.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.20.4/nav-premium/nav-premium.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.21.0/gallery-groups/gallery-groups.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.6.0/order-history/order-history.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.8.0/order-badges/order-badges.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.18.0/service-picker/service-picker.js"></script>
@@ -938,23 +940,27 @@ if (tech) {
     galleryLoaded = true;
     try {
       const data = await GS.api('/get-my-gallery', { body: { techId: tech.id, role: tech.role, division: tech.division } });
-      const box = $('gallery-list');
-      galleryGroups = data.groups || [];
-      if (!galleryGroups.length) { box.innerHTML = '<p class="empty-note">No photos yet.</p>'; return; }
-      box.innerHTML = galleryGroups.map((g, gi) => `
-        <div class="gallery-group">
-          <div class="gallery-group-head">${esc(g.orderId)} <span>${esc(g.clientLabel)} · ${fmtDate(g.date)}</span></div>
-          <div class="gallery-grid">
-            ${g.photos.map((p, pi) => '<img class="gallery-thumb" src="' + esc(p.downloadUrl) + '" loading="lazy" onclick="openLightbox(' + gi + ',' + pi + ')">').join('')}
-          </div>
-        </div>`).join('');
+      const raw = data.groups || [];
+      galleryGroups = raw.map(g => Object.assign({}, g, { date: fmtDate(g.date) }));
+      document.getElementById('gallery-search-wrap').innerHTML = GSGalleryGroups.searchHtml('gallery-search', 'Search by order number or client…');
+      document.getElementById('gallery-search').addEventListener('input', renderGallery);
+      renderGallery();
     } catch (e) {
       $('gallery-list').innerHTML = '<p class="empty-note">Could not load photos: ' + esc(e.message) + '</p>';
     }
   }
 
-  function openLightbox(groupIdx, photoIdx) {
-    GSLightbox.open(galleryGroups[groupIdx].photos, photoIdx);
+  function renderGallery() {
+    const q = (document.getElementById('gallery-search').value || '').trim().toLowerCase();
+    let groups = galleryGroups;
+    if (q) {
+      groups = groups.filter(g =>
+        String(g.orderId || '').toLowerCase().includes(q) ||
+        String(g.clientLabel || '').toLowerCase().includes(q));
+    }
+    GSGalleryGroups.render('gallery-list', groups, {
+      emptyMessage: q ? 'No orders match that search.' : 'No photos yet.'
+    });
   }
 
   /* ===== Update Services (supervisor) =====
