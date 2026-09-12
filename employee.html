@@ -136,7 +136,7 @@
   <div id="gallery-list"><p class="empty-note">Loading…</p></div>
 </div>
 
-<input type="file" id="camera-input" accept="image/*,video/*" style="display:none">
+<input type="file" id="camera-input" accept="image/*,video/*,android/allowCamera" style="display:none">
 <input type="file" id="recurring-camera-input" accept="image/*" capture="environment" style="display:none">
 
 <div class="toast" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--white);padding:12px 22px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:all .3s;z-index:500"></div>
@@ -419,10 +419,25 @@ if (tech) {
      termina aterrizando en la galeria. Se probaron 2 vias antes de
      esta (separar en 2 botones, y un menu propio de Foto/Video) y el
      usuario prefirio esta tercera: quitarle el capture por completo
-     a #camera-input, para que salga el selector NATIVO del telefono
-     (con "Camara" como opcion visible) en vez de aterrizar derecho
-     en la galeria. No es "directo a camara" pero ya no es "solo
-     galeria" tampoco -- es la eleccion real del telefono. */
+     a #camera-input, para que salga el selector NATIVO del telefono.
+
+     PERO el usuario siguio viendo solo la galeria, sin opcion de
+     camara ni con el capture quitado. Investigando se encontro la
+     causa real: es un bug DOCUMENTADO de Android 14 y 15 + Chrome/
+     Edge (aparecio a mediados de 2025) -- en esas versiones, Chrome
+     le quito la opcion de Camara al selector de archivos por
+     completo cuando el accept es image/* o video/* (con o sin
+     capture), y solo deja escoger de la galeria. Le pasa a cualquier
+     pagina web, no es nada de nuestro codigo.
+
+     El arreglo real (probado en varios telefonos, documentado en
+     https://blog.addpipe.com/html-file-input-accept-video-camera-option-is-missing-android-14-15/)
+     es agregarle un tipo de archivo NO estandar a la lista de accept
+     -- "android/allowCamera" -- que enganya a Chrome para que vuelva
+     a mostrar "Camara" como opcion junto con "Fotos y videos". No es
+     un estandar oficial, asi que podria dejar de funcionar en una
+     version futura de Chrome, pero por ahora es lo unico que
+     realmente resuelve el problema sin agregar boton ni menu. */
   let photoRecurringTarget = null; // {recurringServiceId, visitDate}
   function takeRecurringPhoto(recurringServiceId, visitDate) {
     photoRecurringTarget = { recurringServiceId, visitDate };
