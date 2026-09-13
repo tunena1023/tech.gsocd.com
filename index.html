@@ -56,7 +56,7 @@
       <div class="field-wrap"><label>Last Name</label><input type="text" id="si-last"></div>
     </div>
     <div class="field-wrap"><label>Last 4 digits of your phone</label><input type="text" id="si-temp" maxlength="4" inputmode="numeric" placeholder="e.g. 4021"></div>
-    <button class="gs-ofp-btn-primary" id="si-btn" onclick="doSignIn()">Sign In</button>
+    <button class="gs-ofp-btn-primary" id="si-btn" style="width:100%" onclick="doSignIn()">Sign In</button>
     <p class="error-msg" id="si-error"></p>
     <p class="switch-mode">New here? <a onclick="showView('register')">Create an account</a></p>
   </div>
@@ -71,14 +71,14 @@
     </div>
     <div class="field-wrap"><label>Phone Number</label><input type="text" id="rg-phone" inputmode="tel" placeholder="e.g. (515) 555-4021"></div>
     <div class="field-wrap"><label>Email</label><input type="text" id="rg-email"></div>
-    <button class="gs-ofp-btn-primary" id="rg-btn" onclick="doRegister()">Create Account</button>
+    <button class="gs-ofp-btn-primary" id="rg-btn" style="width:100%" onclick="doRegister()">Create Account</button>
     <p class="error-msg" id="rg-error"></p>
     <p class="switch-mode">Already registered? <a onclick="showView('signin')">Sign in</a></p>
   </div>
 </div>
 
 <script src="shared.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.22/order-form-premium/order-form-premium.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.23/order-form-premium/order-form-premium.js"></script>
 <script>
   GSOrderFormPremium.styleTag();
   function showView(v) {
