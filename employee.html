@@ -147,9 +147,11 @@
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.21.0/gallery-groups/gallery-groups.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.6.0/order-history/order-history.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.8.0/order-badges/order-badges.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.22/order-form-premium/order-form-premium.js"></script>
 <script>
 const tech = GS.requireSession('Employee');
 if (tech) {
+  GSOrderFormPremium.styleTag();
   GSNavPremium.applyChrome();
   GS.initPushNotifications(tech.id);
 
@@ -394,7 +396,7 @@ if (tech) {
             <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
             ${o.TechMarkedComplete
               ? '<p class="tech-done-note">✓ You marked this as done — waiting for the office to confirm and close it.</p>'
-              : '<button type="button" class="btn-complete" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>'}
+              : '<button type="button" class="gs-ofp-btn-primary" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>'}
           </div>
         </div>`;
     }).join('');

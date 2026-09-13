@@ -226,6 +226,7 @@
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.6.0/order-history/order-history.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.8.0/order-badges/order-badges.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.18.0/service-picker/service-picker.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.22/order-form-premium/order-form-premium.js"></script>
 <script>
 /* GS.requireSession(roleNeeded) solo acepta UN rol exacto -- Developer
    tambien usa esta pantalla (mismas herramientas que Supervisor, sin
@@ -243,6 +244,7 @@ if (tech && tech.role !== 'Supervisor' && tech.role !== 'Developer') {
   tech = null;
 }
 if (tech) {
+  GSOrderFormPremium.styleTag();
   GSNavPremium.applyChrome();
   GS.initPushNotifications(tech.id);
 
@@ -399,7 +401,7 @@ if (tech) {
                 <div class="svc-list">${svcLines || 'No services recorded.'}</div>
                 ${isToday ? `
                   <div id="recurring-action-${esc(r.id)}" style="margin-top:8px">${recurringActionHtml(r, visitDate)}</div>
-                  <button type="button" class="btn-outline" style="width:100%;margin-top:8px" id="rc-update-btn-${esc(r.id)}" onclick="toggleRcUpdate('${esc(r.id)}','${visitDate}')">Update Services</button>
+                  <button type="button" class="gs-ofp-btn-secondary" style="width:100%;margin-top:8px" id="rc-update-btn-${esc(r.id)}" onclick="toggleRcUpdate('${esc(r.id)}','${visitDate}')">Update Services</button>
                   <div id="rc-update-wrap-${esc(r.id)}"></div>
                 ` : `<p class="recurring-done-note">Not due yet — comes up ${countdownLabel(r.daysUntil).toLowerCase()}.</p>`}
               </div>
@@ -695,15 +697,15 @@ if (tech) {
                 <div class="svc-list">${svcLines || 'No services recorded.'}</div>
                 ${GSOrderBadges.officeNeedNote(o)}
                 <div class="action-row">
-                  <button type="button" class="btn-outline" onclick="toggleUpdatePanel('${esc(o.OrderID)}')">Update Services</button>
-                  <button type="button" class="btn-outline" onclick="reportUnitNotReady('${esc(o.OrderID)}')">Report: Unit Not Ready</button>
+                  <button type="button" class="gs-ofp-btn-secondary" onclick="toggleUpdatePanel('${esc(o.OrderID)}')">Update Services</button>
+                  <button type="button" class="gs-ofp-btn-secondary" onclick="reportUnitNotReady('${esc(o.OrderID)}')">Report: Unit Not Ready</button>
                 </div>
                 <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
                 <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
                 ${isMySupervisorOrder(o)
                   ? (o.TechMarkedComplete
                       ? '<p class="tech-done-note">✓ You marked this as done — waiting for the office to confirm and close it.</p>'
-                      : '<button type="button" class="btn-complete" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>')
+                      : '<button type="button" class="gs-ofp-btn-primary" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>')
                   : ''}
               </div>
               <div class="col-right" id="editpanel-${esc(o.OrderID)}"></div>
@@ -1086,8 +1088,8 @@ if (tech) {
       '<div id="um-current-list">' + currentListHtml + '</div>' +
       '<div id="um-add-section">' + addSectionHtml + '</div>' +
       '<div class="send-row" style="margin-top:16px;display:flex;gap:10px">' +
-      '<button type="button" class="btn-outline" onclick="toggleUpdatePanel(\'' + esc(umOrder.OrderID) + '\')">Cancel</button>' +
-      '<button type="button" class="btn-gold" id="um-submit-btn" onclick="submitUpdate()">Send to Office</button>' +
+      '<button type="button" class="gs-ofp-btn-secondary" onclick="toggleUpdatePanel(\'' + esc(umOrder.OrderID) + '\')">Cancel</button>' +
+      '<button type="button" class="gs-ofp-btn-primary" id="um-submit-btn" onclick="submitUpdate()">Send to Office</button>' +
       '</div>';
   }
 
