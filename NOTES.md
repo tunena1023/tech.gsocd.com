@@ -120,10 +120,15 @@ habían quedado en una versión vieja del componente sin el acordeón.
   una categoría del acordeón esté abierta a la vez (hoy se pueden abrir
   varias al mismo tiempo). Vive en el sandbox de la sesión del 10/09/2026,
   no en GitHub — si no aparece en el repo y no se sabe por qué, es por esto.
-- Bug sin resolver: banner "File downloaded... sharepoint.com" en Tech
-  (portal de empleados, celular) — el fondo o logo se descarga como archivo
-  en vez de solo mostrarse. No tocar hasta que el dueño lo pida
-  explícitamente.
+- **RESUELTO (confirmado por el dueño, 13/09/2026):** banner "File
+  downloaded... sharepoint.com" en Tech (portal de empleados, celular) —
+  el fondo o logo se descargaba como archivo en vez de solo mostrarse.
+  `site-image.js` ya sirve el buffer con `Content-Type` correcto por
+  extensión y sin `Content-Disposition: attachment` (via
+  `driveItemByPath()`/`downloadById()`), consistente con el resto de la
+  app. No quedó registrado en ningún commit específico con ese nombre —
+  probablemente se arregló como parte de otro cambio a `site-image.js`/
+  `lib/graph.js` sin mencionarlo explícito en el mensaje.
 - 404 de `Logo.jpg` / `NavBackground.jpg` en Orders (`/api/site-image`) —
   pendiente de que el dueño confirme el nombre real de esos archivos en la
   raíz del drive de SharePoint (Onlineorders).
