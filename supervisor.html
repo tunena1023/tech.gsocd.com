@@ -182,6 +182,8 @@
 
 <div id="gsNav"></div>
 
+<div id="camera-queue-banner" style="display:none;background:#3a2f18;color:#E2C97E;font-size:12px;padding:8px 16px;text-align:center"></div>
+
 <div class="view active" id="view-active">
   <h2>Active Orders</h2>
   <p class="sub" id="active-sub">All active orders in your department — approved and already scheduled.</p>
@@ -223,6 +225,7 @@
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.6/nav-premium/nav-premium.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.9/gallery-groups/gallery-groups.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.28.0/camera-queue/camera-queue.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.26.0/photo-hover-preview/photo-hover-preview.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.27.3/order-history/order-history.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.8.0/order-badges/order-badges.js"></script>
@@ -249,6 +252,33 @@ if (tech) {
   GSNavPremium.applyChrome();
   GSPhotoHoverPreview.setup();
   GS.initPushNotifications(tech.id);
+
+  /* Mismo dbName que employee.html -- Employee y Supervisor son la
+     misma app (mismo dominio), asi que comparten el mismo cajon de
+     IndexedDB. Si un supervisor toma fotos y luego un empleado abre
+     el navegador en el mismo telefono (caso raro pero posible en un
+     dispositivo compartido), los reintentos siguen funcionando
+     igual sin importar por cual pantalla entraron. */
+  GSCameraQueue.init({
+    dbName: 'gs-tech-camera-queue',
+    maxAttempts: 10,
+    retryIntervalMs: 20000,
+    uploadFn: async function (item) { return GS.api(item.endpoint, { body: item.body }); },
+    onChange: function (pending) {
+      const banner = document.getElementById('camera-queue-banner');
+      const waiting = pending.filter(p => !p.failed).length;
+      const failed = pending.filter(p => p.failed).length;
+      if (failed) {
+        banner.style.display = 'block';
+        banner.textContent = failed + ' photo' + (failed === 1 ? '' : 's') + ' could not be uploaded — open the order and try again.';
+      } else if (waiting) {
+        banner.style.display = 'block';
+        banner.textContent = waiting + ' photo' + (waiting === 1 ? '' : 's') + ' waiting for signal — will upload automatically.';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+  });
 
   const $ = id => document.getElementById(id);
   function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
@@ -703,6 +733,7 @@ if (tech) {
                   <button type="button" class="gs-ofp-btn-secondary" onclick="reportUnitNotReady('${esc(o.OrderID)}')">Report: Unit Not Ready</button>
                 </div>
                 <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
+                <button type="button" class="photo-btn" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
                 <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
                 ${isMySupervisorOrder(o)
                   ? (o.TechMarkedComplete
@@ -760,7 +791,16 @@ if (tech) {
     photoRecurringTarget = { recurringServiceId, visitDate };
     $('recurring-camera-input').click();
   }
+  /* Fotos: cámara propia (camera-capture.html), con cola offline real
+     -- las fotos nunca se pierden aunque no haya señal. Video se
+     queda con la cámara nativa del teléfono (camera-input de
+     siempre) -- grabar en vivo desde el navegador es mucho menos
+     estable entre teléfonos, sobre todo Android (confirmado con el
+     dueño: por ahora solo fotos pasan a la cámara nueva). */
   function takePhoto(orderId) {
+    location.href = 'camera-capture.html?context=order-photo&orderId=' + encodeURIComponent(orderId) + '&return=supervisor.html';
+  }
+  function recordVideo(orderId) {
     photoOrderId = orderId;
     completingAfterPhoto = false;
     $('camera-input').click();
