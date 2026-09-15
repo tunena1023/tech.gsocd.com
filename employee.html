@@ -139,7 +139,6 @@
 </div>
 
 <input type="file" id="camera-input" accept="image/*,video/*,android/allowCamera" style="display:none">
-<input type="file" id="recurring-camera-input" accept="image/*" capture="environment" style="display:none">
 
 <div class="toast" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--white);padding:12px 22px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:all .3s;z-index:500"></div>
 
@@ -441,31 +440,14 @@ if (tech) {
 
   let photoOrderId = null;
   let completingAfterPhoto = false;
-  /* BUG REAL encontrado por el usuario: el boton de Recurring abria
-     la galeria en vez de la camara. Se separo del <input> de ordenes
-     normales a proposito. Este nuevo (#recurring-camera-input) solo
-     acepta imagen (sin video/*), que es lo documentado como mas
-     confiable para que Android brinque directo a la camara con
-     capture="environment" en vez de mostrar el selector completo.
-
-     El mismo bug real aparecio despues en #camera-input (el de ver/
-     completar una orden) -- ese SI necesita foto o video (limite de
-     5 min, etc.), asi que no se le puede quitar video/* como al de
-     arriba. Con accept mixto (imagen+video), capture="environment"
-     deja de ser confiable -- Android no sabe a que app brincar y
-     termina aterrizando en la galeria. Se probaron 2 vias antes de
-     esta (separar en 2 botones, y un menu propio de Foto/Video) y el
-     usuario prefirio esta tercera: quitarle el capture por completo
-     a #camera-input, para que salga el selector NATIVO del telefono.
-
-     PERO el usuario siguio viendo solo la galeria, sin opcion de
-     camara ni con el capture quitado. Investigando se encontro la
-     causa real: es un bug DOCUMENTADO de Android 14 y 15 + Chrome/
-     Edge (aparecio a mediados de 2025) -- en esas versiones, Chrome
-     le quito la opcion de Camara al selector de archivos por
-     completo cuando el accept es image/* o video/* (con o sin
-     capture), y solo deja escoger de la galeria. Le pasa a cualquier
-     pagina web, no es nada de nuestro codigo.
+  /* BUG REAL encontrado por el usuario, sigue aplicando a #camera-input
+     (el que usa recordVideo -- fotos ya no pasan por aqui, se movieron
+     a la camara nueva/camera-capture.html): es un bug DOCUMENTADO de
+     Android 14 y 15 + Chrome/Edge (aparecio a mediados de 2025) -- en
+     esas versiones, Chrome le quito la opcion de Camara al selector de
+     archivos por completo cuando el accept es image/* o video/* (con o
+     sin capture), y solo deja escoger de la galeria. Le pasa a
+     cualquier pagina web, no es nada de nuestro codigo.
 
      El arreglo real (probado en varios telefonos, documentado en
      https://blog.addpipe.com/html-file-input-accept-video-camera-option-is-missing-android-14-15/)
@@ -475,10 +457,12 @@ if (tech) {
      un estandar oficial, asi que podria dejar de funcionar en una
      version futura de Chrome, pero por ahora es lo unico que
      realmente resuelve el problema sin agregar boton ni menu. */
-  let photoRecurringTarget = null; // {recurringServiceId, visitDate}
+  /* Foto opcional de una visita recurrente -- misma cámara nueva,
+     contexto 'recurring-photo' (endpoint/body distintos, los decide
+     camera-capture.html). */
   function takeRecurringPhoto(recurringServiceId, visitDate) {
-    photoRecurringTarget = { recurringServiceId, visitDate };
-    $('recurring-camera-input').click();
+    location.href = 'camera-capture.html?context=recurring-photo&recurringServiceId=' + encodeURIComponent(recurringServiceId) +
+      '&visitDate=' + encodeURIComponent(visitDate) + '&return=employee.html';
   }
   /* Fotos: cámara propia (camera-capture.html), con cola offline real
      -- las fotos nunca se pierden aunque no haya señal. Video se
@@ -494,14 +478,15 @@ if (tech) {
     completingAfterPhoto = false;
     $('camera-input').click();
   }
-  /* "Mark as Completed" siempre pide una foto nueva -- del trabajo ya
-     terminado, no reusa una foto vieja tomada a medio trabajo. Al
-     subirse bien, se completa la orden en automatico (un solo flujo
-     para el empleado, sin tener que darle clic 2 veces). */
+  /* "Mark as Completed" sigue exigiendo una foto nueva -- del trabajo
+     ya terminado, no reusa una foto vieja tomada a medio trabajo.
+     requireAtLeastOne=1 bloquea el Done de la camara si no se tomo
+     ninguna; completeAfter=1 hace que, al terminar, regrese aqui con
+     ?completeOrder=<id> en la URL -- se completa solo al cargar (ver
+     mas abajo), sin que el empleado tenga que darle clic 2 veces. */
   function markEmployeeCompleted(orderId) {
-    photoOrderId = orderId;
-    completingAfterPhoto = true;
-    $('camera-input').click();
+    location.href = 'camera-capture.html?context=order-photo&orderId=' + encodeURIComponent(orderId) +
+      '&return=employee.html&requireAtLeastOne=1&completeAfter=1';
   }
   /* Foto o video, con su ubicacion -- confirmado con el usuario: la
      foto/video sigue siendo obligatoria como siempre (la cámara
@@ -533,30 +518,6 @@ if (tech) {
       v.src = URL.createObjectURL(file);
     });
   }
-
-  $('recurring-camera-input').addEventListener('change', async function () {
-    const file = this.files[0];
-    const target = photoRecurringTarget;
-    this.value = '';
-    photoRecurringTarget = null;
-    if (!file || !target) return;
-    const locR = await getLocationSafe();
-    const readerR = new FileReader();
-    readerR.onload = async () => {
-      try {
-        await GS.api('/upload-recurring-photo', { body: {
-          recurringServiceId: target.recurringServiceId, visitDate: target.visitDate, role: tech.role,
-          imageBase64: readerR.result, isVideo: false, techId: tech.id,
-          latitude: locR ? locR.lat : null, longitude: locR ? locR.lon : null
-        } });
-        showToast('Photo saved.');
-      } catch (e) {
-        showToast('Could not save that: ' + e.message);
-      }
-    };
-    readerR.onerror = () => showToast('Could not read that file — please try again.');
-    readerR.readAsDataURL(file);
-  });
 
   $('camera-input').addEventListener('change', async function () {
     const file = this.files[0];
@@ -722,6 +683,18 @@ if (tech) {
   window.takeRecurringPhoto = takeRecurringPhoto;
 
   loadOrders();
+
+  /* Si venimos de regreso de camera-capture.html con la foto
+     obligatoria de "Mark as Completed" ya tomada (ver
+     markEmployeeCompleted arriba), se completa la orden aqui mismo,
+     sin que el empleado tenga que darle clic 2 veces. Se limpia la
+     URL despues para que un refresh no la vuelva a completar sola. */
+  const urlParams = new URLSearchParams(location.search);
+  const completeOrderId = urlParams.get('completeOrder');
+  if (completeOrderId) {
+    history.replaceState(null, '', location.pathname);
+    finishCompletion(completeOrderId);
+  }
 }
 </script>
 </body>

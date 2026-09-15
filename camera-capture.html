@@ -101,17 +101,37 @@
   const tech = GS.requireSession(); // cualquier rol -- Employee y Supervisor entran ambos aqui
 
   const params = new URLSearchParams(location.search);
-  const context = params.get('context');       // 'order-photo' por ahora (mas tipos despues)
+  const context = params.get('context');       // 'order-photo' | 'recurring-photo'
   const orderId = params.get('orderId');
+  const recurringServiceId = params.get('recurringServiceId');
+  const visitDate = params.get('visitDate');
+  const label = params.get('label');            // texto para el titulo, opcional
   const returnTo = params.get('return') || 'employee.html';
+  const requireAtLeastOne = params.get('requireAtLeastOne') === '1';
+  const completeAfter = params.get('completeAfter') === '1';
   const MAX_PHOTOS = 10;
 
-  document.getElementById('page-title').textContent = orderId ? ('Order ' + orderId) : 'Camera';
+  document.getElementById('page-title').textContent = label || (orderId ? ('Order ' + orderId) : 'Camera');
   document.getElementById('close-btn').addEventListener('click', goBack);
 
   function goBack() {
     if (stream) stream.getTracks().forEach(t => t.stop());
     location.href = returnTo;
+  }
+  function finish() {
+    if (requireAtLeastOne && count === 0) {
+      const statusLine = document.getElementById('status-line');
+      statusLine.textContent = 'Take at least 1 photo before finishing.';
+      statusLine.className = 'status-line warn';
+      return;
+    }
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    if (completeAfter && orderId) {
+      const sep = returnTo.indexOf('?') === -1 ? '?' : '&';
+      location.href = returnTo + sep + 'completeOrder=' + encodeURIComponent(orderId);
+    } else {
+      location.href = returnTo;
+    }
   }
 
   /* Mismo mecanismo que ya usaba employee.html/supervisor.html --
@@ -130,9 +150,9 @@
   /* La cola es la MISMA pieza compartida para cualquier app que la
      use -- lo unico que cambia por pagina es dbName (para que cada
      app tenga su propio cajon en IndexedDB) y uploadFn (como se
-     arma el body real para el endpoint que le toca). Aqui solo
-     existe el contexto 'order-photo' por ahora; los demas puntos
-     (Mark as Completed, recurring) se conectan en un paso aparte. */
+     arma el body real para el endpoint que le toca). El endpoint/
+     body si varia por contexto (order-photo vs recurring-photo),
+     eso se decide en capture() mas abajo. */
   GSCameraQueue.init({
     dbName: 'gs-tech-camera-queue',
     maxAttempts: 10,
@@ -192,22 +212,33 @@
     const { thumb, status } = addThumb(imageBase64);
 
     const loc = await getLocationSafe();
-    const body = {
-      orderId, imageBase64, isVideo: false, techId: tech.id,
-      latitude: loc ? loc.lat : null, longitude: loc ? loc.lon : null
-    };
+    let endpoint, body;
+    if (context === 'recurring-photo') {
+      endpoint = '/upload-recurring-photo';
+      body = {
+        recurringServiceId, visitDate, role: tech.role,
+        imageBase64, isVideo: false, techId: tech.id,
+        latitude: loc ? loc.lat : null, longitude: loc ? loc.lon : null
+      };
+    } else {
+      endpoint = '/upload-photo';
+      body = {
+        orderId, imageBase64, isVideo: false, techId: tech.id,
+        latitude: loc ? loc.lat : null, longitude: loc ? loc.lon : null
+      };
+    }
 
     /* enqueue() ya guarda la foto en el telefono ANTES de intentar
        subirla (regla de oro: nunca se pierde, pase lo que pase) --
        si el intento inmediato falla (sin señal), el propio onChange
        de abajo la pinta como "esperando señal". */
     const id = await GSCameraQueue.enqueue({
-      endpoint: '/upload-photo', body: body, meta: { orderId: orderId }
+      endpoint: endpoint, body: body, meta: { orderId: orderId, recurringServiceId: recurringServiceId }
     });
     thumbById[id] = { thumb, status };
   }
   document.getElementById('shutter-btn').addEventListener('click', capture);
-  document.getElementById('done-btn').addEventListener('click', goBack);
+  document.getElementById('done-btn').addEventListener('click', finish);
 
   function onQueueChange(pending) {
     const byId = {};
