@@ -172,3 +172,58 @@ version actual del archivo -- puede haber pendientes, decisiones o
 cambios en local sin subir que cambian por completo cual es la forma
 correcta de resolver algo.
 
+## Proyecto grande (15/09/2026): cámara propia + cola offline real
+
+Ver `gsocd-shared/NOTES.md` para el contexto completo (origen real: un
+técnico perdió ~7 de 8 fotos en un punto muerto conocido; por qué
+`camera-capture.html` vive por dominio y no en shared; los 9 puntos
+totales en los 3 repos). Aquí solo lo que le tocó a **Tech
+específicamente** -- este fue el PRIMER repo conectado, y el único cuya
+cámara en sí ya se probó de verdad en producción y quedó confirmada por
+el dueño.
+
+- 3 puntos de captura, en `employee.html` Y `supervisor.html` (código
+  duplicado entre los dos, cada cambio se hizo 2 veces):
+  1. **Take a photo** -- navega directo a `camera-capture.html`.
+  2. **Mark as Completed** -- foto obligatoria antes de completar.
+     `camera-capture.html` soporta `requireAtLeastOne=1` (el botón Done
+     no deja salir con 0 fotos) y `completeAfter=1` (al terminar, regresa
+     con `?completeOrder=<id>` en la URL; `employee.html`/
+     `supervisor.html` detectan ese parámetro al cargar y llaman
+     `finishCompletion(orderId)` solas, sin que el técnico tenga que
+     darle clic 2 veces).
+  3. **Foto de Recurring** (opcional) -- contexto `recurring-photo`,
+     mismo `camera-capture.html`, sube a `/upload-recurring-photo`.
+- **Video se queda con la cámara nativa** (`camera-input`, el botón
+  aparte "Record a video") -- se le agregó un botón nuevo separado
+  porque antes "Take a photo" y video compartían el mismo `<input>`
+  nativo; ahora foto pasa por la cámara propia y video sigue como
+  estaba, así que necesitaban 2 botones distintos.
+- Se quitó `#recurring-camera-input` y su listener por completo (ya sin
+  uso, las fotos de recurring pasan por la cámara nueva).
+- **Efecto secundario real, solo en `supervisor.html`:** hay 2 paneles
+  de "Update Services" (uno para órdenes normales, otro para Recurring)
+  con edición viva en memoria. Como la cámara nueva navega fuera de la
+  página por completo, se agregó `saveSupervisorEditSnapshot()`/
+  `restoreSupervisorEditSnapshotIfAny()` -- mismo patrón de snapshot en
+  `sessionStorage` que se usó en Admin. El panel de Recurring usa un
+  `GSServicePicker` real montado (`rcUpdatePicker`) -- hacía falta volver
+  `async` toda la cadena de montaje (`toggleRcUpdate` ya no se llamaba
+  sin esperar) para poder pisarle la selección con `setSelected()` al
+  restaurar. `employee.html` NO tiene este riesgo -- no hay ningún panel
+  de edición ahí, se confirmó explícitamente antes de decidir que no
+  hacía falta protegerlo.
+
+**Pendiente -- confirmado con el dueño, a propósito, NO es un olvido:**
+los 2 paneles de "Update Services" de `supervisor.html` (el normal y el
+de Recurring) siguen con su diseño viejo (un modal separado, sin las
+mejoras que ya tiene Active en Admin). El dueño confirmó que quiere
+rediseñarlos para que se vean como las tarjetas de Admin -- X/undo en
+línea por servicio, pills de nivel L1/L2/L3, y un ícono de cámara POR
+SERVICIO individual (no solo el botón general de la tarjeta) -- pero
+pidió explícitamente dejar eso para una sesión aparte de diseño, y que
+esta sesión solo se enfocara en que la edición actual (con el diseño
+viejo tal cual está) no se perdiera al ir a la cámara. Cuando se haga
+ese rediseño, la lógica de la cámara que ya existe en `camera-queue.js`
+se reusa igual -- lo que cambia es solo cómo se ve el panel.
+
