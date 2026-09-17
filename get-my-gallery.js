@@ -55,7 +55,10 @@ exports.handler = async (event) => {
     if (role === 'Developer') {
       /* Ve todo -- mismo criterio que get-my-orders.js/get-my-history.js. */
     } else if (role === 'Supervisor') {
-      myOrders = myOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
+      /* Mismo fix que get-my-orders.js: Mixed = las 3 divisiones. */
+      if (division.toLowerCase() !== 'mixed') {
+        myOrders = myOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
+      }
     } else {
       /* Mismo arreglo que get-my-orders.js/get-my-history.js: Admin
          guarda la asignacion real en Scheduling con el PayrollNumber

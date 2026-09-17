@@ -69,7 +69,15 @@ exports.handler = async (event) => {
          orden asignada como supervisor, igual que hoy -- ese candado
          vive en el frontend, isMySupervisorOrder, y no cambia aqui). */
     } else if (role === 'Supervisor') {
-      liveOrders = liveOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
+      /* Mixed = las 3 divisiones (mismo caso que Developer, sin
+         filtro) -- antes de este fix, comparar Division de la orden
+         contra el string literal "Mixed" nunca coincidia con nada
+         (ninguna orden tiene Division="Mixed", solo Janitorial/
+         Renovations/Exteriors), asi que un Supervisor Mixed no veia
+         NINGUNA orden. Confirmado con el dueno, 17/09/2026. */
+      if (division.toLowerCase() !== 'mixed') {
+        liveOrders = liveOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
+      }
     } else {
       /* Admin (Scheduling en Admingsocd.com) guarda la asignacion real
          en la lista Scheduling con el PayrollNumber del tecnico -- NO
@@ -206,10 +214,10 @@ exports.handler = async (event) => {
         Services: parseServicesJson(it.fields.ServicesJSON)
       }));
     } else if (role === 'Supervisor') {
-      /* Ve todo el departamento, sin ventana de 3 dias -- mismo
-         criterio que ya tenia (vista de supervision). */
+      /* Mismo fix que arriba (ordenes normales) -- Mixed = las 3
+         divisiones, sin filtro. */
       recurring = activeServices
-        .filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase())
+        .filter(it => division.toLowerCase() === 'mixed' || String(it.fields.Division || '').toLowerCase() === division.toLowerCase())
         .map(it => ({
           id: it.id,
           clientId: it.fields.ClientID || '',
