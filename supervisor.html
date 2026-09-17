@@ -308,11 +308,18 @@ if (tech) {
     { label: 'Gallery', dataView: 'gallery', onclick: "showTab('gallery')" }
   ]);
 
-  /* Developer ve las 3 divisiones mezcladas -- el selector solo tiene
-     sentido para el (Supervisor ya esta limitado a la suya desde el
-     backend, mostrarselo tambien no aportaria nada). */
+  /* Developer, y ahora tambien un Supervisor con Division "Mixed"
+     (ve las 3 divisiones mezcladas igual que Developer, desde el fix
+     de get-my-orders.js) -- el selector solo tenia sentido antes para
+     Developer, bajo el supuesto de que un Supervisor SIEMPRE estaba
+     limitado a una sola division desde el backend. Con Mixed eso ya
+     no es cierto: sin este cambio, un Supervisor Mixed veia todo
+     revuelto sin ninguna forma de filtrar por division, a diferencia
+     de un Developer en la misma situacion. Confirmado con el dueno,
+     17/09/2026. */
   let activeDivisionFilter = '';
-  if (tech.role === 'Developer') {
+  const seesMixedDivisions = tech.role === 'Developer' || (tech.role === 'Supervisor' && String(tech.division || '').toLowerCase() === 'mixed');
+  if (seesMixedDivisions) {
     $('active-sub').textContent = 'All active orders across every division — approved and already scheduled.';
     $('active-division-pills').style.display = 'flex';
     $('active-division-pills').querySelectorAll('.pill').forEach(p => {
