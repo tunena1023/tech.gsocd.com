@@ -614,17 +614,19 @@ if (tech) {
     }
     const initialSelected = { Commercial: {} };
     const initialLevels = {};
+    const initialQuantities = {};
     rcUpdateBaseNames = [];
     (r.Services || []).forEach(s => {
       initialSelected.Commercial[s.ServiceName] = s.ServiceName; // sin sku real disponible aqui, se usa el nombre como llave
       if (s.Level) initialLevels['Commercial|' + s.ServiceName] = s.Level;
+      if (s.Quantity) initialQuantities['Commercial|' + s.ServiceName] = Number(s.Quantity);
       rcUpdateBaseNames.push(s.ServiceName);
     });
     rcUpdatePicker = GSServicePicker.mount('rc-update', 'rc-update-mount-' + r.id, {
       catalog: recurringCatalogCache,
       division: 'Janitorial', mode: 'levels', showSelectAll: false,
       groupByCategory: true, propertyType: 'Commercial',
-      initialSelected: initialSelected, initialLevels: initialLevels,
+      initialSelected: initialSelected, initialLevels: initialLevels, initialQuantities: initialQuantities,
       onChange: function () { renderRcUpdateDiff(r.id); }
     });
     renderRcUpdateDiff(r.id);
@@ -662,6 +664,7 @@ if (tech) {
     if (!rcUpdatePicker) return;
     const selected = rcUpdatePicker.getSelected();
     const levels = rcUpdatePicker.getLevels();
+    const qtys = rcUpdatePicker.getQuantities();
     const nowNames = new Set();
     Object.values(selected).forEach(m => Object.keys(m).forEach(n => nowNames.add(n)));
     const baseNames = new Set(rcUpdateBaseNames);
@@ -687,7 +690,7 @@ if (tech) {
       await GS.api('/submit-recurring-update', {
         body: {
           recurringServiceId: id, visitDate, techId: tech.id, role: tech.role,
-          services: addedNames.map(n => ({ serviceName: n, level: levels['Commercial|' + n] || '' })),
+          services: addedNames.map(n => ({ serviceName: n, level: levels['Commercial|' + n] || '', quantity: qtys['Commercial|' + n] || '' })),
           removedNotes
         }
       });
@@ -830,7 +833,7 @@ if (tech) {
     if (rcUpdateOpenFor && rcUpdatePicker) {
       snap.recurring = {
         id: rcUpdateOpenFor, visitDate: rcUpdateVisitDate,
-        selected: rcUpdatePicker.getSelected(), levels: rcUpdatePicker.getLevels()
+        selected: rcUpdatePicker.getSelected(), levels: rcUpdatePicker.getLevels(), quantities: rcUpdatePicker.getQuantities()
       };
     }
     if (snap.regular || snap.recurring) {
@@ -868,7 +871,7 @@ if (tech) {
         const body = btn.closest('.order-body');
         if (body) body.classList.add('open');
         await toggleRcUpdate(id, snap.recurring.visitDate); // monta el picker fresco
-        if (rcUpdatePicker) rcUpdatePicker.setSelected(snap.recurring.selected, snap.recurring.levels);
+        if (rcUpdatePicker) rcUpdatePicker.setSelected(snap.recurring.selected, snap.recurring.levels, snap.recurring.quantities);
         renderRcUpdateDiff(id);
         if (body) body.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
