@@ -19,6 +19,7 @@ const handlers = {
   'submit-recurring-complete': require('../submit-recurring-complete').handler,
   'submit-recurring-update': require('../submit-recurring-update').handler,
   'upload-recurring-photo': require('../upload-recurring-photo').handler,
+  'upload-service-photo': require('../upload-service-photo').handler,
   'get-recurring-history': require('../get-recurring-history').handler
 };
 
