@@ -35,7 +35,8 @@ exports.handler = async (event) => {
         division: it.fields.Division || '',
         propertyType: it.fields.PropertyType || '',
         category: it.fields.Category || '',
-        active: it.fields.Active === undefined ? true : (it.fields.Active === true || it.fields.Active === 'true')
+        active: it.fields.Active === undefined ? true : (it.fields.Active === true || it.fields.Active === 'true'),
+        requiresQuantity: it.fields.RequiresQuantity === true || it.fields.RequiresQuantity === 'true'
       }))
       .filter(s => s.active
         && (!division || s.division.toLowerCase() === division)
