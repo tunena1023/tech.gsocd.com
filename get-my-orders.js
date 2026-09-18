@@ -111,6 +111,10 @@ exports.handler = async (event) => {
       const oid = f.OrderID || f.Title || '';
       return {
         id: it.id,
+        /* Pedido del dueño (18/09/2026): antes no llegaba este dato
+           al frontend -- se necesita para mostrar cuando se creo la
+           orden en la tarjeta cerrada, sin tener que abrirla. */
+        createdDateTime: it.createdDateTime || '',
         OrderID: oid,
         ClientID: f.ClientID || '',
         BusinessName: f.BusinessName || f.Title || '',

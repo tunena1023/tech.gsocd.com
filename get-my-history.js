@@ -112,6 +112,8 @@ exports.handler = async (event) => {
       const oid = f.OrderID || f.Title || '';
       const hist = (historyByOrder[oid] || []).sort((a, b) => String(a.ChangeDate).localeCompare(String(b.ChangeDate)));
       return {
+        /* Mismo criterio que get-my-orders.js -- ver ahi para el detalle. */
+        createdDateTime: it.createdDateTime || '',
         OrderID: oid,
         BusinessName: f.BusinessName || f.Title || '',
         Division: f.Division || '',

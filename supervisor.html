@@ -745,7 +745,7 @@ if (tech) {
           <div class="order-head" onclick="toggleOrder(this)">
             <div>
               <div class="order-id">${esc(o.OrderID)}</div>
-              <div class="order-meta">${esc(o.BusinessName)} · ${esc(addr)} · ${esc(o.ServiceWindow || fmtDateTime(o.DispatchDate))}</div>
+              <div class="order-meta">${esc(o.BusinessName)} · ${esc(addr)} · ${esc(o.ServiceWindow || fmtDateTime(o.DispatchDate))}${o.createdDateTime ? ' · Created ' + fmtDateTime(o.createdDateTime) : ''}</div>
             </div>
             <span class="badge-row">
               ${GSOrderBadges.occupied(o)}${GSOrderBadges.officeNeed(o)}
@@ -1040,7 +1040,7 @@ if (tech) {
           <div class="order-head" onclick="toggleOrder(this)">
             <div>
               <div class="order-id">${esc(o.OrderID)}</div>
-              <div class="order-meta">${esc(o.BusinessName)} · ${fmtDate(o.EntryDate)}</div>
+              <div class="order-meta">${esc(o.BusinessName)} · ${fmtDate(o.EntryDate)}${o.createdDateTime ? ' · Created ' + fmtDateTime(o.createdDateTime) : ''}</div>
             </div>
             <span class="badge-row">
               ${GSOrderBadges.occupied(o)}${GSOrderBadges.officeNeed(o)}
