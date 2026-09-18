@@ -28,7 +28,7 @@ const PHOTOS_FOLDER = process.env.GRAPH_PHOTOS_FOLDER || 'TechPhotos';
    se lee de NotCompletedReason en OrderServices en ese momento, nunca
    se duplica aqui. Calcado de Admingsocd.com/get-admin-gallery.js
    para que se vea IGUAL en los 2 lados. */
-const SVC_PHOTO_PREFIX = /^svc-(.+?)-(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})\.[a-z0-9]+$/i;
+const SVC_PHOTO_PREFIX = /^svc-(.+?)-(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})(?:-[a-z0-9]+)?\.[a-z0-9]+$/i;
 function safeName(s) { return String(s || '').replace(/[^a-z0-9]/gi, '_'); }
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
