@@ -222,48 +222,65 @@
 
   async function capture() {
     if (count >= MAX_PHOTOS || !stream) return;
+    /* BUG REAL encontrado y arreglado (18/09/2026): el boton de
+       disparo se quedaba clickeable durante TODO capture() -- incluido
+       el await de getLocationSafe(), que puede tardar hasta 8
+       segundos si el GPS esta lento. Si el tecnico tocaba de nuevo
+       mientras esperaba (pensando que no habia pasado nada), se
+       disparaba una SEGUNDA captura de la misma imagen en pantalla --
+       2 fotos identicas subidas por separado. Se bloquea aqui, apenas
+       entra, y se libera hasta que termine (exito o error). */
+    const btn = document.getElementById('shutter-btn');
+    if (btn.disabled) return;
+    btn.disabled = true;
+
     count++;
     document.getElementById('counter-pill').textContent = count + ' / ' + MAX_PHOTOS + ' photos';
-    if (count >= MAX_PHOTOS) document.getElementById('shutter-btn').disabled = true;
 
     const imageBase64 = captureFrame();
     const { thumb, status } = addThumb(imageBase64);
 
-    const loc = await getLocationSafe();
-    let endpoint, body;
-    if (context === 'recurring-photo') {
-      endpoint = '/upload-recurring-photo';
-      body = {
-        recurringServiceId, visitDate, role: tech.role,
-        imageBase64, isVideo: false, techId: tech.id,
-        latitude: loc ? loc.lat : null, longitude: loc ? loc.lon : null
-      };
-    } else if (context === 'service-photo') {
-      /* Mismo endpoint que ya usa Admin (upload-service-photo.js) --
-         no necesita saber quien es el actor, solo orderId/serviceName/
-         la imagen. El nombre del archivo mismo dice a que servicio
-         pertenece (svc-<ServiceName>-<timestamp>.jpg), sin ninguna
-         columna nueva en SharePoint -- get-my-gallery.js ya lee ese
-         prefijo para armar la descripcion (mismo mecanismo, calcado
-         de Admin). A peticion del dueno, 18/09/2026. */
-      endpoint = '/upload-service-photo';
-      body = { orderId, serviceName, imageBase64 };
-    } else {
-      endpoint = '/upload-photo';
-      body = {
-        orderId, imageBase64, isVideo: false, techId: tech.id,
-        latitude: loc ? loc.lat : null, longitude: loc ? loc.lon : null
-      };
-    }
+    try {
+      const loc = await getLocationSafe();
+      let endpoint, body;
+      if (context === 'recurring-photo') {
+        endpoint = '/upload-recurring-photo';
+        body = {
+          recurringServiceId, visitDate, role: tech.role,
+          imageBase64, isVideo: false, techId: tech.id,
+          latitude: loc ? loc.lat : null, longitude: loc ? loc.lon : null
+        };
+      } else if (context === 'service-photo') {
+        /* Mismo endpoint que ya usa Admin (upload-service-photo.js) --
+           no necesita saber quien es el actor, solo orderId/serviceName/
+           la imagen. El nombre del archivo mismo dice a que servicio
+           pertenece (svc-<ServiceName>-<timestamp>.jpg), sin ninguna
+           columna nueva en SharePoint -- get-my-gallery.js ya lee ese
+           prefijo para armar la descripcion (mismo mecanismo, calcado
+           de Admin). A peticion del dueno, 18/09/2026. */
+        endpoint = '/upload-service-photo';
+        body = { orderId, serviceName, imageBase64 };
+      } else {
+        endpoint = '/upload-photo';
+        body = {
+          orderId, imageBase64, isVideo: false, techId: tech.id,
+          latitude: loc ? loc.lat : null, longitude: loc ? loc.lon : null
+        };
+      }
 
-    /* enqueue() ya guarda la foto en el telefono ANTES de intentar
-       subirla (regla de oro: nunca se pierde, pase lo que pase) --
-       si el intento inmediato falla (sin señal), el propio onChange
-       de abajo la pinta como "esperando señal". */
-    const id = await GSCameraQueue.enqueue({
-      endpoint: endpoint, body: body, meta: { orderId: orderId, recurringServiceId: recurringServiceId }
-    });
-    thumbById[id] = { thumb, status };
+      /* enqueue() ya guarda la foto en el telefono ANTES de intentar
+         subirla (regla de oro: nunca se pierde, pase lo que pase) --
+         si el intento inmediato falla (sin señal), el propio onChange
+         de abajo la pinta como "esperando señal". */
+      const id = await GSCameraQueue.enqueue({
+        endpoint: endpoint, body: body, meta: { orderId: orderId, recurringServiceId: recurringServiceId }
+      });
+      thumbById[id] = { thumb, status };
+    } finally {
+      /* Se reactiva salvo que ya se haya llegado al maximo -- ese
+         candado si debe quedarse (comportamiento de siempre). */
+      if (count < MAX_PHOTOS) btn.disabled = false;
+    }
   }
   document.getElementById('shutter-btn').addEventListener('click', capture);
   document.getElementById('done-btn').addEventListener('click', finish);
