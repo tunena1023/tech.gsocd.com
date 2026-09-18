@@ -49,6 +49,25 @@ function formatSvcPhotoDate(y, mo, d, h, mi) {
   return get('month') + ' ' + get('day') + ', ' + get('year') + ' · ' + get('hour') + ':' + get('minute') + ' ' + get('dayPeriod');
 }
 
+/* BUG REAL encontrado y arreglado (18/09/2026, reportado por el
+   dueño): fotos normales ("Take a photo for this order", sin pasar
+   por la camarita de servicio) nunca tenian caption -- solo las que
+   matcheaban el prefijo svc- lo tenian. En Gallery se veian sin
+   fecha/hora del todo. listChildren() ya trae createdDateTime (Graph
+   lo da gratis en cada archivo) -- se usa aqui como respaldo, mismo
+   criterio de zona horaria que formatSvcPhotoDate (America/Chicago). */
+function formatIsoDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true
+  }).formatToParts(d);
+  const get = type => (parts.find(p => p.type === type) || {}).value || '';
+  return get('month') + ' ' + get('day') + ', ' + get('year') + ' · ' + get('hour') + ':' + get('minute') + ' ' + get('dayPeriod');
+}
+
 async function fetchByOrderId(listName, orderId) {
   const filter = encodeURIComponent(`fields/OrderID eq '${orderId}'`);
   let url = siteListPath(listName) + `?$expand=fields&$top=200&$filter=${filter}`;
@@ -154,7 +173,7 @@ exports.handler = async (event) => {
         clientLabel: f.BusinessName || f.ClientID || '',
         division: f.Division || '',
         date: f.EntryDate || f.DispatchDate || '',
-        photos: photos.map(p => ({ name: p.name, downloadUrl: p.downloadUrl, caption: captions[p.name] || undefined }))
+        photos: photos.map(p => ({ name: p.name, downloadUrl: p.downloadUrl, caption: captions[p.name] || formatIsoDate(p.createdDateTime) || undefined }))
       };
     }));
 
