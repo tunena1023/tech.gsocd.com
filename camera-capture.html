@@ -101,10 +101,11 @@
   const tech = GS.requireSession(); // cualquier rol -- Employee y Supervisor entran ambos aqui
 
   const params = new URLSearchParams(location.search);
-  const context = params.get('context');       // 'order-photo' | 'recurring-photo'
+  const context = params.get('context');       // 'order-photo' | 'recurring-photo' | 'service-photo'
   const orderId = params.get('orderId');
   const recurringServiceId = params.get('recurringServiceId');
   const visitDate = params.get('visitDate');
+  const serviceName = params.get('serviceName'); // solo para context='service-photo'
   const label = params.get('label');            // texto para el titulo, opcional
   const returnTo = params.get('return') || 'employee.html';
   const requireAtLeastOne = params.get('requireAtLeastOne') === '1';
@@ -220,6 +221,16 @@
         imageBase64, isVideo: false, techId: tech.id,
         latitude: loc ? loc.lat : null, longitude: loc ? loc.lon : null
       };
+    } else if (context === 'service-photo') {
+      /* Mismo endpoint que ya usa Admin (upload-service-photo.js) --
+         no necesita saber quien es el actor, solo orderId/serviceName/
+         la imagen. El nombre del archivo mismo dice a que servicio
+         pertenece (svc-<ServiceName>-<timestamp>.jpg), sin ninguna
+         columna nueva en SharePoint -- get-my-gallery.js ya lee ese
+         prefijo para armar la descripcion (mismo mecanismo, calcado
+         de Admin). A peticion del dueno, 18/09/2026. */
+      endpoint = '/upload-service-photo';
+      body = { orderId, serviceName, imageBase64 };
     } else {
       endpoint = '/upload-photo';
       body = {
