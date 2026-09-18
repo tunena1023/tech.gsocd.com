@@ -427,7 +427,8 @@ if (tech) {
     box.innerHTML = recurring.map(r => {
         const svcLines = (r.Services || []).map(s => {
           const lvl = s.Level ? ' — ' + esc(s.Level) : '';
-          return '• ' + esc(s.ServiceName) + lvl;
+          const qty = s.Quantity ? ' — Qty: ' + esc(s.Quantity) : '';
+          return '• ' + esc(s.ServiceName) + lvl + qty;
         }).join('<br>');
         const isToday = r.daysUntil === 0;
         const visitDate = nextVisitDateISO(r.daysUntil);
@@ -732,11 +733,12 @@ if (tech) {
       const addr = [o.Address, o.BuildingNumber ? 'Building ' + o.BuildingNumber : '', o.UnitNumber ? 'Unit ' + o.UnitNumber : ''].filter(Boolean).join(' · ');
       const svcLines = (o.Services || []).map(s => {
         const lvl = s.Level ? ' — ' + esc(s.Level) : '';
+        const qty = s.Quantity ? ' — Qty: ' + esc(s.Quantity) : '';
         const safe = esc(o.OrderID).replace(/[^a-z0-9]/gi, '_');
         const catSafe = esc(s.Category || '').replace(/[^a-z0-9]/gi, '_');
         const svcSafe = esc(s.ServiceName).replace(/[^a-z0-9]/gi, '_');
         return '<div class="svc-row">' +
-          '<div class="svc-row-name">' + esc(s.ServiceName) + lvl + '</div>' +
+          '<div class="svc-row-name">' + esc(s.ServiceName) + lvl + qty + '</div>' +
           '<button type="button" class="svc-row-cam" id="svc-cam-' + safe + '-' + catSafe + '-' + svcSafe + '" ' +
             'title="Add a photo for this service" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(s.Category || '') + '\',\'' + jsStr(s.ServiceName) + '\')">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>' +
@@ -1124,7 +1126,7 @@ if (tech) {
     umOrder = orders.find(o => o.OrderID === orderId);
     if (!umOrder) return;
     umServices = (umOrder.Services || []).map(s => ({
-      name: s.ServiceName, sku: s.SubOption, level: s.Level || '',
+      name: s.ServiceName, sku: s.SubOption, level: s.Level || '', quantity: s.Quantity || '',
       category: s.Category, division: s.Division || umOrder.Division
     }));
     umRemoved = new Set();
@@ -1341,7 +1343,7 @@ if (tech) {
       if (umRemoved.has(i)) return;
       finalServices.push({
         Category: s.category, ServiceName: s.name, SubOption: s.sku,
-        Division: s.division, Level: umLevels[i] || ''
+        Division: s.division, Level: umLevels[i] || '', Quantity: s.quantity || ''
       });
     });
     umAdded.forEach(c => {

@@ -102,7 +102,8 @@ exports.handler = async (event) => {
         Category: it.fields.Category || '',
         ServiceName: it.fields.ServiceName || '',
         SubOption: it.fields.SubOption || '',
-        Level: it.fields.Level || ''
+        Level: it.fields.Level || '',
+        Quantity: it.fields.Quantity || ''
       });
     });
 
@@ -194,7 +195,7 @@ exports.handler = async (event) => {
     function parseServicesJson(raw) {
       try {
         const arr = JSON.parse(raw || '[]');
-        return Array.isArray(arr) ? arr.map(s => ({ ServiceName: s.serviceName || s.sku || '', Level: s.level || '' })) : [];
+        return Array.isArray(arr) ? arr.map(s => ({ ServiceName: s.serviceName || s.sku || '', Level: s.level || '', Quantity: s.quantity || '' })) : [];
       } catch (e) { return []; }
     }
 

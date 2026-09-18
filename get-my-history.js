@@ -102,6 +102,8 @@ exports.handler = async (event) => {
         Category: it.fields.Category || '',
         ServiceName: it.fields.ServiceName || '',
         SubOption: it.fields.SubOption || '',
+        Level: it.fields.Level || '',
+        Quantity: it.fields.Quantity || '',
         NotCompleted: it.fields.NotCompleted === true || String(it.fields.NotCompleted) === 'true',
         NotCompletedReason: it.fields.NotCompletedReason || ''
       });
