@@ -1169,11 +1169,21 @@ if (tech) {
     const currentListHtml = umServices.map((s, i) => {
       const removed = umRemoved.has(i);
       const lvl = umLevels[i];
+      const catSafe = String(s.category || '').replace(/[^a-z0-9]/gi, '_');
+      const svcSafe = String(s.name || '').replace(/[^a-z0-9]/gi, '_');
       let html = '<div class="um-svc-row' + (removed ? ' removed' : '') + '">' +
         '<span class="um-svc-name">' + esc(s.name) + '</span>' +
         '<div class="um-svc-controls">' +
         (isJan ? '<div class="lvl-group">' + ['Level 1', 'Level 2', 'Level 3'].map((l, n) =>
           '<div class="lvl-btn' + (lvl === l ? ' active' : '') + '" onclick="umSetLevel(' + i + ',\'' + l + '\')">L' + (n + 1) + '</div>').join('') + '</div>' : '') +
+        /* Misma camarita que ya usa Active Orders -- aqui tambien,
+           completado o no, para poder documentar con foto por que no
+           se pudo (o dejar evidencia de lo que si se hizo antes de
+           quitarlo por error). A peticion del dueno, 18/09/2026. */
+        '<button type="button" class="svc-row-cam" id="um-svc-cam-' + i + '-' + catSafe + '-' + svcSafe + '" title="Add a photo for this service" ' +
+          'onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(umOrder.OrderID) + '\',\'' + jsStr(s.category || '') + '\',\'' + jsStr(s.name) + '\')">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>' +
+        '</button>' +
         (removed
           ? '<button type="button" class="um-undo-btn" onclick="umUndoRemove(' + i + ')">Undo</button>'
           : '<button type="button" class="um-remove-btn" onclick="umStartRemove(' + i + ')" title="Remove service">✕</button>') +
