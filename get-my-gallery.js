@@ -193,6 +193,9 @@ exports.handler = async (event) => {
         clientLabel: f.BusinessName || f.ClientID || '',
         division: f.Division || '',
         date: f.EntryDate || f.DispatchDate || '',
+        bedrooms: f.Bedrooms || '',
+        bathrooms: f.Bathrooms || '',
+        supervisor: f.Supervisor || '',
         photos: photos.map(p => {
           const info = captions[p.name];
           return {
