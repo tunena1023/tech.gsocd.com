@@ -1,5 +1,8 @@
 {
   "name": "gs-solutions-tech-portal",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "heic-convert": "2.1.0"
+  }
 }
