@@ -135,6 +135,7 @@ exports.handler = async (event) => {
         Zip: f.Zip || '',
         Contact: f.Contact || '',
         Supervisor: f.Supervisor || '',
+        CompletedDate: f.CompletedDate || '',
         BuildingNumber: f.BuildingNumber || '',
         UnitNumber: f.UnitNumber || '',
         Bedrooms: f.Bedrooms || '',

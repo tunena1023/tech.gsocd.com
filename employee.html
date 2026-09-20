@@ -431,10 +431,17 @@ if (tech) {
         <div class="order-card" data-order="${esc(o.OrderID)}">
           <div class="order-head" onclick="toggleOrder(this)">
             <div>
-              <div class="order-id">${esc(o.OrderID)}</div>
-              <div class="order-meta">${esc(o.BusinessName)} · ${esc(addr)} · ${esc(o.ServiceWindow || fmtDateTime(o.DispatchDate))}${o.createdDateTime ? ' · Created ' + fmtDateTime(o.createdDateTime) : ''}</div>
+              ${GSOrderCardHeader.html({
+                name: o.BusinessName,
+                orderId: o.OrderID,
+                division: o.Division,
+                unitNumber: o.UnitNumber,
+                bedrooms: o.Bedrooms,
+                bathrooms: o.Bathrooms,
+                extraLine: addr + ' · ' + (o.ServiceWindow || fmtDateTime(o.DispatchDate)) + (o.createdDateTime ? ' · Created ' + fmtDateTime(o.createdDateTime) : '')
+              })}
             </div>
-            <span class="badge-row">
+            <span class="badge-row" style="flex-shrink:0">
               ${GSOrderBadges.occupied(o)}${GSOrderBadges.officeNeed(o)}
               <span class="badge">${esc(o.Division)}</span>
             </span>
@@ -640,10 +647,19 @@ if (tech) {
         <div class="order-card" data-order="${esc(o.OrderID)}">
           <div class="order-head" onclick="toggleOrder(this)">
             <div>
-              <div class="order-id">${esc(o.OrderID)}</div>
-              <div class="order-meta">${esc(o.BusinessName)} · ${fmtDate(o.EntryDate)}${o.createdDateTime ? ' · Created ' + fmtDateTime(o.createdDateTime) : ''}</div>
+              ${GSOrderCardHeader.html({
+                name: o.BusinessName,
+                orderId: o.OrderID,
+                division: o.Division,
+                unitNumber: o.UnitNumber,
+                bedrooms: o.Bedrooms,
+                bathrooms: o.Bathrooms,
+                supervisor: o.Supervisor,
+                completedDateText: o.CompletedDate ? fmtDate(o.CompletedDate) : '',
+                extraLine: 'Entry ' + fmtDate(o.EntryDate) + (o.createdDateTime ? ' · Created ' + fmtDateTime(o.createdDateTime) : '')
+              })}
             </div>
-            <span class="badge-row">
+            <span class="badge-row" style="flex-shrink:0">
               ${GSOrderBadges.occupied(o)}${GSOrderBadges.officeNeed(o)}
               <span class="badge">${esc(o.Status)}</span>
             </span>
