@@ -123,6 +123,10 @@
   .lvl-btn{width:26px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:pointer;color:var(--gray);border-right:1px solid var(--border)}
   .lvl-btn:last-child{border-right:none}
   .lvl-btn.active{background:var(--gold);color:var(--black)}
+  .um-qty-wrap{display:flex;align-items:center;gap:4px;flex-shrink:0}
+  .um-qty-label{font-size:9px;text-transform:uppercase;color:var(--gray);font-weight:700}
+  .um-qty-input{width:36px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;text-align:center;font-family:inherit}
+  .um-svc-row.removed .um-qty-input{opacity:.35;pointer-events:none}
 
   .um-note-box{background:var(--off);border:1px solid var(--border);padding:12px;margin:6px 0 10px}
   .um-note-box label{font-size:10px;text-transform:uppercase;color:var(--gray);font-weight:700;display:block;margin-bottom:6px}
@@ -1119,6 +1123,11 @@ if (tech) {
   let umServices = [];   // [{ name, sku, level, category, division }]
   let umRemoved = new Set();
   let umLevels = {};     // index -> 'Level 1'/'Level 2'/'Level 3'
+  /* A peticion del dueño (20/09/2026): antes la cantidad de un
+     servicio ya asignado solo se leia, no habia forma de que el
+     supervisor la corrigiera (ej. se pidieron 3 puertas, en el sitio
+     resultaron 5). index -> numero. */
+  let umQuantities = {};
   let umNotes = {};      // index -> nota de por que se quito
   let umAdded = [];      // catalogo agregado: [{ sku, serviceName }]
   let umNoteBoxOpenFor = null;
@@ -1148,7 +1157,11 @@ if (tech) {
     }));
     umRemoved = new Set();
     umLevels = {};
-    umServices.forEach((s, i) => { if (s.level) umLevels[i] = s.level; });
+    umQuantities = {};
+    umServices.forEach((s, i) => {
+      if (s.level) umLevels[i] = s.level;
+      if (s.quantity) umQuantities[i] = s.quantity;
+    });
     umNotes = {};
     umAdded = [];
     umNoteBoxOpenFor = null;
@@ -1191,6 +1204,12 @@ if (tech) {
     const currentListHtml = umServices.map((s, i) => {
       const removed = umRemoved.has(i);
       const lvl = umLevels[i];
+      /* Solo se ve si el servicio YA traia cantidad -- mismo criterio
+         que ya usa el resto de la app (employee.html/admin.html) para
+         decidir si un servicio es "de cantidad": si nunca tuvo, no es
+         de ese tipo, no hace falta el campo. */
+      const showQty = s.quantity !== '' && s.quantity != null;
+      const qty = umQuantities[i] != null ? umQuantities[i] : s.quantity;
       const catSafe = String(s.category || '').replace(/[^a-z0-9]/gi, '_');
       const svcSafe = String(s.name || '').replace(/[^a-z0-9]/gi, '_');
       let html = '<div class="um-svc-row' + (removed ? ' removed' : '') + '">' +
@@ -1198,6 +1217,11 @@ if (tech) {
         '<div class="um-svc-controls">' +
         (isJan ? '<div class="lvl-group">' + ['Level 1', 'Level 2', 'Level 3'].map((l, n) =>
           '<div class="lvl-btn' + (lvl === l ? ' active' : '') + '" onclick="umSetLevel(' + i + ',\'' + l + '\')">L' + (n + 1) + '</div>').join('') + '</div>' : '') +
+        (showQty ? '<span class="um-qty-wrap' + (removed ? '' : '') + '">' +
+          '<span class="um-qty-label">Qty</span>' +
+          '<input type="number" min="1" step="1" inputmode="numeric" class="um-qty-input" value="' + escAttr(qty) + '" ' +
+          (removed ? 'disabled ' : '') +
+          'onchange="umSetQuantity(' + i + ',this.value)"></span>' : '') +
         /* Misma camarita que ya usa Active Orders -- aqui tambien,
            completado o no, para poder documentar con foto por que no
            se pudo (o dejar evidencia de lo que si se hizo antes de
@@ -1275,6 +1299,15 @@ if (tech) {
   function umSetLevel(i, level) {
     umLevels[i] = umLevels[i] === level ? '' : level;
     renderUpdateModal();
+  }
+  /* Cero/vacio/no numero se ignora en vez de guardar basura -- mismo
+     criterio que setActiveSvcQty en admin.html. No hace falta volver
+     a renderizar todo el panel por cada tecla -- el input ya se ve
+     bien solo, se guarda hasta que pierde el foco (onchange). */
+  function umSetQuantity(i, rawValue) {
+    const n = parseInt(rawValue, 10);
+    if (!n || n < 1) { delete umQuantities[i]; return; }
+    umQuantities[i] = n;
   }
 
   /* Buscador real en vez de mostrar todo el catalogo de un jalon --
@@ -1360,7 +1393,8 @@ if (tech) {
       if (umRemoved.has(i)) return;
       finalServices.push({
         Category: s.category, ServiceName: s.name, SubOption: s.sku,
-        Division: s.division, Level: umLevels[i] || '', Quantity: s.quantity || ''
+        Division: s.division, Level: umLevels[i] || '',
+        Quantity: (umQuantities[i] != null ? umQuantities[i] : s.quantity) || ''
       });
     });
     umAdded.forEach(c => {
