@@ -31,14 +31,10 @@ const PHOTOS_FOLDER = process.env.GRAPH_PHOTOS_FOLDER || 'TechPhotos';
 const SVC_PHOTO_PREFIX = /^svc-(.+?)-(\d{4})-(\d{2})-(\d{2})_(\d{2})(\d{2})(\d{2})(?:-[a-z0-9]+)?\.[a-z0-9]+$/i;
 function safeName(s) { return String(s || '').replace(/[^a-z0-9]/gi, '_'); }
 
-/* BUG REAL encontrado y arreglado (18/09/2026): el nombre del
-   archivo guarda la hora del SERVIDOR (Vercel corre en UTC por
-   default), no la hora de Iowa -- se mostraba tal cual, sin
-   convertir, y una foto tomada a las 9:57 PM se veia como "2:57 AM"
-   en Gallery (5-6 horas adelantada, segun horario de verano/
-   invierno). Ahora se convierte a America/Chicago antes de mostrarla
-   -- Intl.DateTimeFormat ya calcula solo el ajuste correcto de CDT/
-   CST segun la fecha, sin tener que llevar la cuenta a mano. */
+/* El nombre del archivo guarda la hora del SERVIDOR (Vercel corre en
+   UTC), no la hora de Iowa -- hay que convertir a America/Chicago
+   antes de mostrarla. Intl.DateTimeFormat calcula solo el ajuste de
+   CDT/CST segun la fecha. */
 function formatSvcPhotoDate(y, mo, d, h, mi) {
   const utcDate = new Date(Date.UTC(parseInt(y, 10), parseInt(mo, 10) - 1, parseInt(d, 10), parseInt(h, 10), parseInt(mi, 10)));
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -49,13 +45,10 @@ function formatSvcPhotoDate(y, mo, d, h, mi) {
   return get('month') + ' ' + get('day') + ', ' + get('year') + ' · ' + get('hour') + ':' + get('minute') + ' ' + get('dayPeriod');
 }
 
-/* BUG REAL encontrado y arreglado (18/09/2026, reportado por el
-   dueño): fotos normales ("Take a photo for this order", sin pasar
-   por la camarita de servicio) nunca tenian caption -- solo las que
-   matcheaban el prefijo svc- lo tenian. En Gallery se veian sin
-   fecha/hora del todo. listChildren() ya trae createdDateTime (Graph
-   lo da gratis en cada archivo) -- se usa aqui como respaldo, mismo
-   criterio de zona horaria que formatSvcPhotoDate (America/Chicago). */
+/* Fallback para fotos que no matchean el prefijo svc- (sin caption
+   propio): listChildren() ya trae createdDateTime (Graph lo da
+   gratis), se usa aqui con el mismo criterio de zona horaria que
+   formatSvcPhotoDate (America/Chicago). */
 function formatIsoDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);

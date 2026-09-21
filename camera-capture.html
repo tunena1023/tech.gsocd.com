@@ -21,8 +21,7 @@
        vuelve scrolleable, y al hacer scroll se revela ese sobrante de
        abajo. Con height fijo (no min-height) + overflow:hidden, la
        pagina nunca excede la pantalla ni se puede hacer scroll -- es
-       una camara de pantalla completa, nunca deberia necesitar scroll.
-       BUG REAL reportado por el dueno con captura real, 18/09/2026. */
+       una camara de pantalla completa, nunca deberia necesitar scroll. */
     height: 100dvh; overflow: hidden;
     display: flex; flex-direction: column;
   }
@@ -232,14 +231,10 @@
 
   async function capture() {
     if (count >= MAX_PHOTOS || !stream) return;
-    /* BUG REAL encontrado y arreglado (18/09/2026): el boton de
-       disparo se quedaba clickeable durante TODO capture() -- incluido
-       el await de getLocationSafe(), que puede tardar hasta 8
-       segundos si el GPS esta lento. Si el tecnico tocaba de nuevo
-       mientras esperaba (pensando que no habia pasado nada), se
-       disparaba una SEGUNDA captura de la misma imagen en pantalla --
-       2 fotos identicas subidas por separado. Se bloquea aqui, apenas
-       entra, y se libera hasta que termine (exito o error). */
+    /* El boton se bloquea durante TODO capture() -- incluido el
+       await de getLocationSafe(), que puede tardar hasta 8 segundos
+       si el GPS esta lento. Sin esto, un segundo toque mientras
+       espera dispara una captura duplicada de la misma imagen. */
     const btn = document.getElementById('shutter-btn');
     if (btn.disabled) return;
     btn.disabled = true;

@@ -67,8 +67,7 @@ exports.handler = async (event) => {
        (mismo criterio que ya usa submit-employee-complete.js).
        Supervisor y Developer: sin restriccion -- mismo patron que ya
        usa get-my-orders.js (Developer ve/puede TODO, sin filtro de
-       asignacion individual ni de division). BUG REAL: esto se me
-       habia olvidado agregar aqui, solo contemplaba Supervisor. */
+       asignacion individual ni de division). */
     if (role === 'Supervisor' || role === 'Developer') {
       // sin candado adicional -- ven todo, sin filtro de asignacion
     } else {
@@ -78,21 +77,12 @@ exports.handler = async (event) => {
       if (!assigned) return jsonResponse(403, { error: 'You are not assigned to this recurring contract.' });
     }
 
-    /* BUG REAL encontrado y arreglado: antes CUALQUIER renglon ya
-       existente bloqueaba por igual ("alreadyLogged"), sin importar
-       su estatus real. Eso escondia el caso real: si un supervisor
-       ya mando una desviacion (Pending Review) para hoy, este mark-
-       done normal se quedaba callado como si ya no hubiera nada que
-       hacer -- cuando en realidad hay algo esperando decision en
-       Review.
-
-       Ademas: si hoy ya se mando "Sent Back" (oficina dijo que no
-       esta listo), el tecnico debe poder reintentar el mismo dia --
-       se crea un renglon NUEVO (Title con sufijo unico) en vez de
-       pisar el renglon de Sent Back, para que ese Send Back se quede
-       visible en el historial para siempre, no se pierda. Se toma
-       el renglon MAS RECIENTE de hoy (no el primero que aparezca)
-       para decidir el estatus actual. */
+    /* Un renglon ya existente hoy solo bloquea segun su estatus real
+       (no por el simple hecho de existir) -- si hay una desviacion
+       Pending Review, eso debe seguir visible en Review, no esconderse.
+       Si el renglon de hoy es "Sent Back", se crea uno NUEVO en vez de
+       pisarlo, para que el Sent Back quede en el historial. Se usa el
+       renglon MAS RECIENTE de hoy para decidir el estatus actual. */
     const todayRows = logRows.filter(it => it.fields &&
       String(it.fields.RecurringServiceID) === recurringServiceId &&
       String(it.fields.VisitDate) === visitDate);

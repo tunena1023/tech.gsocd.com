@@ -80,17 +80,12 @@ exports.handler = async (event) => {
       Notes: notes
     };
 
-    /* BUG REAL encontrado y arreglado: antes esto creaba un renglon
-       nuevo siempre, sin revisar si ya habia uno para ese mismo dia
-       -- si un empleado ya habia marcado "Field Confirmed" (sin
-       desviacion) y despues el supervisor reporta un cambio para el
-       MISMO dia, quedaban 2 renglones sueltos sin que ninguno supiera
-       del otro. Ahora, si ya existe cualquier renglon de ese dia
-       (Field Confirmed o un Pending Review anterior), se ACTUALIZA
-       ese mismo renglon con el detalle de la desviacion, en vez de
-       dejar 2 tirados. Si el existente ya es Completed (la oficina ya
-       cerro ese dia), se crea uno nuevo aparte -- es una correccion
-       a algo ya cerrado, no se reescribe el historial. */
+    /* Si ya existe un renglon de este mismo dia (Field Confirmed o
+       Pending Review anterior), se ACTUALIZA ese renglon con la
+       desviacion en vez de crear uno nuevo suelto. Si el existente ya
+       es Completed (dia ya cerrado por oficina), se crea uno nuevo
+       aparte -- es una correccion a algo cerrado, no se reescribe
+       el historial. */
     const logRows = await fetchAll(RECURRING_LOG_LIST);
     const already = logRows.find(it => it.fields &&
       String(it.fields.RecurringServiceID) === recurringServiceId &&

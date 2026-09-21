@@ -98,15 +98,10 @@ exports.handler = async (event) => {
         schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === myPayrollId)
           .map(it => it.fields.OrderID)
       );
-      /* "Assign by service" (21/09/2026) -- BUG REAL encontrado
-         revisando esto: una orden con Assign by service NUNCA escribe
-         en Scheduling (ese es el modelo de toda-la-orden) -- su
-         asignacion real vive solo en ServiceAssignments, por
-         servicio, con AssignedTo como NOMBRE (texto), no
-         PayrollNumber. Sin esto, un empleado con un servicio
-         asignado ahi nunca aparecia en su propio portal, aunque la
-         asignacion se hubiera guardado bien del lado de Admin --
-         mismo bug que el de Scheduling arriba, version por-servicio. */
+      /* "Assign by service": una orden asi NUNCA escribe en
+         Scheduling (ese es el modelo de toda-la-orden) -- su
+         asignacion vive solo en ServiceAssignments, por servicio,
+         con AssignedTo como NOMBRE (texto), no PayrollNumber. */
       if (myName) {
         serviceAssignRows.forEach(it => {
           if (!it.fields || !it.fields.AssignedTo) return;

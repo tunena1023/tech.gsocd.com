@@ -467,27 +467,19 @@ if (tech) {
         </div>`;
       }).join('');
 
-    /* A proposito: nada aqui vuelve a abrir un panel que ya estaba
-       abierto -- BUG REAL encontrado por el usuario y arreglado:
-       antes, cualquier accion (marcar hecho, abrir Update Services)
-       llamaba a esta misma funcion para "refrescar", lo que
-       reconstruia TODA la lista de tarjetas de un jalon -- y como
-       "tarjeta abierta o cerrada" nunca se guardaba en ningun lado
-       (toggleOrder solo le pone una clase CSS al elemento, no
-       actualiza ninguna variable), la tarjeta se veia cerrada de
-       golpe aunque el panel de adentro si se hubiera abierto. Mismo
-       problema que tenia (y ya resolvia bien) toggleUpdatePanel para
-       ordenes normales: ese nunca reconstruye la lista, solo
-       manipula directo el contenedor de esa orden en especifico.
-       Las funciones de abajo ahora hacen lo mismo -- renderRecurring
-       solo se llama una vez, al cargar. */
+  /* toggleOrder solo pone una clase CSS al elemento -- "abierta o
+     cerrada" no se guarda en ningun lado. Si algo aqui vuelve a
+     llamar renderRecurring() para "refrescar", reconstruye TODA la
+     lista de tarjetas y las cierra de golpe. Por eso las funciones de
+     abajo manipulan directo el contenedor de su propia tarjeta, nunca
+     reconstruyen la lista completa -- renderRecurring solo se llama
+     una vez, al cargar. */
   }
 
-  /* BUG REAL encontrado por el usuario: el historial se veia
-     apilado ABAJO, con un boton -- en toda orden real (Admin, Orders)
-     va a la derecha, en 2 columnas (mismo .detail-grid real), nunca
-     escondido detras de un boton aparte. Se carga solo al abrir la
-     tarjeta, se queda a la derecha siempre visible. */
+  /* El historial de Recurring va a la derecha, en 2 columnas (mismo
+     .detail-grid que ordenes normales) -- no apilado abajo detras de
+     un boton aparte, como cualquier otra orden en Admin/Orders. Se
+     carga solo al abrir la tarjeta. */
   const rcHistoryLoaded = new Set();
   function toggleRecurringCard(headerEl, id) {
     toggleOrder(headerEl);
@@ -545,12 +537,10 @@ if (tech) {
      SUGERENCIA (submit-recurring-update.js) -- nunca se aplica
      sola, cae en Review.
 
-     BUG REAL arreglado: esto llamaba a renderRecurring() para
-     "refrescar" y eso cerraba la tarjeta entera de golpe (ver nota
-     arriba). Ahora manipula directo el contenedor fijo de esta
-     tarjeta (rc-update-wrap-<id>), igual que ya hace
-     toggleUpdatePanel con ord2col-<orderId> para ordenes normales --
-     nunca toca las demas tarjetas ni el estado de abierto/cerrado. */
+     Mismo motivo que arriba (renderRecurring completo cerraria la
+     tarjeta de golpe): manipula directo rc-update-wrap-<id>, igual
+     que toggleUpdatePanel con ord2col-<orderId> para ordenes
+     normales. */
   async function toggleRcUpdate(id, visitDate) {
     const wrap = $('rc-update-wrap-' + id);
     const btn = $('rc-update-btn-' + id);
@@ -816,14 +806,11 @@ if (tech) {
 
   let photoOrderId = null;
   let completingAfterPhoto = false;
-  /* BUG REAL encontrado por el usuario, sigue aplicando a #camera-input
-     (el que usa recordVideo -- fotos ya no pasan por aqui, se movieron
-     a la camara nueva/camera-capture.html): es un bug DOCUMENTADO de
-     Android 14/15 + Chrome/Edge (desde mediados de 2025) -- le
-     quitaron la opcion de Camara al selector de archivos por completo
-     con accept image/* o video/*, con o sin capture. Le pasa a
-     cualquier pagina, no es nuestro codigo. Arreglo real (probado en
-     varios telefonos, ver
+  /* Aplica a #camera-input (el que usa recordVideo -- fotos ya no
+     pasan por aqui). Bug DOCUMENTADO de Android 14/15 + Chrome/Edge
+     (desde mediados de 2025): quitan la opcion de Camara del selector
+     con accept image/* o video/*. Le pasa a cualquier pagina, no es
+     nuestro codigo. Arreglo (probado en varios telefonos, ver
      https://blog.addpipe.com/html-file-input-accept-video-camera-option-is-missing-android-14-15/):
      agregarle "android/allowCamera" (tipo no estandar) a accept --
      enganya a Chrome para que regrese la opcion de Camara. */
@@ -1456,13 +1443,11 @@ if (tech) {
   window.toggleUpdatePanel = toggleUpdatePanel;
   window.submitUpdate = submitUpdate;
   window.reportUnitNotReady = reportUnitNotReady;
-  /* BUG REAL DE RAIZ encontrado el 10/09: el onclick de estos 2
-     botones tronaba con "ReferenceError: markRecurringDone is not
-     defined" -- nunca se expusieron a window, igual que ya se hacia
-     arriba con toggleUpdatePanel/submitUpdate/reportUnitNotReady.
-     ESTA era la razon real de que el boton "nunca funcionara", no el
-     rol Developer (ese fix tambien era necesario, pero no era
-     suficiente sin este). */
+  /* Sin exponer a window, el onclick de estos botones truena con
+     "ReferenceError: X is not defined" -- una function declarada
+     dentro de otro scope (o async) no se eleva sola al scope global
+     que usa un atributo onclick inline. Mismo patron que
+     toggleUpdatePanel/submitUpdate/reportUnitNotReady arriba. */
   window.markRecurringDone = markRecurringDone;
   window.toggleRecurringCard = toggleRecurringCard;
   window.takeRecurringPhoto = takeRecurringPhoto;

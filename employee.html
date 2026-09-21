@@ -43,12 +43,10 @@
   .recurring-section{margin-bottom:20px}
   .recurring-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gray);margin-bottom:8px}
   .order-head{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
-  /* BUG REAL encontrado por el usuario: Recurring trae mas contenido
-     en el header que una orden normal (3 lineas de texto a la
-     izquierda, day-pills + 2 badges a la derecha) -- .order-head no
-     tiene flex-wrap, asi que en un celular real angosto se desborda
-     o se aplasta. Se corrige SOLO para .recurring-card, sin tocar el
-     header de ordenes normales (ese ya cabia bien tal como estaba). */
+  /* Recurring trae mas contenido en el header que una orden normal
+     (3 lineas de texto + day-pills + 2 badges) -- .order-head no
+     tiene flex-wrap y se desborda en celular angosto. Se corrige
+     SOLO para .recurring-card, sin tocar ordenes normales. */
   .recurring-card .order-head{flex-wrap:wrap;gap:8px}
   .recurring-card .badge-row{flex-wrap:wrap;justify-content:flex-end}
   .order-id{font-weight:700;font-size:13px}
@@ -335,13 +333,10 @@ if (tech) {
       }).join('');
   }
 
-  /* BUG REAL encontrado por el usuario: el historial se veia
-     apilado ABAJO, con un boton para mostrarlo/ocultarlo -- en toda
-     orden real (Admin, Orders) el historial SIEMPRE va a la derecha,
-     en 2 columnas (mismo .detail-grid real), nunca escondido detras
-     de un boton aparte. Se corrige: se carga solo al abrir la
-     tarjeta, se queda a la derecha siempre visible, igual que
-     cualquier orden. */
+  /* El historial de Recurring va a la derecha, en 2 columnas (mismo
+     .detail-grid que ordenes normales) -- no apilado abajo detras de
+     un boton aparte, como cualquier otra orden en Admin/Orders. Se
+     carga solo al abrir la tarjeta. */
   const rcHistoryLoaded = new Set();
   function toggleRecurringCard(headerEl, id) {
     toggleOrder(headerEl);
@@ -370,14 +365,9 @@ if (tech) {
       '<button type="button" class="recurring-mark-done" onclick="markRecurringDone(\'' + esc(r.id) + '\',\'' + visitDate + '\')">✓ Mark as Done</button>';
   }
 
-  /* BUG REAL encontrado por el usuario (en supervisor.html, mismo
-     codigo aqui) y arreglado: esto llamaba a renderRecurring() para
-     "refrescar" -- eso reconstruia TODA la lista de tarjetas, y como
-     "abierta o cerrada" nunca se guarda en ningun lado (toggleOrder
-     solo le pone una clase CSS al elemento), la tarjeta se cerraba
-     de golpe justo cuando el usuario queria ver la confirmacion.
-     Ahora actualiza directo el contenedor fijo de esta tarjeta
-     nomas, sin tocar las demas ni el estado de abierto/cerrado. */
+  /* Mismo motivo que en supervisor.html: renderRecurring() completo
+     cerraria la tarjeta de golpe (toggleOrder no persiste estado).
+     Actualiza directo el contenedor fijo de esta tarjeta nomas. */
   async function markRecurringDone(recurringServiceId, visitDate) {
     try {
       const res = await GS.api('/submit-recurring-complete', { body: { recurringServiceId, visitDate, techId: tech.id, role: tech.role } });
@@ -504,16 +494,14 @@ if (tech) {
 
   let photoOrderId = null;
   let completingAfterPhoto = false;
-  /* BUG REAL encontrado por el usuario, sigue aplicando a #camera-input
-     (el que usa recordVideo -- fotos ya no pasan por aqui, se movieron
-     a la camara nueva/camera-capture.html): es un bug DOCUMENTADO de
-     Android 14 y 15 + Chrome/Edge (aparecio a mediados de 2025) -- en
-     esas versiones, Chrome le quito la opcion de Camara al selector de
-     archivos por completo cuando el accept es image/* o video/* (con o
-     sin capture), y solo deja escoger de la galeria. Le pasa a
-     cualquier pagina web, no es nada de nuestro codigo.
+  /* Aplica a #camera-input (el que usa recordVideo -- fotos ya no
+     pasan por aqui). Bug DOCUMENTADO de Android 14/15 + Chrome/Edge
+     (desde mediados de 2025): Chrome quita la opcion de Camara del
+     selector de archivos cuando accept es image/* o video/*, deja
+     solo galeria. Le pasa a cualquier pagina web, no es nuestro
+     codigo.
 
-     El arreglo real (probado en varios telefonos, documentado en
+     Arreglo (probado en varios telefonos, documentado en
      https://blog.addpipe.com/html-file-input-accept-video-camera-option-is-missing-android-14-15/)
      es agregarle un tipo de archivo NO estandar a la lista de accept
      -- "android/allowCamera" -- que enganya a Chrome para que vuelva
