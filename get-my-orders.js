@@ -42,14 +42,18 @@ exports.handler = async (event) => {
     const division = String(b.division || '').trim();
     if (!techId || !role) return jsonResponse(400, { error: 'techId and role are required' });
 
-    const [orderRows, svcRows, schedulingRows, techRows, recurringServiceRows, recurringAssignRows, clientRows] = await Promise.all([
+    const [orderRows, svcRows, schedulingRows, techRows, recurringServiceRows, recurringAssignRows, clientRows, serviceAssignRows] = await Promise.all([
       fetchAll(ORDERS_LIST),
       fetchAll(ORDER_SERVICES_LIST),
       role === 'Employee' ? fetchAll(SCHEDULING_LIST) : Promise.resolve([]),
       fetchAll(TECHS_LIST),
       fetchAll(RECURRING_SERVICES_LIST),
       fetchAll(RECURRING_ASSIGNMENTS_LIST),
-      fetchAll(CLIENTS_LIST)
+      fetchAll(CLIENTS_LIST),
+      /* "Assign by service" (21/09/2026) -- solo se necesita para
+         Employee (ver mas abajo); se trae siempre para no tener que
+         checar el role antes de decidir si pedirla. */
+      fetchAll(SERVICE_ASSIGNMENTS_LIST)
     ]);
 
     /* PayrollID del empleado logueado -- se necesita ANTES del filtro
@@ -58,6 +62,10 @@ exports.handler = async (event) => {
        Recurrentes -- se calcula una sola vez, aqui arriba. */
     const myTechRow = techRows.find(it => it.id === techId);
     const myPayrollId = myTechRow && myTechRow.fields ? String(myTechRow.fields.PayrollID || '').trim() : '';
+    /* "Assign by service" -- ServiceAssignments.AssignedTo guarda
+       NOMBRES (texto, coma-separado si hay varios), no PayrollID --
+       mismo criterio que ya usa Admingsocd.com para esto. */
+    const myName = myTechRow && myTechRow.fields ? (String(myTechRow.fields.FirstName || '') + ' ' + String(myTechRow.fields.LastName || '')).trim() : '';
 
     let liveOrders = orderRows.filter(it => it.fields && LIVE_STATUSES.includes(it.fields.Status));
 
@@ -90,6 +98,22 @@ exports.handler = async (event) => {
         schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === myPayrollId)
           .map(it => it.fields.OrderID)
       );
+      /* "Assign by service" (21/09/2026) -- BUG REAL encontrado
+         revisando esto: una orden con Assign by service NUNCA escribe
+         en Scheduling (ese es el modelo de toda-la-orden) -- su
+         asignacion real vive solo en ServiceAssignments, por
+         servicio, con AssignedTo como NOMBRE (texto), no
+         PayrollNumber. Sin esto, un empleado con un servicio
+         asignado ahi nunca aparecia en su propio portal, aunque la
+         asignacion se hubiera guardado bien del lado de Admin --
+         mismo bug que el de Scheduling arriba, version por-servicio. */
+      if (myName) {
+        serviceAssignRows.forEach(it => {
+          if (!it.fields || !it.fields.AssignedTo) return;
+          const names = String(it.fields.AssignedTo).split(',').map(n => n.trim());
+          if (names.includes(myName)) myOrderIds.add(it.fields.OrderID);
+        });
+      }
       liveOrders = liveOrders.filter(it => myOrderIds.has(it.fields.OrderID || it.fields.Title));
     }
 
@@ -107,9 +131,28 @@ exports.handler = async (event) => {
       });
     });
 
+    /* "Assign by service" -- agrupado por orden, para no tener que
+       filtrar serviceAssignRows completo por cada orden abajo. Un
+       Employee solo ve SUS renglones (los que traen su nombre en
+       AssignedTo) -- el resto de la orden (otros servicios, quien
+       sea que los tenga) no es asunto suyo, mismo criterio que ya
+       usa el resto del portal ("solo lo mio"). Supervisor/Developer
+       ven todos los renglones de la orden, igual que ya ven todo lo
+       demas. */
+    const serviceAssignByOrder = {};
+    serviceAssignRows.forEach(it => {
+      if (!it.fields || !it.fields.OrderID) return;
+      (serviceAssignByOrder[it.fields.OrderID] = serviceAssignByOrder[it.fields.OrderID] || []).push(it.fields);
+    });
+
     const orders = liveOrders.map(it => {
       const f = it.fields;
       const oid = f.OrderID || f.Title || '';
+      const isAssignByService = f.AssignByService === true || f.AssignByService === 'true';
+      const allAssignRows = serviceAssignByOrder[oid] || [];
+      const myAssignRows = (role === 'Employee' && myName)
+        ? allAssignRows.filter(a => String(a.AssignedTo || '').split(',').map(n => n.trim()).includes(myName))
+        : allAssignRows;
       return {
         id: it.id,
         /* Pedido del dueño (18/09/2026): antes no llegaba este dato
@@ -140,7 +183,17 @@ exports.handler = async (event) => {
         TechMarkedComplete: f.TechMarkedComplete === true || f.TechMarkedComplete === 'true',
         NeedsOfficeAccess: f.NeedsOfficeAccess === true || f.NeedsOfficeAccess === 'true',
         OfficeNeedNotes: f.OfficeNeedNotes || '',
-        Services: servicesByOrder[oid] || []
+        Services: servicesByOrder[oid] || [],
+        /* "Assign by service" -- AssignByService decide si employee.html
+           pinta el modelo por servicio en vez del de siempre.
+           MyServiceAssignments son SOLO los renglones de este empleado
+           (Employee) o todos (Supervisor/Developer) -- mismo mapeo
+           real que ya usa Admin (get-service-assignments.js). */
+        AssignByService: isAssignByService,
+        MyServiceAssignments: myAssignRows.map(a => ({
+          Category: a.Category || '', ServiceName: a.ServiceName || '', Sequence: a.Sequence != null ? Number(a.Sequence) : null,
+          AssignedTo: a.AssignedTo || '', ScheduledDate: a.ScheduledDate || '', WorkStatus: a.WorkStatus || 'Not Started'
+        }))
       };
     }).sort((a, b) => String(a.DispatchDate || a.EntryDate).localeCompare(String(b.DispatchDate || b.EntryDate)));
 

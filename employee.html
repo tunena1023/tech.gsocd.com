@@ -413,7 +413,42 @@ if (tech) {
     if (!list.length) { box.innerHTML = '<p class="empty-note">No orders match that search.</p>'; return; }
     box.innerHTML = list.map(o => {
       const addr = [o.Address, o.BuildingNumber ? 'Building ' + o.BuildingNumber : '', o.UnitNumber ? 'Unit ' + o.UnitNumber : ''].filter(Boolean).join(' · ');
-      const svcLines = (o.Services || []).map(s => {
+      /* "Assign by service" (21/09/2026) -- un empleado en una orden
+         asi solo ve SUS servicios (MyServiceAssignments, ya filtrado
+         del lado del servidor en get-my-orders.js), nunca los demas
+         de la orden -- mismo criterio ya aprobado desde el mini:
+         "un tecnico nunca ve Scheduling, solo su pedazo de Active".
+         Cada uno trae su propio boton de Marcar como hecho (en vez
+         del de toda-la-orden de siempre), que solo aparece si YA
+         tiene fecha puesta y todavia no se marco ni confirmo. */
+      const svcLines = o.AssignByService
+        ? (o.MyServiceAssignments || []).map(a => {
+            const detail = (o.Services || []).find(s => (s.Category || '') === a.Category && s.ServiceName === a.ServiceName) || {};
+            const lvl = detail.Level ? ' — ' + esc(detail.Level) : '';
+            const qty = detail.Quantity ? ' — Qty: ' + esc(detail.Quantity) : '';
+            const dateNote = a.ScheduledDate ? ' · ' + fmtDateTime(a.ScheduledDate) : '';
+            const isDone = a.WorkStatus === 'Completed';
+            const isPending = a.WorkStatus === 'Pending Review';
+            const safe = esc(o.OrderID).replace(/[^a-z0-9]/gi, '_');
+            const catSafe = esc(a.Category || '').replace(/[^a-z0-9]/gi, '_');
+            const svcSafe = esc(a.ServiceName).replace(/[^a-z0-9]/gi, '_');
+            const statusBadge = isDone
+              ? '<span class="badge" style="background:#EAF3EC;color:#3E7A4C">Completed</span>'
+              : (isPending ? '<span class="badge" style="background:#E3ECF7;color:#2E5FA3">Waiting on office</span>' : '');
+            const doneBtn = (!isDone && !isPending)
+              ? '<button type="button" class="gs-ofp-btn-primary" style="width:auto;padding:4px 10px;font-size:11px;margin-left:6px" onclick="event.stopPropagation();startServiceComplete(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(a.Category) + '\',\'' + jsStr(a.ServiceName) + '\')">✓ Mark as Done</button>'
+              : '';
+            return '<div class="svc-row">' +
+              '<div class="svc-row-name">' + esc(a.ServiceName) + lvl + qty + dateNote + '</div>' +
+              statusBadge +
+              '<button type="button" class="svc-row-cam" id="svc-cam-' + safe + '-' + catSafe + '-' + svcSafe + '" ' +
+                'title="Add a photo for this service" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(a.Category) + '\',\'' + jsStr(a.ServiceName) + '\')">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>' +
+              '</button>' +
+              doneBtn +
+            '</div>';
+          }).join('')
+        : (o.Services || []).map(s => {
         const lvl = s.Level ? ' — ' + esc(s.Level) : '';
         const qty = s.Quantity ? ' — Qty: ' + esc(s.Quantity) : '';
         const safe = esc(o.OrderID).replace(/[^a-z0-9]/gi, '_');
@@ -455,9 +490,9 @@ if (tech) {
             <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
             <button type="button" class="photo-btn" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
             <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
-            ${o.TechMarkedComplete
+            ${o.AssignByService ? '' : (o.TechMarkedComplete
               ? '<p class="tech-done-note">✓ You marked this as done — waiting for the office to confirm and close it.</p>'
-              : '<button type="button" class="gs-ofp-btn-primary" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>'}
+              : '<button type="button" class="gs-ofp-btn-primary" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>')}
           </div>
         </div>`;
     }).join('');
@@ -524,6 +559,19 @@ if (tech) {
   function markEmployeeCompleted(orderId) {
     location.href = 'camera-capture.html?context=order-photo&orderId=' + encodeURIComponent(orderId) +
       '&return=employee.html&requireAtLeastOne=1&completeAfter=1';
+  }
+
+  /* "Assign by service" (21/09/2026) -- version por-servicio de
+     markEmployeeCompleted, mismo mecanismo real (foto obligatoria
+     antes de poder marcar, mismo requisito de negocio de siempre).
+     context sigue siendo 'service-photo' (ya existia, para la
+     camarita junto a cada servicio) -- lo nuevo es completeServiceAfter,
+     que le dice a camera-capture.html que redirija con los 3 datos
+     en la URL en vez de solo volver. */
+  function startServiceComplete(orderId, cat, svc) {
+    location.href = 'camera-capture.html?context=service-photo&orderId=' + encodeURIComponent(orderId) +
+      '&serviceName=' + encodeURIComponent(svc) + '&serviceCategory=' + encodeURIComponent(cat) +
+      '&return=employee.html&requireAtLeastOne=1&completeServiceAfter=1&label=' + encodeURIComponent(svc);
   }
   /* Foto o video, con su ubicacion -- confirmado con el usuario: la
      foto/video sigue siendo obligatoria como siempre (la cámara
@@ -625,6 +673,17 @@ if (tech) {
       loadOrders();
     } catch (e) {
       showToast('Could not mark this order Completed: ' + e.message);
+    }
+  }
+
+  /* "Assign by service" -- version por-servicio de finishCompletion. */
+  async function finishServiceCompletion(orderId, cat, svc) {
+    try {
+      await GS.api('/submit-service-complete', { body: { orderId, category: cat, serviceName: svc, techId: tech.id } });
+      showToast(svc + ' marked as done — the office will confirm.');
+      loadOrders();
+    } catch (e) {
+      showToast('Could not mark this service done: ' + e.message);
     }
   }
 
@@ -740,6 +799,14 @@ if (tech) {
   if (completeOrderId) {
     history.replaceState(null, '', location.pathname);
     finishCompletion(completeOrderId);
+  }
+  /* "Assign by service" -- mismo patron, version por-servicio. */
+  const completeServiceOrderId = urlParams.get('completeServiceOrder');
+  if (completeServiceOrderId) {
+    const cat = urlParams.get('completeServiceCategory') || '';
+    const svc = urlParams.get('completeServiceName') || '';
+    history.replaceState(null, '', location.pathname);
+    finishServiceCompletion(completeServiceOrderId, cat, svc);
   }
 }
 </script>

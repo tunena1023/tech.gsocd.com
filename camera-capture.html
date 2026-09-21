@@ -127,6 +127,12 @@
   const returnTo = params.get('return') || 'employee.html';
   const requireAtLeastOne = params.get('requireAtLeastOne') === '1';
   const completeAfter = params.get('completeAfter') === '1';
+  /* "Assign by service" -- version por-servicio de completeAfter,
+     mismo mecanismo (foto obligatoria, redirige con el dato en la
+     URL para que employee.html complete solo al cargar), pero con
+     categoria+servicio en vez de solo el orderId. */
+  const completeServiceAfter = params.get('completeServiceAfter') === '1';
+  const serviceCategory = params.get('serviceCategory');
   const MAX_PHOTOS = 10;
 
   document.getElementById('page-title').textContent = label || (orderId ? ('Order ' + orderId) : 'Camera');
@@ -144,8 +150,12 @@
       return;
     }
     if (stream) stream.getTracks().forEach(t => t.stop());
-    if (completeAfter && orderId) {
-      const sep = returnTo.indexOf('?') === -1 ? '?' : '&';
+    const sep = returnTo.indexOf('?') === -1 ? '?' : '&';
+    if (completeServiceAfter && orderId && serviceName) {
+      location.href = returnTo + sep + 'completeServiceOrder=' + encodeURIComponent(orderId) +
+        '&completeServiceCategory=' + encodeURIComponent(serviceCategory || '') +
+        '&completeServiceName=' + encodeURIComponent(serviceName);
+    } else if (completeAfter && orderId) {
       location.href = returnTo + sep + 'completeOrder=' + encodeURIComponent(orderId);
     } else {
       location.href = returnTo;
