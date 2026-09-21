@@ -14,7 +14,7 @@
 ============================================================ */
 
 const {
-  ORDERS_LIST, ORDER_SERVICES_LIST, SCHEDULING_LIST,
+  ORDERS_LIST, ORDER_SERVICES_LIST, SCHEDULING_LIST, SERVICE_ASSIGNMENTS_LIST,
   TECHS_LIST, RECURRING_SERVICES_LIST, RECURRING_ASSIGNMENTS_LIST, CLIENTS_LIST,
   graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
