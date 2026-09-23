@@ -185,6 +185,9 @@ exports.handler = async (event) => {
            (Employee) o todos (Supervisor/Developer) -- mismo mapeo
            real que ya usa Admin (get-service-assignments.js). */
         AssignByService: isAssignByService,
+        /* Recurrentes "Who does what": recurrente + Assign by service =
+           orden por lugar (employee.html la pinta por lugar). */
+        RecurringServiceID: f.RecurringServiceID || '',
         MyServiceAssignments: myAssignRows.map(a => ({
           Category: a.Category || '', ServiceName: a.ServiceName || '', Sequence: a.Sequence != null ? Number(a.Sequence) : null,
           AssignedTo: a.AssignedTo || '', ScheduledDate: a.ScheduledDate || '', WorkStatus: a.WorkStatus || 'Not Started'

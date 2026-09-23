@@ -7,6 +7,14 @@ de features, bugs, decisiones y pendientes, en orden cronológico.
 (más de ~3 semanas sin tocarse) a un párrafo o moverlas a NOTES_ARCHIVE.md,
 en vez de seguir apilando sin límite.
 
+## SUBIDO (23/09/2026, tarde): órdenes por lugar se reconocen por recurrente + Assign by service
+
+Con los edificios de Admin, un cliente de un solo nivel se lee
+"Restroom" a secas, así que el regex "Floor N / …" ya no alcanza.
+get-my-orders.js ahora manda `RecurringServiceID`; `isPlaceOrder()` =
+AssignByService + RecurringServiceID (regex de respaldo).
+submit-service-complete.js solo acepta `placeMode` en esas órdenes.
+
 ## SUBIDO (23/09/2026): recurrentes "Who does what" -- Mark as Done por LUGAR + extras
 
 Contraparte de Admingsocd.com (ver su NOTES.md, misma fecha). Las órdenes

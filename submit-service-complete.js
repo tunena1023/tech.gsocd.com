@@ -92,7 +92,9 @@ exports.handler = async (event) => {
        obligatoria es la del lugar: employee.html la sube con el lugar
        como nombre (mismo prefijo svc-<nombre>- de siempre). Sin
        placeMode, todo exactamente igual que antes. */
-    const placeMode = b.placeMode === true;
+    /* Solo se acepta en ordenes por lugar de verdad (recurrente + Assign
+       by service); en cualquier otra se ignora y sigue por servicio. */
+    const placeMode = b.placeMode === true && !!f.RecurringServiceID && (f.AssignByService === true || f.AssignByService === 'true');
     const photoKey = placeMode ? b.category : b.serviceName;
     const hasPhoto = await hasServicePhoto(f.ClientID, f.BusinessName, b.orderId, photoKey);
     if (!hasPhoto) return jsonResponse(400, { error: placeMode ? 'Take at least 1 photo of this place before marking it done.' : 'Take at least 1 photo of this service before marking it done.' });

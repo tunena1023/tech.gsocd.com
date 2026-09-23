@@ -585,8 +585,14 @@ if (tech) {
      camera-capture (foto obligatoria), usando el lugar como nombre de
      la foto (svc-<lugar>-...) y submit-service-complete en placeMode. */
   const PLACE_RE = /^(Floor \d+|Elevators & stairs|Exterior) \/ /;
+  /* Orden por lugar = recurrente + Assign by service (asi nacen desde
+     su contrato). El texto del lugar ya no alcanza para reconocerlas:
+     un cliente de un solo nivel se lee "Restroom" a secas. PLACE_RE
+     queda de respaldo para las primeras que se generaron. */
   function isPlaceOrder(o) {
-    return !!(o.AssignByService && (o.MyServiceAssignments || []).some(a => PLACE_RE.test(a.Category || '')));
+    if (!o.AssignByService) return false;
+    if (o.RecurringServiceID) return true;
+    return (o.MyServiceAssignments || []).some(a => PLACE_RE.test(a.Category || ''));
   }
   function placeLinesHtml(o) {
     const groups = [];
@@ -771,7 +777,7 @@ if (tech) {
     try {
       /* Por lugar: Mark as Done manda el lugar como categoria Y como
          nombre (ver placeLinesHtml) -- eso activa placeMode. */
-      const placeMode = !!cat && cat === svc && PLACE_RE.test(cat);
+      const placeMode = !!cat && cat === svc;
       await GS.api('/submit-service-complete', { body: { orderId, category: cat, serviceName: svc, techId: tech.id, placeMode } });
       showToast(svc + ' marked as done — the office will confirm.');
       loadOrders();
