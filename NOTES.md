@@ -7,6 +7,14 @@ de features, bugs, decisiones y pendientes, en orden cronológico.
 (más de ~3 semanas sin tocarse) a un párrafo o moverlas a NOTES_ARCHIVE.md,
 en vez de seguir apilando sin límite.
 
+## SUBIDO (23/09/2026): descripción del servicio en tooltip
+
+gsocd-shared v1.50.0 (`service-tooltip` + picker). get-catalog.js manda
+`description` (Sales Description de QuickBooks). employee.html pide el
+catálogo en paralelo con get-my-orders y lo registra antes de pintar
+(si falla, la lista sale igual); nombres de servicio con tooltip en las
+listas por servicio y por lugar. supervisor.html: picker v1.50.0.
+
 ## SUBIDO (23/09/2026, tarde): órdenes por lugar se reconocen por recurrente + Assign by service
 
 Con los edificios de Admin, un cliente de un solo nivel se lee

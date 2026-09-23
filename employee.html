@@ -170,6 +170,7 @@
 <div class="toast" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--white);padding:12px 22px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:all .3s;z-index:500"></div>
 
 <script src="shared.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.50.0/service-tooltip/service-tooltip.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.6/nav-premium/nav-premium.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.30.0/order-card-header/order-card-header.js"></script>
@@ -272,9 +273,20 @@ if (tech) {
   let orders = [];
   let recurring = [];
 
+  /* Nombre del servicio con su descripcion en tooltip (si la hay). */
+  function svcNameHtml(sku, name) { return window.GSServiceTooltip ? GSServiceTooltip.nameHtml(sku, esc(name)) : esc(name); }
+  function skuOf(o, cat, name) { const s = (o.Services || []).find(x => (x.Category || '') === (cat || '') && x.ServiceName === name); return s ? s.SubOption : ''; }
+
   async function loadOrders() {
     try {
-      const data = await GS.api('/get-my-orders', { body: { techId: tech.id, role: tech.role, division: tech.division } });
+      /* El catalogo (con la descripcion de QuickBooks de cada servicio)
+         se pide en paralelo y se registra para el tooltip antes de
+         pintar; si falla, la lista sale igual que siempre. */
+      const [data, cat] = await Promise.all([
+        GS.api('/get-my-orders', { body: { techId: tech.id, role: tech.role, division: tech.division } }),
+        window.GSServiceTooltip ? GS.api('/get-catalog', { body: {} }).catch(() => ({})) : Promise.resolve({})
+      ]);
+      if (window.GSServiceTooltip) GSServiceTooltip.register(cat.catalog || []);
       orders = data.orders || [];
       recurring = data.recurring || [];
       renderRecurring();
@@ -449,7 +461,7 @@ if (tech) {
               ? '<button type="button" class="gs-ofp-btn-primary" style="width:auto;padding:4px 10px;font-size:11px;margin-left:6px" onclick="event.stopPropagation();startServiceComplete(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(a.Category) + '\',\'' + jsStr(a.ServiceName) + '\')">✓ Mark as Done</button>'
               : '';
             return '<div class="svc-row">' +
-              '<div class="svc-row-name">' + esc(a.ServiceName) + lvl + qty + dateNote + '</div>' +
+              '<div class="svc-row-name">' + svcNameHtml(skuOf(o, a.Category, a.ServiceName), a.ServiceName) + lvl + qty + dateNote + '</div>' +
               statusBadge +
               '<button type="button" class="svc-row-cam" id="svc-cam-' + safe + '-' + catSafe + '-' + svcSafe + '" ' +
                 'title="Add a photo for this service" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(a.Category) + '\',\'' + jsStr(a.ServiceName) + '\')">' +
@@ -465,7 +477,7 @@ if (tech) {
         const catSafe = esc(s.Category || '').replace(/[^a-z0-9]/gi, '_');
         const svcSafe = esc(s.ServiceName).replace(/[^a-z0-9]/gi, '_');
         return '<div class="svc-row">' +
-          '<div class="svc-row-name">' + esc(s.ServiceName) + lvl + qty + '</div>' +
+          '<div class="svc-row-name">' + svcNameHtml(s.SubOption, s.ServiceName) + lvl + qty + '</div>' +
           '<button type="button" class="svc-row-cam" id="svc-cam-' + safe + '-' + catSafe + '-' + svcSafe + '" ' +
             'title="Add a photo for this service" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(s.Category || '') + '\',\'' + jsStr(s.ServiceName) + '\')">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>' +
@@ -613,7 +625,7 @@ if (tech) {
         : pending ? '<span class="badge" style="background:#E3ECF7;color:#2E5FA3">Waiting on office</span>' : '';
       const svcs = g.items.map(i => {
         const detail = (o.Services || []).find(s => (s.Category || '') === i.Category && s.ServiceName === i.ServiceName) || {};
-        return esc(i.ServiceName) + (detail.Level ? ' — ' + esc(detail.Level) : '');
+        return svcNameHtml(detail.SubOption, i.ServiceName) + (detail.Level ? ' — ' + esc(detail.Level) : '');
       }).join('<br>');
       const canMark = !done && !pending && g.items.some(i => i.ScheduledDate);
       return '<div class="place ' + cls + '"><div class="place-head"><p class="recurring-title">' + esc(g.place) + '</p>' + badge + '</div>' +
