@@ -5,7 +5,7 @@
    que Update Services soporta (Janitorial y Renovations).
 ============================================================ */
 
-const { readJsonSettings } = require('./lib/package-contents');
+const catalogFields = require('./lib/catalog-fields');
 const { SERVICES_CATALOG_LIST, graphFetch, siteListPath, jsonResponse } = require('./lib/graph');
 
 async function fetchAll(listName) {
@@ -27,8 +27,7 @@ exports.handler = async (event) => {
     const division = String(b.division || '').trim().toLowerCase();
     const propertyType = String(b.propertyType || '').trim().toLowerCase();
 
-    const [rows, settings] = await Promise.all([fetchAll(SERVICES_CATALOG_LIST), readJsonSettings(['catalog_service_areas', 'catalog_package_contents'])]);
-    const areasMap = settings.catalog_service_areas, pkgMap = settings.catalog_package_contents;
+    const rows = await fetchAll(SERVICES_CATALOG_LIST);
     const catalog = rows
       .filter(it => it.fields)
       .map(it => ({
@@ -39,8 +38,8 @@ exports.handler = async (event) => {
         category: it.fields.Category || '',
         /* Sales Description de QuickBooks -> tooltip (gsocd-shared/service-tooltip). */
         description: it.fields.Description || '',
-        areas: Array.isArray(areasMap[String(it.fields.SKU || '').trim()]) ? areasMap[String(it.fields.SKU || '').trim()] : [],
-        packageItems: Array.isArray(pkgMap[String(it.fields.SKU || '').trim()]) ? pkgMap[String(it.fields.SKU || '').trim()] : [],
+        areas: catalogFields.areasOf(it.fields),
+        packageItems: catalogFields.packageItemsOf(it.fields),
         active: it.fields.Active === undefined ? true : (it.fields.Active === true || it.fields.Active === 'true'),
         requiresQuantity: it.fields.RequiresQuantity === true || it.fields.RequiresQuantity === 'true'
       }))
