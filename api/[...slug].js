@@ -21,7 +21,8 @@ const handlers = {
   'upload-recurring-photo': require('../upload-recurring-photo').handler,
   'upload-service-photo': require('../upload-service-photo').handler,
   'get-recurring-history': require('../get-recurring-history').handler,
-  'submit-service-complete': require('../submit-service-complete').handler
+  'submit-service-complete': require('../submit-service-complete').handler,
+  'submit-extra-request': require('../submit-extra-request').handler
 };
 
 module.exports = async (req, res) => {

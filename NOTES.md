@@ -7,6 +7,24 @@ de features, bugs, decisiones y pendientes, en orden cronológico.
 (más de ~3 semanas sin tocarse) a un párrafo o moverlas a NOTES_ARCHIVE.md,
 en vez de seguir apilando sin límite.
 
+## SUBIDO (23/09/2026): recurrentes "Who does what" -- Mark as Done por LUGAR + extras
+
+Contraparte de Admingsocd.com (ver su NOTES.md, misma fecha). Las órdenes
+recurrentes por lugar traen el lugar ("Floor 1 / Hallway") en Category de
+cada servicio. employee.html las detecta (`isPlaceOrder`, regex PLACE_RE)
+y las pinta agrupadas por lugar con UN Mark as Done por lugar + su cámara:
+mismo flujo real de camera-capture (foto obligatoria), usando el lugar
+como serviceName de la foto (`svc-<lugar>-...`) y submit-service-complete
+con `placeMode` (marca 'Pending Review' todos los servicios de ESE técnico
+en ese lugar). Órdenes normales: sin cambios.
+
+Botón "The client asked for something not on my list" (solo en estas
+órdenes): `submit-extra-request.js` (nuevo, registrado en el router) deja
+un evento 'Extra Requested' interno en OrderHistory; oficina lo aprueba o
+rechaza desde Active. OJO: `async function` dentro del bloque `if (tech)`
+NO se vuelve global sola (las `function` normales sí) -- por eso
+`window.sendExtraRequest`.
+
 ## Proyecto grande (15/09/2026): cámara propia + cola offline real
 
 Ver `gsocd-shared/NOTES.md` para el contexto completo (origen real: un

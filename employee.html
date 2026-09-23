@@ -107,6 +107,25 @@
   .recurring-mark-done{display:flex;align-items:center;gap:6px;background:var(--green);border:none;color:var(--white);padding:11px 16px;border-radius:4px;font-size:12px;font-weight:700;letter-spacing:.03em;cursor:pointer;margin-top:10px;width:100%;justify-content:center;font-family:inherit}
   .recurring-mark-done:hover{background:#1e8449}
   .recurring-done-note{font-size:12px;color:var(--gray);font-style:italic;margin-top:8px}
+  /* Recurrentes "Who does what" por lugar (23/09/2026, aprobado con
+     mini interactivo): UN Mark as Done por LUGAR (piso + area), con su
+     camara ahi mismo -- en vez de uno por servicio. */
+  .place{border:1px solid var(--border);border-radius:6px;padding:12px;margin-top:10px}
+  .place.pending{background:#F6F9FD;border-color:#C7DBFB}
+  .place.done{background:#F6FAF7;border-color:#CFE3D4}
+  .place-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .place-head .recurring-title{margin:0}
+  .place-svcs{font-size:13px;line-height:1.7;margin:6px 0 10px}
+  .place.done .place-svcs{color:var(--gray)}
+  .place-actions{display:flex;align-items:center;gap:8px}
+  .place-actions .gs-ofp-btn-primary{flex:1;padding:12px 14px}
+  .place-actions .svc-row-cam{width:44px;height:44px;border-radius:7px}
+  .place-actions .svc-row-cam svg{width:18px;height:18px}
+  .place-progress{font-size:12px;color:var(--gray);margin:12px 0 4px}
+  .place-progress b{color:var(--black)}
+  .place-bar{height:4px;background:var(--off);border-radius:2px;overflow:hidden;margin-bottom:4px}
+  .place-bar span{display:block;height:100%;background:var(--gold)}
+  .extra-form textarea{width:100%;min-height:70px;padding:10px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -411,7 +430,8 @@ if (tech) {
          Cada uno trae su propio boton de Marcar como hecho (en vez
          del de toda-la-orden de siempre), que solo aparece si YA
          tiene fecha puesta y todavia no se marco ni confirmo. */
-      const svcLines = o.AssignByService
+      const placeMode = isPlaceOrder(o);
+      const svcLines = placeMode ? placeLinesHtml(o) : o.AssignByService
         ? (o.MyServiceAssignments || []).map(a => {
             const detail = (o.Services || []).find(s => (s.Category || '') === a.Category && s.ServiceName === a.ServiceName) || {};
             const lvl = detail.Level ? ' — ' + esc(detail.Level) : '';
@@ -556,6 +576,88 @@ if (tech) {
      camarita junto a cada servicio) -- lo nuevo es completeServiceAfter,
      que le dice a camera-capture.html que redirija con los 3 datos
      en la URL en vez de solo volver. */
+
+  /* ===== Recurrentes "Who does what" por lugar (23/09/2026) =====
+     Admin guarda el LUGAR ("Floor 1 / Hallway") en Category de cada
+     servicio de estas ordenes (ver lib/recurring-orders.js en
+     Admingsocd.com). Aqui se agrupan los servicios del tecnico por
+     lugar, con UN Mark as Done por lugar: mismo flujo real de
+     camera-capture (foto obligatoria), usando el lugar como nombre de
+     la foto (svc-<lugar>-...) y submit-service-complete en placeMode. */
+  const PLACE_RE = /^(Floor \d+|Elevators & stairs|Exterior) \/ /;
+  function isPlaceOrder(o) {
+    return !!(o.AssignByService && (o.MyServiceAssignments || []).some(a => PLACE_RE.test(a.Category || '')));
+  }
+  function placeLinesHtml(o) {
+    const groups = [];
+    (o.MyServiceAssignments || []).forEach(a => {
+      let g = groups.find(x => x.place === a.Category);
+      if (!g) { g = { place: a.Category, items: [] }; groups.push(g); }
+      g.items.push(a);
+    });
+    const cam = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+    let marked = 0;
+    const blocks = groups.map(g => {
+      const st = g.items.map(i => i.WorkStatus || 'Not Started');
+      const done = st.every(x => x === 'Completed');
+      const pending = !done && st.every(x => x === 'Completed' || x === 'Pending Review');
+      if (done || pending) marked++;
+      const cls = done ? 'done' : pending ? 'pending' : '';
+      const badge = done ? '<span class="badge" style="background:#EAF3EC;color:#3E7A4C">Completed</span>'
+        : pending ? '<span class="badge" style="background:#E3ECF7;color:#2E5FA3">Waiting on office</span>' : '';
+      const svcs = g.items.map(i => {
+        const detail = (o.Services || []).find(s => (s.Category || '') === i.Category && s.ServiceName === i.ServiceName) || {};
+        return esc(i.ServiceName) + (detail.Level ? ' — ' + esc(detail.Level) : '');
+      }).join('<br>');
+      const canMark = !done && !pending && g.items.some(i => i.ScheduledDate);
+      return '<div class="place ' + cls + '"><div class="place-head"><p class="recurring-title">' + esc(g.place) + '</p>' + badge + '</div>' +
+        '<div class="place-svcs">' + svcs + '</div>' +
+        (canMark
+          ? '<div class="place-actions">' +
+              '<button type="button" class="svc-row-cam" title="Add a photo of this place" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(g.place) + '\',\'' + jsStr(g.place) + '\')">' + cam + '</button>' +
+              '<button type="button" class="gs-ofp-btn-primary" onclick="event.stopPropagation();startServiceComplete(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(g.place) + '\',\'' + jsStr(g.place) + '\')">✓ Mark as Done</button>' +
+            '</div>'
+          : '') +
+        '</div>';
+    }).join('');
+    const pct = groups.length ? Math.round(marked / groups.length * 100) : 0;
+    const safe = String(o.OrderID).replace(/[^a-z0-9]/gi, '_');
+    return '<p class="place-progress"><b>' + marked + ' of ' + groups.length + (groups.length === 1 ? ' place' : ' places') + '</b> marked done</p>' +
+      '<div class="place-bar"><span style="width:' + pct + '%"></span></div>' + blocks +
+      '<div class="extra-form" id="extra-form-' + safe + '" style="display:none;margin-top:12px">' +
+        '<p class="recurring-title">What did the client ask for?</p>' +
+        '<textarea id="extra-note-' + safe + '" placeholder="e.g. Clean the 2nd floor conference room"></textarea>' +
+        '<button type="button" class="gs-ofp-btn-primary" style="width:100%;margin-top:10px" onclick="event.stopPropagation();sendExtraRequest(\'' + jsStr(o.OrderID) + '\')">Send to office</button>' +
+      '</div>' +
+      '<button type="button" class="photo-btn" id="extra-open-' + safe + '" onclick="event.stopPropagation();openExtraForm(\'' + jsStr(o.OrderID) + '\')">The client asked for something not on my list</button>';
+  }
+  function openExtraForm(orderId) {
+    const safe = String(orderId).replace(/[^a-z0-9]/gi, '_');
+    $('extra-form-' + safe).style.display = '';
+    $('extra-open-' + safe).style.display = 'none';
+    $('extra-note-' + safe).focus();
+  }
+  /* El cliente le pide algo que NO esta en su lista: el tecnico no lo
+     hace por su cuenta -- lo manda a oficina, que decide si se cobra
+     aparte (resolve-extra-request.js en Admingsocd.com). */
+  async function sendExtraRequest(orderId) {
+    const safe = String(orderId).replace(/[^a-z0-9]/gi, '_');
+    const note = ($('extra-note-' + safe).value || '').trim();
+    if (!note) { $('extra-note-' + safe).focus(); return; }
+    try {
+      await GS.api('/submit-extra-request', { body: { orderId, techId: tech.id, note } });
+      showToast('Sent to the office. Wait for approval before doing it.');
+      $('extra-note-' + safe).value = '';
+      $('extra-form-' + safe).style.display = 'none';
+      $('extra-open-' + safe).style.display = '';
+    } catch (e) {
+      showToast('Could not send it: ' + e.message);
+    }
+  }
+  /* async function dentro de este bloque no se vuelve global por si
+     sola (a diferencia de una function normal) -- el onclick del
+     boton la necesita en window. */
+  window.sendExtraRequest = sendExtraRequest;
   function startServiceComplete(orderId, cat, svc) {
     location.href = 'camera-capture.html?context=service-photo&orderId=' + encodeURIComponent(orderId) +
       '&serviceName=' + encodeURIComponent(svc) + '&serviceCategory=' + encodeURIComponent(cat) +
@@ -667,7 +769,10 @@ if (tech) {
   /* "Assign by service" -- version por-servicio de finishCompletion. */
   async function finishServiceCompletion(orderId, cat, svc) {
     try {
-      await GS.api('/submit-service-complete', { body: { orderId, category: cat, serviceName: svc, techId: tech.id } });
+      /* Por lugar: Mark as Done manda el lugar como categoria Y como
+         nombre (ver placeLinesHtml) -- eso activa placeMode. */
+      const placeMode = !!cat && cat === svc && PLACE_RE.test(cat);
+      await GS.api('/submit-service-complete', { body: { orderId, category: cat, serviceName: svc, techId: tech.id, placeMode } });
       showToast(svc + ' marked as done — the office will confirm.');
       loadOrders();
     } catch (e) {

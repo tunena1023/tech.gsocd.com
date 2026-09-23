@@ -86,21 +86,40 @@ exports.handler = async (event) => {
     const myName = myTechRow && myTechRow.fields ? (String(myTechRow.fields.FirstName || '') + ' ' + String(myTechRow.fields.LastName || '')).trim() : '';
     if (!myName) return jsonResponse(404, { error: 'Technician not found.' });
 
-    const hasPhoto = await hasServicePhoto(f.ClientID, f.BusinessName, b.orderId, b.serviceName);
-    if (!hasPhoto) return jsonResponse(400, { error: 'Take at least 1 photo of this service before marking it done.' });
+    /* Recurrentes "Who does what" por lugar (23/09/2026): placeMode
+       marca de un jalon TODOS los servicios de este tecnico en ese
+       LUGAR (misma Category, ej. "Floor 1 / Hallway"). La foto
+       obligatoria es la del lugar: employee.html la sube con el lugar
+       como nombre (mismo prefijo svc-<nombre>- de siempre). Sin
+       placeMode, todo exactamente igual que antes. */
+    const placeMode = b.placeMode === true;
+    const photoKey = placeMode ? b.category : b.serviceName;
+    const hasPhoto = await hasServicePhoto(f.ClientID, f.BusinessName, b.orderId, photoKey);
+    if (!hasPhoto) return jsonResponse(400, { error: placeMode ? 'Take at least 1 photo of this place before marking it done.' : 'Take at least 1 photo of this service before marking it done.' });
 
     const assignmentRows = await fetchByOrderId(SERVICE_ASSIGNMENTS_LIST, b.orderId, true);
-    const match = assignmentRows.find(it => it.fields && (it.fields.Category || '') === b.category && (it.fields.ServiceName || '') === b.serviceName);
-    if (!match) return jsonResponse(404, { error: 'This service is not scheduled yet.' });
-    /* Solo el/los tecnico(s) YA asignado(s) a este servicio en
-       particular lo puede marcar -- mismo candado real que ya aplica
-       employee.html para filtrar que ve (get-my-orders.js), revisado
-       otra vez aqui del lado del servidor. */
-    const assignedNames = String(match.fields.AssignedTo || '').split(',').map(n => n.trim());
-    if (!assignedNames.includes(myName)) return jsonResponse(403, { error: 'This service is not assigned to you.' });
-    if (match.fields.WorkStatus === 'Completed') return jsonResponse(400, { error: 'This service is already completed.' });
+    const mine = it => String(it.fields.AssignedTo || '').split(',').map(n => n.trim()).includes(myName);
+    let targets;
+    if (placeMode) {
+      const inPlace = assignmentRows.filter(it => it.fields && (it.fields.Category || '') === b.category);
+      if (!inPlace.length) return jsonResponse(404, { error: 'This place is not scheduled yet.' });
+      targets = inPlace.filter(mine);
+      if (!targets.length) return jsonResponse(403, { error: 'This place is not assigned to you.' });
+      targets = targets.filter(it => it.fields.WorkStatus !== 'Completed');
+      if (!targets.length) return jsonResponse(400, { error: 'This place is already completed.' });
+    } else {
+      const match = assignmentRows.find(it => it.fields && (it.fields.Category || '') === b.category && (it.fields.ServiceName || '') === b.serviceName);
+      if (!match) return jsonResponse(404, { error: 'This service is not scheduled yet.' });
+      /* Solo el/los tecnico(s) YA asignado(s) a este servicio en
+         particular lo puede marcar -- mismo candado real que ya aplica
+         employee.html para filtrar que ve (get-my-orders.js), revisado
+         otra vez aqui del lado del servidor. */
+      if (!mine(match)) return jsonResponse(403, { error: 'This service is not assigned to you.' });
+      if (match.fields.WorkStatus === 'Completed') return jsonResponse(400, { error: 'This service is already completed.' });
+      targets = [match];
+    }
 
-    await updateListItemByItemId(SERVICE_ASSIGNMENTS_LIST, match.id, { WorkStatus: 'Pending Review' });
+    await Promise.all(targets.map(t => updateListItemByItemId(SERVICE_ASSIGNMENTS_LIST, t.id, { WorkStatus: 'Pending Review' })));
     await createListItem(ORDER_HISTORY_LIST, {
       Title: b.orderId + '-svc-done-by-tech-' + Date.now(),
       OrderID: b.orderId,
@@ -108,7 +127,9 @@ exports.handler = async (event) => {
       ChangedBy: myName,
       ChangeDate: new Date().toISOString(),
       Notes: '',
-      NewValue: JSON.stringify({ serviceName: b.serviceName })
+      NewValue: JSON.stringify(placeMode
+        ? { serviceName: b.category, services: targets.map(t => t.fields.ServiceName) }
+        : { serviceName: b.serviceName })
     });
 
     return jsonResponse(200, { success: true, orderId: b.orderId });
