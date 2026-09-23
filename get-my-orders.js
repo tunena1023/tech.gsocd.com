@@ -13,6 +13,7 @@
    tiene supervisor/ventana/fecha real).
 ============================================================ */
 
+const { readJsonSettings, snapshotsForOrder } = require('./lib/package-contents');
 const {
   ORDERS_LIST, ORDER_SERVICES_LIST, SCHEDULING_LIST, SERVICE_ASSIGNMENTS_LIST,
   TECHS_LIST, RECURRING_SERVICES_LIST, RECURRING_ASSIGNMENTS_LIST, CLIENTS_LIST,
@@ -315,6 +316,14 @@ exports.handler = async (event) => {
         .filter(r => r.daysUntil !== null && r.daysUntil <= RECURRING_VISIBILITY_WINDOW_DAYS);
     }
 
+    /* Paquetes: lo que incluia cada uno EL DIA que se creo la orden
+       (foto interna en su historial). Solo se busca para ordenes que
+       traen algun paquete; si falla, la lista sale igual. */
+    try {
+      const pkgMap = (await readJsonSettings(['catalog_package_contents'])).catalog_package_contents;
+      const withPkg = orders.filter(o => (o.Services || []).some(sv => Array.isArray(pkgMap[String(sv.SubOption || '')])));
+      await Promise.all(withPkg.map(async o => { o.PackageSnapshots = await snapshotsForOrder(o.OrderID); }));
+    } catch (e) { console.error('Package snapshots:', e.message); }
     return jsonResponse(200, { orders, recurring });
   } catch (e) {
     return jsonResponse(500, { error: e.message });

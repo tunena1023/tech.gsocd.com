@@ -7,6 +7,14 @@ de features, bugs, decisiones y pendientes, en orden cronológico.
 (más de ~3 semanas sin tocarse) a un párrafo o moverlas a NOTES_ARCHIVE.md,
 en vez de seguir apilando sin límite.
 
+## SUBIDO (23/09/2026): checklist de paquetes para el técnico
+
+get-catalog manda `areas` y `packageItems` (Settings). get-my-orders
+agrega `PackageSnapshots` a las órdenes que traen paquete (la foto que
+se guardó al crear la orden, `lib/package-contents.js`), y employee.html
+muestra "Includes: …" con nivel bajo el paquete. supervisor.html: picker
+v1.52.0 con el toggle (contrato recurrente → Recurring).
+
 ## SUBIDO (23/09/2026): descripción del servicio en tooltip
 
 gsocd-shared v1.50.0 (`service-tooltip` + picker). get-catalog.js manda

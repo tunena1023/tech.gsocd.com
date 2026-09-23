@@ -126,6 +126,8 @@
   .place-bar{height:4px;background:var(--off);border-radius:2px;overflow:hidden;margin-bottom:4px}
   .place-bar span{display:block;height:100%;background:var(--gold)}
   .extra-form textarea{width:100%;min-height:70px;padding:10px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;margin-top:6px}
+  .pkg-incl{font-size:11px;color:var(--gray,#6B6B6B);margin-top:4px;line-height:1.6;font-weight:400}
+  .pkg-incl b{color:var(--gold-dk,#8C6F2A);font-size:10px}
 </style>
 </head>
 <body>
@@ -275,6 +277,14 @@ if (tech) {
 
   /* Nombre del servicio con su descripcion en tooltip (si la hay). */
   function svcNameHtml(sku, name) { return window.GSServiceTooltip ? GSServiceTooltip.nameHtml(sku, esc(name)) : esc(name); }
+  /* Paquete: su checklist tal como estaba EL DIA que se creo la orden
+     (o.PackageSnapshots, lo manda get-my-orders). */
+  function pkgChecklistHtml(o, sku) {
+    const items = o && o.PackageSnapshots && o.PackageSnapshots[String(sku || '')];
+    if (!Array.isArray(items) || !items.length) return '';
+    return '<div class="pkg-incl">Includes: ' + items.map(x => svcNameHtml(x.sku, x.serviceName || x.sku) +
+      (x.level ? ' <b>' + esc(String(x.level).replace('Level ', 'L')) + '</b>' : '')).join(', ') + '</div>';
+  }
   function skuOf(o, cat, name) { const s = (o.Services || []).find(x => (x.Category || '') === (cat || '') && x.ServiceName === name); return s ? s.SubOption : ''; }
 
   async function loadOrders() {
@@ -477,7 +487,7 @@ if (tech) {
         const catSafe = esc(s.Category || '').replace(/[^a-z0-9]/gi, '_');
         const svcSafe = esc(s.ServiceName).replace(/[^a-z0-9]/gi, '_');
         return '<div class="svc-row">' +
-          '<div class="svc-row-name">' + svcNameHtml(s.SubOption, s.ServiceName) + lvl + qty + '</div>' +
+          '<div class="svc-row-name">' + svcNameHtml(s.SubOption, s.ServiceName) + lvl + qty + pkgChecklistHtml(o, s.SubOption) + '</div>' +
           '<button type="button" class="svc-row-cam" id="svc-cam-' + safe + '-' + catSafe + '-' + svcSafe + '" ' +
             'title="Add a photo for this service" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(s.Category || '') + '\',\'' + jsStr(s.ServiceName) + '\')">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>' +
