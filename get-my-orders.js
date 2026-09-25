@@ -68,6 +68,13 @@ exports.handler = async (event) => {
     const myName = myTechRow && myTechRow.fields ? (String(myTechRow.fields.FirstName || '') + ' ' + String(myTechRow.fields.LastName || '')).trim() : '';
 
     let liveOrders = orderRows.filter(it => it.fields && LIVE_STATUSES.includes(it.fields.Status));
+    /* Inspecciones (25/09/2026): una orden en 'Inspection' la ve SOLO el
+       supervisor que va a inspeccionar (InspectionBy = su nombre), en
+       cualquier division -- y Developer, que ve todo. Se agregan despues
+       de los filtros de abajo para que el filtro de division no las tire. */
+    const inspectionOrders = orderRows.filter(it => it.fields && it.fields.Status === 'Inspection' &&
+      (role === 'Developer' || (role === 'Supervisor' && myName &&
+        String(it.fields.InspectionBy || '').trim().toLowerCase() === myName.toLowerCase())));
 
     if (role === 'Developer') {
       /* Ve TODO -- las 3 divisiones, sin filtro de division ni de
@@ -111,6 +118,7 @@ exports.handler = async (event) => {
       }
       liveOrders = liveOrders.filter(it => myOrderIds.has(it.fields.OrderID || it.fields.Title));
     }
+    liveOrders = liveOrders.concat(inspectionOrders);
 
     const servicesByOrder = {};
     svcRows.forEach(it => {
@@ -190,6 +198,9 @@ exports.handler = async (event) => {
         /* Recurrentes "Who does what": recurrente + Assign by service =
            orden por lugar (employee.html la pinta por lugar). */
         RecurringServiceID: f.RecurringServiceID || '',
+        InspectionBy: f.InspectionBy || '',
+        InspectionDate: f.InspectionDate || '',
+        InspectionWindow: f.InspectionWindow || '',
         MyServiceAssignments: myAssignRows.map(a => ({
           Category: a.Category || '', ServiceName: a.ServiceName || '', Sequence: a.Sequence != null ? Number(a.Sequence) : null,
           AssignedTo: a.AssignedTo || '', ScheduledDate: a.ScheduledDate || '', WorkStatus: a.WorkStatus || 'Not Started'
@@ -317,7 +328,16 @@ exports.handler = async (event) => {
         .filter(r => r.daysUntil !== null && r.daysUntil <= RECURRING_VISIBILITY_WINDOW_DAYS);
     }
 
-    return jsonResponse(200, { orders, recurring });
+    /* Gente que el supervisor puede proponer para el trabajo despues de
+       una inspeccion: tecnicos activos de su division (Mixed = todos). */
+    const crewOptions = (role === 'Supervisor' || role === 'Developer')
+      ? techRows.filter(it => it.fields && it.fields.Active !== false && it.fields.Active !== 'false' &&
+          (role === 'Developer' || division.toLowerCase() === 'mixed' ||
+            String(it.fields.Division || '').toLowerCase() === division.toLowerCase() || it.fields.Division === 'Mixed'))
+        .map(it => (String(it.fields.FirstName || '') + ' ' + String(it.fields.LastName || '')).trim())
+        .filter(Boolean).sort()
+      : [];
+    return jsonResponse(200, { orders, recurring, crewOptions });
   } catch (e) {
     return jsonResponse(500, { error: e.message });
   }

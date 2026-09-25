@@ -91,6 +91,20 @@
   .btn-outline{background:var(--white);border:1px solid var(--border);color:var(--black);padding:9px 16px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;font-family:inherit}
   .btn-outline:hover{border-color:var(--gold)}
   .action-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+  /* Inspeccion (25/09/2026) */
+  .order-card.insp{border-left:3px solid #2A4E8C}
+  .badge.insp{background:#E6EEFB;color:#2A4E8C}
+  .insp-when{background:#F2F6FD;border:1px solid #D5E1F5;border-radius:8px;padding:10px 12px;font-size:12px;color:#2A4E8C;margin:12px 0}
+  .insp-when b{display:block;font-size:14px;color:var(--black);margin-top:2px}
+  .insp-sec{margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+  .insp-sec-t{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gray);margin-bottom:8px}
+  .insp-draft{background:#FFF8E6;border:1px solid #E8D9A0;color:#8C6F2A;border-radius:6px;padding:8px 10px;font-size:12px;margin-top:10px}
+  .insp-notes{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:6px;padding:10px;font:inherit;font-size:14px;min-height:90px;resize:vertical}
+  .crew-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .crew-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:99px;padding:8px 12px;font-size:13px;cursor:pointer;background:var(--white);user-select:none}
+  .crew-chip input{position:absolute;opacity:0;pointer-events:none}
+  .crew-chip.on{border-color:#2A4E8C;background:#E6EEFB;color:#2A4E8C;font-weight:600}
+  .insp-done-btn{width:100%;margin-top:16px;padding:14px!important;font-size:14px!important}
 
   /* Modal generico: ya no se usa para Update Services (ver .order-2col
      mas abajo), pero puede seguir sirviendo si se agrega otro dialogo
@@ -384,12 +398,22 @@ if (tech) {
 
   let orders = [];
   let recurring = [];
+  let crewOptions = [];
+  /* Inspeccion en curso (25/09/2026): lo que el supervisor va llenando
+     (cambios de servicios, notas, gente) se guarda en sessionStorage
+     para que no se pierda al ir a la camara y volver. Se manda todo
+     junto con "Inspection done". */
+  let inspState = {};
+  try { inspState = JSON.parse(sessionStorage.getItem('insp_state') || '{}') || {}; } catch (e) { inspState = {}; }
+  function inspOf(id) { return inspState[id] || (inspState[id] = { notes: '', crew: [], services: null, removalNotes: [] }); }
+  function saveInspState() { try { sessionStorage.setItem('insp_state', JSON.stringify(inspState)); } catch (e) {} }
 
   async function loadOrders() {
     try {
       const data = await GS.api('/get-my-orders', { body: { techId: tech.id, role: tech.role, division: tech.division } });
       orders = data.orders || [];
       recurring = data.recurring || [];
+      crewOptions = data.crewOptions || [];
       renderRecurring();
       renderActive();
     } catch (e) {
@@ -727,7 +751,9 @@ if (tech) {
     const list = activeOf(q);
     if (!orders.length) { box.innerHTML = '<p class="empty-note">No active orders in your department right now.</p>'; return; }
     if (!list.length) { box.innerHTML = '<p class="empty-note">No orders match that search.</p>'; return; }
-    box.innerHTML = list.map(o => {
+    const sorted = list.filter(o => o.Status === 'Inspection').concat(list.filter(o => o.Status !== 'Inspection'));
+    box.innerHTML = sorted.map(o => {
+      if (o.Status === 'Inspection') return inspectionCardHtml(o);
       const addr = [o.Address, o.BuildingNumber ? 'Building ' + o.BuildingNumber : '', o.UnitNumber ? 'Unit ' + o.UnitNumber : ''].filter(Boolean).join(' · ');
       const svcLines = (o.Services || []).map(s => {
         const lvl = s.Level ? ' — ' + esc(s.Level) : '';
@@ -790,6 +816,99 @@ if (tech) {
           </div>
         </div>`;
     }).join('');
+  }
+
+
+  /* ===== Tarjeta de INSPECCION (25/09/2026, pedido del dueño) =====
+     La oficina mando "Inspection first": este supervisor va a ver
+     antes del trabajo. Aqui toma fotos (van a la galeria como
+     "Inspection", publicas), propone cambios de servicios (mismo panel
+     de Update Services, pero se guardan aqui y se mandan al final),
+     escoge a quien propone para el trabajo y le da Inspection done.
+     Terminar la inspeccion NO completa la orden. */
+  function inspectionCardHtml(o) {
+    const st = inspOf(o.OrderID);
+    const id = jsStr(o.OrderID);
+    const addr = [o.Address, o.BuildingNumber ? 'Building ' + o.BuildingNumber : '', o.UnitNumber ? 'Unit ' + o.UnitNumber : ''].filter(Boolean).join(' · ');
+    const when = [fmtDate(o.InspectionDate), o.InspectionWindow].filter(Boolean).join(' · ');
+    const svcLines = (o.Services || []).map(s => '<div class="svc-row"><div class="svc-row-name">' + esc(s.ServiceName) +
+      (s.Level ? ' — ' + esc(s.Level) : '') + (s.Quantity ? ' — Qty: ' + esc(s.Quantity) : '') + '</div></div>').join('');
+    const draft = st.services
+      ? '<div class="insp-draft">Service changes saved (' + st.services.length + ' services). They go to the office when you finish the inspection.</div>' : '';
+    const crew = crewOptions.length
+      ? '<div class="crew-chips">' + crewOptions.map(n => {
+          const on = st.crew.indexOf(n) !== -1;
+          return '<label class="crew-chip' + (on ? ' on' : '') + '"><input type="checkbox"' + (on ? ' checked' : '') +
+            ' onchange="toggleInspCrew(\'' + id + '\',\'' + jsStr(n) + '\',this)">' + esc(n) + '</label>';
+        }).join('') + '</div>'
+      : '<p class="empty-note" style="padding:0">No crew available in your department.</p>';
+    return `
+      <div class="order-card insp" data-order="${esc(o.OrderID)}">
+        <div class="order-head" onclick="toggleOrder(this)">
+          <div>
+            ${GSOrderCardHeader.html({
+              name: o.BusinessName, orderId: o.OrderID, division: o.Division,
+              unitNumber: o.UnitNumber, bedrooms: o.Bedrooms, bathrooms: o.Bathrooms,
+              extraLine: addr + (when ? ' · Inspection ' + when : '')
+            })}
+          </div>
+          <span class="badge-row" style="flex-shrink:0"><span class="badge insp">Inspection</span></span>
+        </div>
+        <div class="order-body">
+          <div class="order-2col" id="ord2col-${esc(o.OrderID)}">
+            <div class="col-left">
+              <div class="insp-when">Inspection<b>${esc(when || '—')}</b></div>
+              <div class="row">
+                <div><b>Due</b>${fmtDate(o.DueDate)}</div>
+                <div><b>Division</b>${esc(o.Division || '—')}</div>
+              </div>
+              <div class="svc-list">${svcLines || 'No services recorded.'}</div>
+              ${draft}
+              <div class="action-row">
+                <button type="button" class="gs-ofp-btn-secondary" onclick="toggleUpdatePanel('${esc(o.OrderID)}')">${st.services ? 'Edit service changes' : 'Update Services'}</button>
+              </div>
+              <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take inspection photos</button>
+              <button type="button" class="photo-btn" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
+              <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
+              <div class="insp-sec">
+                <div class="insp-sec-t">What did you find?</div>
+                <textarea class="insp-notes" placeholder="Notes for the office…" oninput="setInspNotes('${id}',this.value)">${esc(st.notes)}</textarea>
+              </div>
+              <div class="insp-sec">
+                <div class="insp-sec-t">Who should do the work?</div>
+                ${crew}
+              </div>
+              <button type="button" class="gs-ofp-btn-primary insp-done-btn" id="insp-done-${esc(o.OrderID)}" onclick="submitInspectionDone('${id}')">✓ Inspection done</button>
+            </div>
+            <div class="col-right" id="editpanel-${esc(o.OrderID)}"></div>
+          </div>
+        </div>
+      </div>`;
+  }
+  function setInspNotes(id, v) { inspOf(id).notes = v; saveInspState(); }
+  function toggleInspCrew(id, name, el) {
+    const st = inspOf(id);
+    st.crew = st.crew.filter(n => n !== name);
+    if (el.checked) st.crew.push(name);
+    el.parentElement.classList.toggle('on', el.checked);
+    saveInspState();
+  }
+  async function submitInspectionDone(id) {
+    const st = inspOf(id);
+    if (!confirm('Finish this inspection? The office will review it before the work is scheduled.')) return;
+    const btn = $('insp-done-' + id);
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    try {
+      const res = await GS.api('/submit-inspection-done', {
+        body: { orderId: id, notes: st.notes, crew: st.crew, services: st.services || undefined, removalNotes: st.removalNotes || [] }
+      });
+      delete inspState[id]; saveInspState();
+      showToast(res.changes ? 'Inspection sent. The office will review your service changes.' : 'Inspection sent to the office.');
+      loadOrders();
+    } catch (e) {
+      alert('Could not send the inspection: ' + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Inspection done'; }
+    }
   }
 
   /* Un Supervisor ve TODAS las ordenes de su division (para dar
@@ -1141,7 +1260,10 @@ if (tech) {
     }
     umOrder = orders.find(o => o.OrderID === orderId);
     if (!umOrder) return;
-    umServices = (umOrder.Services || []).map(s => ({
+    /* Inspeccion con cambios ya guardados: el panel arranca desde lo
+       guardado, no desde los servicios originales. */
+    const inspDraft = umOrder.Status === 'Inspection' && inspOf(orderId).services;
+    umServices = (inspDraft || umOrder.Services || []).map(s => ({
       name: s.ServiceName, sku: s.SubOption, level: s.Level || '', quantity: s.Quantity || '',
       category: s.Category, division: s.Division || umOrder.Division
     }));
@@ -1253,12 +1375,14 @@ if (tech) {
 
     panel.innerHTML =
       '<div class="panel-title">Update Services</div>' +
-      '<div class="panel-note">This goes to the office for review — the client won\'t see it until GS Solutions sends it.</div>' +
+      '<div class="panel-note">' + (umOrder.Status === 'Inspection'
+        ? 'Saved with this inspection — the office reviews it when you tap Inspection done.'
+        : 'This goes to the office for review — the client won\'t see it until GS Solutions sends it.') + '</div>' +
       '<div id="um-current-list">' + currentListHtml + '</div>' +
       '<div id="um-add-section">' + addSectionHtml + '</div>' +
       '<div class="send-row" style="margin-top:16px;display:flex;gap:10px">' +
       '<button type="button" class="gs-ofp-btn-secondary" onclick="toggleUpdatePanel(\'' + esc(umOrder.OrderID) + '\')">Cancel</button>' +
-      '<button type="button" class="gs-ofp-btn-primary" id="um-submit-btn" onclick="submitUpdate()">Send to Office</button>' +
+      '<button type="button" class="gs-ofp-btn-primary" id="um-submit-btn" onclick="submitUpdate()">' + (umOrder.Status === 'Inspection' ? 'Save changes' : 'Send to Office') + '</button>' +
       '</div>';
   }
 
@@ -1328,7 +1452,8 @@ if (tech) {
      esto tomaba texto libre directo dentro del onclick, y se rompia
      en silencio con cualquier nombre de servicio con apostrofe. */
   function umAddCatalog(btn) {
-    umAdded.push({ sku: btn.dataset.sku, serviceName: btn.dataset.name });
+    const cat = (umCatalogCache || []).find(c => String(c.sku) === String(btn.dataset.sku)) || {};
+    umAdded.push({ sku: btn.dataset.sku, serviceName: btn.dataset.name, division: cat.division || '', requiresQuantity: !!cat.requiresQuantity });
     renderUpdateModal();
   }
   function umRemoveAdded(i) {
@@ -1389,13 +1514,30 @@ if (tech) {
     });
     umAdded.forEach(c => {
       const propType = (umServices[0] && umServices[0].category) || 'Commercial';
-      finalServices.push({ Category: propType, ServiceName: c.serviceName, SubOption: c.sku, Division: umOrder.Division, Level: '' });
+      /* Servicio de cantidad: arranca en 1 (sin Quantity, SharePoint
+         truena al aplicarlo y se pueden perder servicios). */
+      finalServices.push({ Category: propType, ServiceName: c.serviceName, SubOption: c.sku, Division: c.division || umOrder.Division, Level: '', Quantity: c.requiresQuantity ? 1 : '' });
     });
     if (!finalServices.length) {
       alert('An order needs at least one service — remove fewer, or add one before sending.');
       return;
     }
     const removalNotes = Object.keys(umNotes).map(i => ({ serviceName: umServices[i].name, note: umNotes[i] }));
+
+    if (umOrder.Status === 'Inspection') {
+      const finalId = umOrder.OrderID;
+      const st = inspOf(finalId);
+      st.services = finalServices; st.removalNotes = removalNotes;
+      saveInspState();
+      closeUpdateModal();
+      showToast('Changes saved. They go to the office when you finish the inspection.');
+      renderActive();
+      /* Que la tarjeta siga abierta despues de guardar: el supervisor
+         sigue con notas, gente e Inspection done. */
+      const card = document.querySelector('.order-card[data-order="' + String(finalId).replace(/"/g, '') + '"] .order-body');
+      if (card) card.classList.add('open');
+      return;
+    }
 
     const btn = $('um-submit-btn');
     btn.disabled = true; btn.textContent = 'Sending…';
@@ -1456,6 +1598,10 @@ if (tech) {
   window.takeRecurringPhoto = takeRecurringPhoto;
   window.toggleRcUpdate = toggleRcUpdate;
   window.saveRcUpdate = saveRcUpdate;
+  /* Inspeccion (25/09/2026): mismo motivo -- async no se eleva sola. */
+  window.submitInspectionDone = submitInspectionDone;
+  window.setInspNotes = setInspNotes;
+  window.toggleInspCrew = toggleInspCrew;
 }
 </script>
 </body>

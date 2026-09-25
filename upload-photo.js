@@ -77,7 +77,12 @@ exports.handler = async (event) => {
     const now = new Date();
     const ext = isVideo ? 'mp4' : 'jpg';
     const contentType = isVideo ? 'video/mp4' : 'image/jpeg';
-    const fileName = fileTimestamp(now) + '-' + randomSuffix() + '.' + ext;
+    /* Foto de inspeccion (25/09/2026): mientras la orden esta en
+       'Inspection', el archivo lleva el prefijo insp- -- las galerias
+       lo usan para separar "Inspection (antes)" de "Work (despues)".
+       Las fotos son publicas: el cliente las ve igual que las demas. */
+    const stagePrefix = f.Status === 'Inspection' ? 'insp-' : '';
+    const fileName = stagePrefix + fileTimestamp(now) + '-' + randomSuffix() + '.' + ext;
 
     await ensureFolder(folderPath);
     const result = await uploadFile(folderPath, fileName, buffer, contentType);
