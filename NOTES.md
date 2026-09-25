@@ -7,6 +7,21 @@ de features, bugs, decisiones y pendientes, en orden cronológico.
 (más de ~3 semanas sin tocarse) a un párrafo o moverlas a NOTES_ARCHIVE.md,
 en vez de seguir apilando sin límite.
 
+## SUBIDO A PRODUCCIÓN (25/09/2026): avisos push a técnicos y acceso directo
+
+- **Avisos push** (los manda Admin, `lib/push.js`): asignado, cambiado, quitado o
+  cancelado; en el idioma de cada técnico (Techs.Language); abren su portal.
+- El técnico **no** tiene opción de prenderlos: el permiso se pide al configurar
+  el teléfono con el QR de Admin (device-setup.html, en el toque de "Confirm").
+  En iPhone primero se agrega la app a la pantalla de inicio (sin eso iPhone no
+  manda push); `setup-manifest.js` hace que ese ícono abra el mismo link del QR.
+- Techs & Roles en Admin muestra "Alerts on/off". Quien ya tenía teléfono
+  configurado necesita **New QR** para recibir avisos.
+- Suscripciones: lista PushSubscriptions, llave PayrollID o `tech:<id>`.
+- **Acceso directo:** index.html recupera la sesión con la cookie de 30 días
+  (`tech-session` restore) y ya no borra el QR por una falla de red. Sign out
+  borra la cookie.
+
 ## POR SI VUELVE A PASAR (25/09/2026): "entra y la saca" del portal de técnicos
 
 - Caso: Julia entraba al portal y la regresaba al login. Se compuso sola antes de
