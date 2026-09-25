@@ -16,6 +16,8 @@ const {
   ORDERS_LIST, ORDER_SERVICES_LIST, SCHEDULING_LIST, TECHS_LIST,
   listChildren, graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
+const graph = require('./lib/graph');
+const orderDocs = require('./lib/order-docs');
 
 const PHOTOS_FOLDER = process.env.GRAPH_PHOTOS_FOLDER || 'TechPhotos';
 
@@ -134,6 +136,39 @@ function clientFolderName(f) {
     .replace(/[\\/:*?"<>|]/g, '').trim();
 }
 
+/* Ordenes que este tecnico puede ver (mismo criterio que get-my-orders).
+   Tambien lo usa order-docs.js para dejar ver un documento. */
+async function scopedOrders(techId, role, division) {
+  const [orderRows, schedulingRows, techRows] = await Promise.all([
+    fetchAll(ORDERS_LIST),
+    role === 'Employee' ? fetchAll(SCHEDULING_LIST) : Promise.resolve([]),
+    role === 'Employee' ? fetchAll(TECHS_LIST) : Promise.resolve([])
+  ]);
+
+  let myOrders = orderRows.filter(it => it.fields);
+  if (role === 'Developer') {
+    /* Ve todo -- mismo criterio que get-my-orders.js/get-my-history.js. */
+  } else if (role === 'Supervisor') {
+    /* Mismo fix que get-my-orders.js: Mixed = las 3 divisiones. */
+    if (division.toLowerCase() !== 'mixed') {
+      myOrders = myOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
+    }
+  } else {
+    /* Mismo arreglo que get-my-orders.js/get-my-history.js: Admin
+       guarda la asignacion real en Scheduling con el PayrollNumber
+       del tecnico, nunca en OrderAssignments/TechID. */
+    const myTechRow = techRows.find(it => it.id === techId);
+    const myPayrollId = myTechRow && myTechRow.fields ? String(myTechRow.fields.PayrollID || '').trim() : '';
+    const myOrderIds = new Set(
+      schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === myPayrollId)
+        .map(it => it.fields.OrderID)
+    );
+    myOrders = myOrders.filter(it => myOrderIds.has(it.fields.OrderID || it.fields.Title));
+  }
+
+  return myOrders;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
 
@@ -144,32 +179,7 @@ exports.handler = async (event) => {
     const division = String(b.division || '').trim();
     if (!techId || !role) return jsonResponse(400, { error: 'techId and role are required' });
 
-    const [orderRows, schedulingRows, techRows] = await Promise.all([
-      fetchAll(ORDERS_LIST),
-      role === 'Employee' ? fetchAll(SCHEDULING_LIST) : Promise.resolve([]),
-      role === 'Employee' ? fetchAll(TECHS_LIST) : Promise.resolve([])
-    ]);
-
-    let myOrders = orderRows.filter(it => it.fields);
-    if (role === 'Developer') {
-      /* Ve todo -- mismo criterio que get-my-orders.js/get-my-history.js. */
-    } else if (role === 'Supervisor') {
-      /* Mismo fix que get-my-orders.js: Mixed = las 3 divisiones. */
-      if (division.toLowerCase() !== 'mixed') {
-        myOrders = myOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
-      }
-    } else {
-      /* Mismo arreglo que get-my-orders.js/get-my-history.js: Admin
-         guarda la asignacion real en Scheduling con el PayrollNumber
-         del tecnico, nunca en OrderAssignments/TechID. */
-      const myTechRow = techRows.find(it => it.id === techId);
-      const myPayrollId = myTechRow && myTechRow.fields ? String(myTechRow.fields.PayrollID || '').trim() : '';
-      const myOrderIds = new Set(
-        schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === myPayrollId)
-          .map(it => it.fields.OrderID)
-      );
-      myOrders = myOrders.filter(it => myOrderIds.has(it.fields.OrderID || it.fields.Title));
-    }
+    const myOrders = await scopedOrders(techId, role, division);
 
     const groups = await Promise.all(myOrders.map(async (it) => {
       const f = it.fields;
@@ -211,8 +221,20 @@ exports.handler = async (event) => {
 
     const nonEmpty = groups.filter(Boolean).sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
-    return jsonResponse(200, { groups: nonEmpty });
+    /* Documentos (Gallery > Docs, 25/09/2026): solo ver, de las mismas
+       ordenes que puede ver en su portal. */
+    const byId = {};
+    myOrders.forEach(it => { byId[it.fields.OrderID || it.fields.Title || ''] = it.fields; });
+    const docs = await orderDocs.listDocs(graph, { orderIds: Object.keys(byId) });
+    const docGroups = orderDocs.groupDocs(docs, id => {
+      const f = byId[id] || {};
+      return [f.BusinessName || f.ClientID || '', f.UnitNumber ? 'Unit ' + f.UnitNumber : ''].filter(Boolean).join(' · ') || id;
+    });
+
+    return jsonResponse(200, { groups: nonEmpty, docGroups });
   } catch (e) {
     return jsonResponse(500, { error: e.message });
   }
 };
+
+exports.scopedOrders = scopedOrders;

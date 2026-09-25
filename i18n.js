@@ -174,6 +174,19 @@
     'Camera': 'Cámara',
     '0 / 10 photos': '0 / 10 fotos',
 
+    /* --- documentos --- */
+    'Docs': 'Documentos',
+    'Documents from your orders (PDF, Word, text). The office and the client add them.': 'Documentos de tus órdenes (PDF, Word, texto). Los suben la oficina y el cliente.',
+    'No documents yet.': 'Todavía no hay documentos.',
+    'No documents match that search.': 'Ningún documento coincide con la búsqueda.',
+    'Search by order, client or file name…': 'Buscar por orden, cliente o nombre de archivo…',
+    'View': 'Ver',
+    'Download': 'Descargar',
+    'Opening…': 'Abriendo…',
+    "This file can't be shown here.": 'Este archivo no se puede mostrar aquí.',
+    'Use Download to open it on your device.': 'Usa Descargar para abrirlo en tu teléfono.',
+    'GS Solutions': 'GS Solutions',
+
     /* --- inspeccion --- */
     'Inspection': 'Inspección',
     '📷 Take inspection photos': '📷 Tomar fotos de inspección',
@@ -219,6 +232,7 @@
         'save that': 'guardar', 'mark this done': 'marcar como terminado', 'mark this service done': 'marcar el servicio como terminado', 'mark this order Completed': 'marcar la orden como completada' };
       return 'No se pudo ' + (map[what] || what) + ': ' + err;
     }],
+    [/^Could not open this file: (.*)$/, 'No se pudo abrir el archivo: $1'],
     [/^Created ([^·]+)$/, 'Creada $1'],
     [/^Unit ([^·]+)$/, 'Unidad $1'],
     [/^Building ([^·]+)$/, 'Edificio $1'],

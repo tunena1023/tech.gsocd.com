@@ -135,6 +135,14 @@
   .extra-form textarea{width:100%;min-height:70px;padding:10px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;margin-top:6px}
   .pkg-incl{font-size:11px;color:var(--gray,#6B6B6B);margin-top:4px;line-height:1.6;font-weight:400}
   .pkg-incl b{color:var(--gold-dk,#8C6F2A);font-size:10px}
+
+  /* Gallery | Docs */
+  .gal-subtabs { display: flex; border-bottom: 1px solid var(--border); margin: 0 0 18px; }
+  .gal-subtab { padding: 10px 4px; margin-right: 26px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gray); cursor: pointer; border: none; border-bottom: 2px solid transparent; background: none; font-family: inherit; }
+  .gal-subtab.active { color: var(--black); border-bottom-color: var(--gold); }
+  .gal-subtab:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .gal-subview { display: none; }
+  .gal-subview.active { display: block; }
 </style>
 </head>
 <body>
@@ -169,9 +177,21 @@
 
 <div class="view" id="view-gallery">
   <h2>Gallery</h2>
+  <!-- Gallery | Docs (25/09/2026): los tecnicos solo ven documentos. -->
+  <div class="gal-subtabs" role="tablist" aria-label="Gallery sections">
+    <button type="button" class="gal-subtab active" role="tab" aria-selected="true" data-galsub="photos" onclick="showGallerySub('photos')">Gallery</button>
+    <button type="button" class="gal-subtab" role="tab" aria-selected="false" data-galsub="docs" onclick="showGallerySub('docs')">Docs</button>
+  </div>
+  <div class="gal-subview active" id="galsub-photos">
   <p class="sub">Photos you've taken, grouped by order.</p>
   <div id="gallery-search-wrap"></div>
   <div id="gallery-list"><p class="empty-note">Loading…</p></div>
+  </div>
+  <div class="gal-subview" id="galsub-docs">
+    <p class="sub">Documents from your orders (PDF, Word, text). The office and the client add them.</p>
+    <div id="docs-search-wrap"></div>
+    <div id="docs-list"><p class="empty-note">Loading…</p></div>
+  </div>
 </div>
 
 <input type="file" id="camera-input" accept="image/*,video/*,android/allowCamera" style="display:none">
@@ -185,6 +205,7 @@
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.30.0/order-card-header/order-card-header.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@f9af97cecb79115d4a7d51705609b674d513bb89/gallery-groups/gallery-groups.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@3a752aba65890da6b375d3c9ee4bad034cf29dc1/doc-viewer/doc-viewer.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@71670c4e06fbb09c07fe248cf4a5a89c3399b384/camera-queue/camera-queue.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.26.0/photo-hover-preview/photo-hover-preview.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@8a4738ee52ce14321f83cf040a577d089d96cf4d/order-history/order-history.js"></script>
@@ -889,6 +910,41 @@ if (tech) {
 
   let galleryLoaded = false;
   let galleryGroups = [];
+  /* ===== Documentos (Gallery > Docs, 25/09/2026): solo ver. ===== */
+  let docGroups = [];
+  function showGallerySub(which) {
+    document.querySelectorAll('#view-gallery .gal-subtab').forEach(b => {
+      const on = b.dataset.galsub === which;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    $('galsub-photos').classList.toggle('active', which === 'photos');
+    $('galsub-docs').classList.toggle('active', which === 'docs');
+  }
+  window.showGallerySub = showGallerySub;
+  function renderDocs() {
+    const inp = document.getElementById('docs-search');
+    const q = ((inp && inp.value) || '').trim().toLowerCase();
+    let groups = docGroups;
+    if (q) {
+      groups = groups.map(g => (String(g.orderId || '').toLowerCase().includes(q) || String(g.clientLabel || '').toLowerCase().includes(q))
+        ? g : Object.assign({}, g, { docs: g.docs.filter(d => String(d.name || '').toLowerCase().includes(q)) }));
+    }
+    GSDocViewer.renderGroups('docs-list', groups, {
+      emptyMessage: q ? 'No documents match that search.' : 'No documents yet.',
+      canDelete: () => false,
+      onView: async d => {
+        GSDocViewer.open({ name: d.name, loading: true });
+        try {
+          const res = await GS.api('/order-docs', { body: { action: 'view', orderId: d.orderId, docId: d.id } });
+          GSDocViewer.open({ name: d.name, viewUrl: res.viewUrl, downloadUrl: res.downloadUrl });
+        } catch (e) {
+          GSDocViewer.open({ name: d.name, error: 'Could not open this file: ' + e.message });
+        }
+      }
+    });
+  }
+
   async function loadGallery() {
     galleryLoaded = true;
     try {
@@ -898,8 +954,13 @@ if (tech) {
       document.getElementById('gallery-search-wrap').innerHTML = GSGalleryGroups.searchHtml('gallery-search', 'Search by order number or client…');
       document.getElementById('gallery-search').addEventListener('input', renderGallery);
       renderGallery();
+      docGroups = data.docGroups || [];
+      $('docs-search-wrap').innerHTML = GSDocViewer.searchHtml('docs-search', 'Search by order, client or file name…');
+      document.getElementById('docs-search').addEventListener('input', renderDocs);
+      renderDocs();
     } catch (e) {
       $('gallery-list').innerHTML = '<p class="empty-note">Could not load photos: ' + esc(e.message) + '</p>';
+      $('docs-list').innerHTML = '<p class="empty-note">Could not load documents: ' + esc(e.message) + '</p>';
     }
   }
 
