@@ -43,8 +43,10 @@ exports.handler = async (event) => {
       return data.value || [];
     })();
     const techRow = techRows.find(t => t.id === techId);
-    const payrollId = techRow && techRow.fields ? String(techRow.fields.PayrollID || '').trim() : '';
-    if (!payrollId) return jsonResponse(400, { error: 'Could not identify this technician.' });
+    if (!techRow) return jsonResponse(400, { error: 'Could not identify this technician.' });
+    /* Sin PayrollID (tecnico dado de alta a mano): "tech:<id>", la misma
+       llave que usa Scheduling y que busca lib/push.js en Admin. */
+    const payrollId = String((techRow.fields && techRow.fields.PayrollID) || '').trim() || ('tech:' + techRow.id);
 
     if (action === 'remove') {
       if (!subscription || !subscription.endpoint) return jsonResponse(400, { error: 'subscription.endpoint is required' });

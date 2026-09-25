@@ -14,10 +14,14 @@ self.addEventListener('push', function (event) {
 
   const title = data.title || 'GS Solutions';
   const options = {
-    body: data.body || 'An order was updated.',
+    body: data.body || '',
     icon: '/api/site-image?name=Logo.jpg',
     badge: '/api/site-image?name=Logo.jpg',
-    data: { url: data.url || '/employee.html' }
+    data: { url: data.url || '/employee.html' },
+    /* Mismo tag = reemplaza al aviso anterior de la misma orden en vez
+       de amontonar (lib/push.js de Admin lo manda). */
+    tag: data.tag || undefined,
+    renotify: !!data.tag
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });

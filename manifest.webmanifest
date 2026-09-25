@@ -1,0 +1,13 @@
+{
+  "name": "GS Solutions Tech",
+  "short_name": "GS Tech",
+  "description": "GS Solutions technician portal",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "icons": [
+    { "src": "/api/site-image?name=Logo.jpg", "sizes": "any", "type": "image/jpeg", "purpose": "any" }
+  ]
+}
