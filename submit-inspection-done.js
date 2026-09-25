@@ -111,7 +111,11 @@ exports.handler = async (event) => {
       FieldChanged: changes ? 'Inspection Update' : 'Inspection',
       Notes: [notes, removed].filter(Boolean).join(' | ') || ('Inspection done by ' + actor + '.'),
       OldValue: changes ? JSON.stringify({ services: current, status: 'Inspection' }) : '',
-      NewValue: JSON.stringify(changes ? { services: proposed, crew } : { crew })
+      /* Mismo formato que lee gsocd-shared/order-history (renglones de
+         inspeccion): nunca se imprime como texto plano. */
+      NewValue: JSON.stringify(Object.assign(
+        { inspectionBy: f.InspectionBy || actor, inspectionDate: f.InspectionDate || '', inspectionWindow: f.InspectionWindow || '', inspectionDoneAt: now, crew },
+        changes ? { services: proposed } : {}))
     });
 
     let photoCount = 0;
