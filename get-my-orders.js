@@ -60,9 +60,11 @@ exports.handler = async (event) => {
     /* Asignaciones por servicio de las ordenes vivas (las unicas que
        importan abajo), y lo de Scheduling/recurrentes de este empleado. */
     const candidateIds = orderRows.filter(it => it.fields).map(it => it.fields.OrderID || it.fields.Title);
-    const byPayroll = list => myPayrollId
-      ? lq.fetchWhere(list, `fields/PayrollNumber eq '${myPayrollId.replace(/'/g, "''")}'`, f => String(f.PayrollNumber || '').trim() === myPayrollId)
-      : lq.fetchAll(list);
+    /* Quien no tiene numero de nomina (dado de alta a mano) queda en
+       Scheduling como "tech:<id>" -- se buscan las dos llaves. */
+    const myKeys = [myPayrollId, 'tech:' + techId].filter(Boolean);
+    const isMine = pn => myKeys.includes(String(pn || '').trim());
+    const byPayroll = list => lq.fetchByValues(list, 'PayrollNumber', myKeys);
     const [serviceAssignRows, schedulingRows, recurringAssignRows] = await Promise.all([
       lq.fetchByValues(SERVICE_ASSIGNMENTS_LIST, 'OrderID', candidateIds),
       role === 'Employee' ? byPayroll(SCHEDULING_LIST) : Promise.resolve([]),
@@ -104,7 +106,7 @@ exports.handler = async (event) => {
          portal, aunque la asignacion se hubiera guardado bien del
          lado de Admin. */
       const myOrderIds = new Set(
-        schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === myPayrollId)
+        schedulingRows.filter(it => it.fields && isMine(it.fields.PayrollNumber))
           .map(it => it.fields.OrderID)
       );
       /* "Assign by service": una orden asi NUNCA escribe en
@@ -314,7 +316,7 @@ exports.handler = async (event) => {
          de la semana, incluso cuando no le toca. */
       const activeServiceIds = new Set(activeServices.map(it => it.id));
       recurring = recurringAssignRows
-        .filter(a => a.fields && String(a.fields.PayrollNumber || '').trim() === myPayrollId && activeServiceIds.has(a.fields.RecurringServiceID))
+        .filter(a => a.fields && isMine(a.fields.PayrollNumber) && activeServiceIds.has(a.fields.RecurringServiceID))
         .map(a => {
           const svc = activeServices.find(it => it.id === a.fields.RecurringServiceID);
           const sf = svc ? svc.fields : {};
