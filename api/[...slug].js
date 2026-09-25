@@ -28,7 +28,8 @@ const handlers = {
   'get-recurring-history': require('../get-recurring-history').handler,
   'submit-service-complete': require('../submit-service-complete').handler,
   'submit-extra-request': require('../submit-extra-request').handler,
-  'submit-inspection-done': require('../submit-inspection-done').handler
+  'submit-inspection-done': require('../submit-inspection-done').handler,
+  'save-tech-language': require('../save-tech-language').handler
 };
 
 module.exports = async (req, res) => {

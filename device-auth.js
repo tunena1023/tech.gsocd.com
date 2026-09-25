@@ -46,7 +46,8 @@ function techSessionShape(techRow) {
     lastName: f.LastName || '',
     role: f.Role || 'Employee',
     division: f.Division || '',
-    tempId: f.TempID || ''
+    tempId: f.TempID || '',
+    language: f.Language || ''
   };
 }
 

@@ -51,7 +51,8 @@ exports.handler = async (event) => {
         lastName: match.fields.LastName,
         role: match.fields.Role || 'Employee',
         division: match.fields.Division || '',
-        tempId: match.fields.TempID
+        tempId: match.fields.TempID,
+        language: match.fields.Language || ''
       }
     }), sessionCookie(match));
   } catch (e) {

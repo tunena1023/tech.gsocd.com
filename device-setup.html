@@ -58,6 +58,7 @@
 </div>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.24/order-form-premium/order-form-premium.js"></script>
 <script>
   GSOrderFormPremium.styleTag();
@@ -102,6 +103,7 @@
     try {
       const res = await GS.api('/device-auth', { body: { action: 'activate-device', setupToken } });
       localStorage.setItem('gs_device_token', res.deviceToken);
+      GSI18n.adoptFromSession(res.tech);
       GS.session.set(res.tech);
       showView('done');
       setTimeout(() => {

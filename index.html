@@ -41,6 +41,7 @@
 
 <div class="card">
   <div class="logo-row"><img src="" alt="GS Solutions" class="logo-diamond"></div>
+  <div id="lang-row" style="text-align:center;margin:-4px 0 10px"></div>
 
   <!-- CHECKING FOR SAVED DEVICE ACCESS -->
   <div class="view active" id="view-checking">
@@ -78,9 +79,11 @@
 </div>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.24/order-form-premium/order-form-premium.js"></script>
 <script>
   GSOrderFormPremium.styleTag();
+  GSI18n.mountToggle(document.getElementById('lang-row'));
   function showView(v) {
     document.getElementById('view-checking').classList.toggle('active', v === 'checking');
     document.getElementById('view-signin').classList.toggle('active', v === 'signin');
@@ -90,6 +93,8 @@
   }
 
   function goToPortal(tech) {
+    /* El idioma guardado en la cuenta gana sobre el del telefono. */
+    GSI18n.adoptFromSession(tech);
     GS.session.set(tech);
     /* Developer usa las mismas herramientas que Supervisor (Update
        Services, Report Unit Not Ready) pero sin el candado de una

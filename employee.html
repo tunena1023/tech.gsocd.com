@@ -172,6 +172,7 @@
 <div class="toast" id="toast" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--black);color:var(--white);padding:12px 22px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:all .3s;z-index:500"></div>
 
 <script src="shared.js"></script>
+<script src="i18n.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.50.0/service-tooltip/service-tooltip.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.6/nav-premium/nav-premium.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
@@ -231,6 +232,8 @@ if (tech) {
   function doSignout() { GS.session.clear(); location.href = 'index.html'; }
 
   $('nav-user').textContent = tech.firstName + ' ' + tech.lastName + (tech.division ? ' · ' + tech.division : '');
+  /* ENG | ESP junto al nombre (25/09/2026, i18n.js) */
+  GSI18n.mountToggle($('nav-user').parentElement, document.querySelector('.btn-signout'));
 
   GSNavPremium.init('gsNav', [
     { label: 'Active Orders', dataView: 'active', onclick: "showTab('active')", active: true },
