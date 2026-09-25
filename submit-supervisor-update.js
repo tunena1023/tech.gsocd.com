@@ -25,6 +25,7 @@ const {
   createListItem, updateListItemByItemId, deleteListItem,
   graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
+const techScope = require('./lib/tech-scope');
 
 const LIVE_STATUSES = ['Assigned', 'Updated'];
 
@@ -66,6 +67,9 @@ exports.handler = async (event) => {
 
     if (!orderId) return jsonResponse(400, { error: 'orderId is required' });
     if (!services) return jsonResponse(400, { error: 'services is required' });
+    /* B11: solo ordenes de este tecnico (lib/tech-scope.js). */
+    const access = await techScope.check(b, orderId);
+    if (!access.ok) return jsonResponse(access.status, { error: access.error });
 
     const [orderRows, svcRows] = await Promise.all([
       fetchByOrderId(ORDERS_LIST, orderId),

@@ -87,6 +87,12 @@
     'e.g. (515) 555-4021': 'ej. (515) 555-4021',
     'e.g. 4021': 'ej. 4021',
 
+    'Account created': 'Cuenta creada',
+    'Your account is waiting for the office to approve it. Once they do, sign in with your name and the last 4 digits of your phone.': 'Tu cuenta está esperando a que la oficina la apruebe. Cuando la aprueben, entra con tu nombre y los últimos 4 dígitos de tu teléfono.',
+    'Back to sign in': 'Volver a entrar',
+    'This account is inactive. Please contact the office.': 'Esta cuenta no está activa. Comunícate con la oficina.',
+    'Too many tries. Please wait an hour or ask the office for help.': 'Demasiados intentos. Espera una hora o pide ayuda a la oficina.',
+
     /* --- tarjetas de orden --- */
     'Order': 'Orden',
     'Entry': 'Entrada',

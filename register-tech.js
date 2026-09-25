@@ -17,7 +17,6 @@
 ============================================================ */
 
 const { TECHS_LIST, createListItem, graphFetch, siteListPath, jsonResponse } = require('./lib/graph');
-const { sessionCookie, withCookie } = require('./lib/tech-auth');
 
 async function fetchAll(listName) {
   let url = siteListPath(listName) + '?$expand=fields&$top=500';
@@ -72,20 +71,14 @@ exports.handler = async (event) => {
       PayrollID: '',
       Role: 'Employee',
       Division: '',
-      Active: true
+      /* B9 (25/09/2026, decision del dueño): quien se registra solo queda
+         INACTIVO hasta que la oficina lo active en Techs & Roles. Antes
+         entraba de inmediato como Employee (cualquiera podia registrarse).
+         Por eso aqui ya no se da sesion. */
+      Active: false
     });
 
-    const cookie = sessionCookie({ id: created.id, fields: { FirstName: firstName, LastName: lastName, Role: 'Employee', Division: '' } });
-    return withCookie(jsonResponse(200, {
-      success: true,
-      tech: {
-        id: created.id,
-        firstName, lastName,
-        role: 'Employee',
-        division: '',
-        tempId
-      }
-    }), cookie);
+    return jsonResponse(200, { success: true, pending: true, id: created.id });
   } catch (e) {
     return jsonResponse(500, { error: e.message });
   }

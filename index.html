@@ -183,6 +183,14 @@
     btn.disabled = true; btn.textContent = 'Creating account…';
     try {
       const data = await GS.api('/register-tech', { body: { firstName, lastName, phone, email } });
+      if (data.pending) {
+        /* B9: la cuenta queda esperando a que la oficina la active. */
+        document.getElementById('view-register').innerHTML =
+          '<h2>Account created</h2>' +
+          '<p class="sub">Your account is waiting for the office to approve it. Once they do, sign in with your name and the last 4 digits of your phone.</p>' +
+          '<button class="gs-ofp-btn-primary" style="width:100%" onclick="location.reload()">Back to sign in</button>';
+        return;
+      }
       goToPortal(data.tech);
     } catch (e) {
       errEl.textContent = e.message;

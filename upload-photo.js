@@ -18,6 +18,7 @@
 const {
   ORDERS_LIST, TECH_PHOTO_LOG_LIST, ensureFolder, uploadFile, createListItem, graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
+const techScope = require('./lib/tech-scope');
 
 const PHOTOS_FOLDER = process.env.GRAPH_PHOTOS_FOLDER || 'TechPhotos';
 const MAX_VIDEO_BYTES = 60 * 1024 * 1024; /* ~60MB, respaldo de servidor -- el limite real
@@ -68,6 +69,9 @@ exports.handler = async (event) => {
     const longitude = (b.longitude !== undefined && b.longitude !== null) ? Number(b.longitude) : null;
 
     if (!orderId) return jsonResponse(400, { error: 'orderId is required' });
+    /* B11: solo ordenes de este tecnico (lib/tech-scope.js). */
+    const access = await techScope.check(b, orderId);
+    if (!access.ok) return jsonResponse(access.status, { error: access.error });
     if (!fileBase64) return jsonResponse(400, { error: 'No file data received' });
 
     const rows = await fetchByField(ORDERS_LIST, 'OrderID', orderId);

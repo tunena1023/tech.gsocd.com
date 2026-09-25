@@ -19,6 +19,7 @@ const {
   updateListItemByItemId, createListItem,
   graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
+const techScope = require('./lib/tech-scope');
 
 const LIVE_STATUSES = ['Assigned', 'Updated'];
 
@@ -44,6 +45,9 @@ exports.handler = async (event) => {
     const note = String(b.note || '').trim();
 
     if (!orderId) return jsonResponse(400, { error: 'orderId is required' });
+    /* B11: solo ordenes de este tecnico (lib/tech-scope.js). */
+    const access = await techScope.check(b, orderId);
+    if (!access.ok) return jsonResponse(access.status, { error: access.error });
     if (!note) return jsonResponse(400, { error: 'Please add a short note explaining why the unit is not ready.' });
 
     const orderRows = await fetchByOrderId(ORDERS_LIST, orderId);

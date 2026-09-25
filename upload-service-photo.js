@@ -20,6 +20,7 @@
 const {
   ORDERS_LIST, ensureFolder, uploadFile, graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
+const techScope = require('./lib/tech-scope');
 
 const PHOTOS_FOLDER = process.env.GRAPH_PHOTOS_FOLDER || 'TechPhotos';
 
@@ -65,6 +66,9 @@ exports.handler = async (event) => {
     const imageBase64 = b.imageBase64;
     if (!orderId) return jsonResponse(400, { error: 'orderId is required' });
     if (!serviceName) return jsonResponse(400, { error: 'serviceName is required' });
+    /* B11: solo ordenes de este tecnico (lib/tech-scope.js). */
+    const access = await techScope.check(b, orderId);
+    if (!access.ok) return jsonResponse(access.status, { error: access.error });
     if (!imageBase64) return jsonResponse(400, { error: 'No image data received' });
 
     const rows = await fetchByField(ORDERS_LIST, 'OrderID', orderId);

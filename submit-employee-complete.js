@@ -29,6 +29,7 @@ const {
   createListItem, updateListItemByItemId,
   graphFetch, siteListPath, listChildren, jsonResponse
 } = require('./lib/graph');
+const techScope = require('./lib/tech-scope');
 /* Aviso a la oficina de que el tecnico termino y falta revisar
    (lib/notify.js, 25/09/2026). Al cliente no le llega nada aqui: solo
    cuando la oficina cierra la orden (dueño, 25/09/2026). Nunca truena. */
@@ -74,6 +75,9 @@ exports.handler = async (event) => {
     const role = String(b.role || '').trim();
     if (!orderId) return jsonResponse(400, { error: 'orderId is required' });
     if (!techId) return jsonResponse(400, { error: 'techId is required' });
+    /* B11: solo ordenes de este tecnico (lib/tech-scope.js). */
+    const access = await techScope.check(b, orderId);
+    if (!access.ok) return jsonResponse(access.status, { error: access.error });
 
     const [orderRows, techRows] = await Promise.all([
       fetchByOrderId(ORDERS_LIST, orderId),
