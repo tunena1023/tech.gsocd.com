@@ -92,6 +92,7 @@
   .btn-outline:hover{border-color:var(--gold)}
   .action-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
   /* Inspeccion (25/09/2026) */
+  .svc-person-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-dk);margin:12px 0 2px;padding-bottom:5px;border-bottom:1px solid var(--border)}
   .order-card.insp{border-left:3px solid #2A4E8C}
   .badge.insp{background:#E6EEFB;color:#2A4E8C}
   .insp-when{background:#F2F6FD;border:1px solid #D5E1F5;border-radius:8px;padding:10px 12px;font-size:12px;color:#2A4E8C;margin:12px 0}
@@ -755,7 +756,15 @@ if (tech) {
     box.innerHTML = sorted.map(o => {
       if (o.Status === 'Inspection') return inspectionCardHtml(o);
       const addr = [o.Address, o.BuildingNumber ? 'Building ' + o.BuildingNumber : '', o.UnitNumber ? 'Unit ' + o.UnitNumber : ''].filter(Boolean).join(' · ');
-      const svcLines = (o.Services || []).map(s => {
+      /* Por persona (25/09/2026): en "Assign by service" los servicios
+         ya programados salen agrupados por quien los hace y el dia. */
+      const asgBy = {};
+      (o.MyServiceAssignments || []).forEach(a => { asgBy[(a.Category || '') + '|' + (a.ServiceName || '')] = a; });
+      const svcGroupOf = s => {
+        const a = o.AssignByService ? asgBy[(s.Category || '') + '|' + (s.ServiceName || '')] : null;
+        return a && a.AssignedTo && a.ScheduledDate ? String(a.AssignedTo).trim() + '|' + String(a.ScheduledDate).slice(0, 10) : '';
+      };
+      const svcLineOf = s => {
         const lvl = s.Level ? ' — ' + esc(s.Level) : '';
         const qty = s.Quantity ? ' — Qty: ' + esc(s.Quantity) : '';
         const safe = esc(o.OrderID).replace(/[^a-z0-9]/gi, '_');
@@ -768,7 +777,20 @@ if (tech) {
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>' +
           '</button>' +
         '</div>';
-      }).join('');
+      };
+      const svcLines = (() => {
+        const list = o.Services || [];
+        if (!o.AssignByService) return list.map(svcLineOf).join('');
+        const groups = {}, order = [];
+        list.forEach(s => { const k = svcGroupOf(s); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(s); });
+        order.sort((x, y) => (x ? 1 : 0) - (y ? 1 : 0));
+        return order.map(k => {
+          const n = groups[k].length + (groups[k].length === 1 ? ' service' : ' services');
+          const head = !k ? (order.length > 1 ? 'Not scheduled yet · ' + n : '')
+            : '👤 ' + esc(k.split('|')[0]) + ' · ' + new Date(k.split('|')[1] + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + n;
+          return (head ? '<div class="svc-person-h">' + head + '</div>' : '') + groups[k].map(svcLineOf).join('');
+        }).join('');
+      })();
       return `
         <div class="order-card" data-order="${esc(o.OrderID)}">
           <div class="order-head" onclick="toggleOrder(this)">
