@@ -15,6 +15,7 @@ const CLOSED_STATUSES = ['Completed', 'Cancelled'];
    solo las ordenes cerradas, y el historial/servicios de ESAS ordenes
    (lib/list-query.js, con plan B a la lista completa si un filtro falla). */
 const lq = require('./lib/list-query');
+const techScope = require('./lib/tech-scope');
 
 /* El tecnico solo debe ver CORRECCIONES ya confirmadas -- nunca una
    peticion todavia sin decidir. Si un cliente pide un cambio de
@@ -60,16 +61,8 @@ exports.handler = async (event) => {
          real en Scheduling con el PayrollNumber del tecnico, nunca en
          OrderAssignments/TechID (esa lista nunca se llena en el flujo
          normal). */
-      const myPayrollId = myTechRow && myTechRow.fields ? String(myTechRow.fields.PayrollID || '').trim() : '';
-      /* Solo los renglones de Scheduling de este tecnico. Sin PayrollID se
-         usa la lista completa, igual que antes. */
-      const schedulingRows = myPayrollId
-        ? await lq.fetchWhere(SCHEDULING_LIST, `fields/PayrollNumber eq '${myPayrollId.replace(/'/g, "''")}'`, f => String(f.PayrollNumber || '').trim() === myPayrollId)
-        : await lq.fetchAll(SCHEDULING_LIST);
-      const myOrderIds = new Set(
-        schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === myPayrollId)
-          .map(it => it.fields.OrderID)
-      );
+      /* C14: Scheduling + asignaciones por servicio (lib/tech-scope). */
+      const myOrderIds = await techScope.employeeOrderIds(techId, myTechRow);
       closedOrders = closedOrders.filter(it => myOrderIds.has(it.fields.OrderID || it.fields.Title));
     }
 

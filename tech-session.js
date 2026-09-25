@@ -34,6 +34,7 @@ exports.handler = async (event) => {
       if (/404|not ?found/i.test(e.message)) row = null; else throw e;
     }
     if (!row || !row.fields) return withCookie(jsonResponse(401, { error: 'Please sign in again.', signin: true }), clearCookie());
+    if (row.fields.Role === 'Contractor') return withCookie(jsonResponse(403, { error: "Contractors don't have access to the tech app. Please contact the office." }), clearCookie());
     if (row.fields.Active === false || row.fields.Active === 'false') {
       return withCookie(jsonResponse(403, { error: 'This account is inactive. Please contact the office.' }), clearCookie());
     }

@@ -48,6 +48,8 @@ module.exports = async (req, res) => {
   if (!PUBLIC.has(slug)) {
     const s = readSession(req.headers);
     if (!s) { res.status(401).json({ error: 'Please sign in again.', signin: true }); return; }
+    /* C13: una sesion de Contractor (de antes de este cambio) ya no sirve. */
+    if (s.role === 'Contractor') { res.status(401).json({ error: "Contractors don't have access to the tech app. Please contact the office.", signin: true }); return; }
     let body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; } }
     if (!body || typeof body !== 'object') body = {};

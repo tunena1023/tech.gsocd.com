@@ -63,6 +63,9 @@ exports.handler = async (event) => {
       return jsonResponse(404, { error: 'We could not find an account with that name and phone digits.' });
     }
     if (parseInt(match.fields.LoginFailCount, 10) > 0) await patchQuiet(match.id, { LoginFailCount: 0 });
+    /* C13 (25/09/2026, decision del dueño): los Contractors se asignan en
+       el sistema pero NO usan la app. */
+    if (match.fields.Role === 'Contractor') return jsonResponse(403, { error: "Contractors don't have access to the tech app. Please contact the office." });
     if (match.fields.Active === false || match.fields.Active === 'false') {
       return jsonResponse(403, { error: 'This account is inactive. Please contact the office.' });
     }

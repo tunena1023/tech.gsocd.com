@@ -18,6 +18,7 @@ const {
 } = require('./lib/graph');
 const lq = require('./lib/list-query');
 const galleryScan = require('./lib/gallery-scan');
+const techScope = require('./lib/tech-scope');
 const graph = require('./lib/graph');
 const orderDocs = require('./lib/order-docs');
 
@@ -155,38 +156,14 @@ async function scopedOrders(techId, role, division) {
   } else {
     myOrders = null;
   }
-  const schedulingRows = [], techRows = [];
   if (myOrders === null) {
-    const me = await lq.fetchById(TECHS_LIST, techId);
-    if (me) techRows.push(me);
-    const pid = me && me.fields ? String(me.fields.PayrollID || '').trim() : '';
-    (pid ? await lq.fetchWhere(SCHEDULING_LIST, `fields/PayrollNumber eq '${pid.replace(/'/g, "''")}'`, f => String(f.PayrollNumber || '').trim() === pid)
-      : await lq.fetchAll(SCHEDULING_LIST)).forEach(r => schedulingRows.push(r));
-    const ids = schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === pid).map(it => it.fields.OrderID);
+    /* C14: Scheduling + asignaciones por servicio (lib/tech-scope). */
+    const ids = [...await techScope.employeeOrderIds(techId)];
     myOrders = (await lq.fetchByValues(ORDERS_LIST, 'OrderID', ids)).filter(it => it.fields);
     /* Mismo orden que la lista completa (por id de SharePoint). */
     myOrders.sort((a, b) => Number(a.id) - Number(b.id));
+    return myOrders;
   }
-  if (role === 'Developer') {
-    /* Ve todo -- mismo criterio que get-my-orders.js/get-my-history.js. */
-  } else if (role === 'Supervisor') {
-    /* Mismo fix que get-my-orders.js: Mixed = las 3 divisiones. */
-    if (division.toLowerCase() !== 'mixed') {
-      myOrders = myOrders.filter(it => String(it.fields.Division || '').toLowerCase() === division.toLowerCase());
-    }
-  } else {
-    /* Mismo arreglo que get-my-orders.js/get-my-history.js: Admin
-       guarda la asignacion real en Scheduling con el PayrollNumber
-       del tecnico, nunca en OrderAssignments/TechID. */
-    const myTechRow = techRows.find(it => it.id === techId);
-    const myPayrollId = myTechRow && myTechRow.fields ? String(myTechRow.fields.PayrollID || '').trim() : '';
-    const myOrderIds = new Set(
-      schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === myPayrollId)
-        .map(it => it.fields.OrderID)
-    );
-    myOrders = myOrders.filter(it => myOrderIds.has(it.fields.OrderID || it.fields.Title));
-  }
-
   return myOrders;
 }
 

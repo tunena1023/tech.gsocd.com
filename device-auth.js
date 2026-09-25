@@ -87,6 +87,7 @@ exports.handler = async (event) => {
       const techId = String(setupRow.fields.Title || '');
       const techRow = techRows.find(it => it.id === techId);
       if (!techRow) return jsonResponse(404, { error: 'Could not find that account. Please ask the office for a new link.' });
+      if (techRow.fields.Role === 'Contractor') return jsonResponse(403, { error: "Contractors don't have access to the tech app. Please contact the office." });
       if (techRow.fields.Active === false || techRow.fields.Active === 'false') {
         return jsonResponse(403, { error: 'This account is inactive. Please contact the office.' });
       }
@@ -121,6 +122,7 @@ exports.handler = async (event) => {
 
       const techRow = techRows.find(it => it.id === String(deviceRow.fields.Title || ''));
       if (!techRow) return jsonResponse(404, { error: 'Could not find that account. Please contact the office.' });
+      if (techRow.fields.Role === 'Contractor') return jsonResponse(403, { error: "Contractors don't have access to the tech app. Please contact the office." });
       if (techRow.fields.Active === false || techRow.fields.Active === 'false') {
         return jsonResponse(403, { error: 'This account is inactive. Please contact the office.' });
       }
