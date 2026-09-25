@@ -6,9 +6,14 @@
    archivo traduce lo que ya se pinto (texto, placeholder, title) con
    un diccionario de frases EXACTAS + unos patrones con numeros, y un
    MutationObserver traduce lo que se pinta despues (tarjetas, avisos).
-   alert/confirm/prompt tambien pasan por aqui. Nombres de clientes,
-   servicios del catalogo y direcciones NO se tocan (no estan en el
-   diccionario).
+   alert/confirm/prompt tambien pasan por aqui. Nombres de clientes y
+   direcciones NO se tocan.
+
+   Servicios, categorias y areas del catalogo: los traduce Google del
+   lado del servidor (/api/get-es-terms, se guardan en
+   ServicesCatalog.ServiceNameES) y llegan aqui como diccionario extra
+   (DYN), guardado en el telefono. Fechas: toLocale* con 'en-US' pasa
+   a 'es-MX'.
 
    El idioma de cada quien: Techs.Language en SharePoint (se guarda al
    cambiarlo, /api/save-tech-language) y una copia en el telefono
@@ -42,6 +47,11 @@
     'Nothing was changed.': 'No se cambió nada.',
     'Something\'s not right': 'Algo no está bien',
     'Hi,': 'Hola,',
+
+    /* --- divisiones (fijas; Google diria "Conserjeria") --- */
+    'Janitorial': 'Limpieza',
+    'Renovations': 'Renovaciones',
+    'Mixed': 'Mixto',
 
     /* --- entrada / registro / telefono --- */
     'Sign in with your name and the last 4 digits of your phone.': 'Entra con tu nombre y los últimos 4 dígitos de tu teléfono.',
@@ -85,9 +95,9 @@
     'Contact': 'Contacto',
     'Supervisor': 'Supervisor',
     'Developer': 'Developer',
-    'Janitorial': 'Janitorial',
-    'Renovations': 'Renovations',
-    'Exteriors': 'Exteriors',
+    'Exteriors': 'Exteriores',
+    '📷 Add a photo (optional)': '📷 Agregar una foto (opcional)',
+    'Add a photo (optional)': 'Agregar una foto (opcional)',
     'Commercial': 'Comercial',
     'Level': 'Nivel',
     'Level 1': 'Nivel 1',
@@ -202,16 +212,30 @@
         'save that': 'guardar', 'mark this done': 'marcar como terminado', 'mark this service done': 'marcar el servicio como terminado', 'mark this order Completed': 'marcar la orden como completada' };
       return 'No se pudo ' + (map[what] || what) + ': ' + err;
     }],
-    [/^Created (.+)$/, 'Creada $1'],
-    [/^Unit (.+)$/, 'Unidad $1'],
-    [/^Building (.+)$/, 'Edificio $1'],
+    [/^Created ([^·]+)$/, 'Creada $1'],
+    [/^Unit ([^·]+)$/, 'Unidad $1'],
+    [/^Building ([^·]+)$/, 'Edificio $1'],
+    [/^Bldg ([^·]+)$/, 'Edif. $1'],
+    [/^(\d+)\s*bd\s*\/\s*(\d+(?:\.\d)?)\s*ba$/, '$1 rec / $2 baño'],
     [/^Hi, (.+)$/, 'Hola, $1'],
-    [/^Inspection (.+)$/, 'Inspección $1'],
-    [/^(.+) — Qty: (.+)$/, '$1 — Cant.: $2'],
-    [/^(.+) — Level (\d)(.*)$/, '$1 — Nivel $2$3'],
+    [/^Inspection ([^·]+)$/, 'Inspección $1'],
+    [/^(.+) — Qty: (.+)$/, function (m, a, b) { return t(a) + ' — Cant.: ' + b; }],
+    [/^(.+) — Level (\d)(.*)$/, function (m, a, n, rest) { return t(a) + ' — Nivel ' + n + t(rest); }],
+    [/^(.+) \(Level (\d)\)$/, function (m, a, n) { return t(a) + ' (Nivel ' + n + ')'; }],
+    [/^(.+) × (\d+)$/, function (m, a, n) { return t(a) + ' × ' + n; }],
     [/^Qty: (.+)$/, 'Cant.: $1'],
     [/^Level (\d)$/, 'Nivel $1']
   ];
+
+  /* Dias de la semana ("Mon, Wed, Fri") de los recurrentes. */
+  var DAYS = { Mon: 'Lun', Tue: 'Mar', Wed: 'Mié', Thu: 'Jue', Fri: 'Vie', Sat: 'Sáb', Sun: 'Dom',
+    Monday: 'Lunes', Tuesday: 'Martes', Wednesday: 'Miércoles', Thursday: 'Jueves', Friday: 'Viernes', Saturday: 'Sábado', Sunday: 'Domingo' };
+  var DAYS_RE = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(\s*,\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday))*$/;
+
+  /* Diccionario que llega del servidor (servicios, categorias, areas). */
+  var TERMS_KEY = 'gs_tech_terms';
+  var DYN = {};
+  try { DYN = (JSON.parse(localStorage.getItem(TERMS_KEY) || 'null') || {}).terms || {}; } catch (e) { DYN = {}; }
 
   function lang() {
     try { return localStorage.getItem(KEY) === 'es' ? 'es' : 'en'; } catch (e) { return 'en'; }
@@ -224,6 +248,11 @@
     var core = str.trim();
     if (!core) return s;
     if (Object.prototype.hasOwnProperty.call(ES, core)) return lead + ES[core] + trail;
+    if (Object.prototype.hasOwnProperty.call(DYN, core)) return lead + DYN[core] + trail;
+    /* Viñeta o emoji al principio ("• Hallway Vacuum"): se traduce lo demas. */
+    var pre = core.match(/^([•·✓✔→\-–—]\s+|(?:\p{Extended_Pictographic}\uFE0F?\s*)+)(.+)$/u);
+    if (pre) { var rest = t(pre[2]); if (rest !== pre[2]) return lead + pre[1] + rest + trail; }
+    if (DAYS_RE.test(core)) return lead + core.replace(/[A-Za-z]+/g, function (d) { return DAYS[d] || d; }) + trail;
     for (var i = 0; i < PATTERNS.length; i++) {
       if (PATTERNS[i][0].test(core)) return lead + core.replace(PATTERNS[i][0], PATTERNS[i][1]) + trail;
     }
@@ -240,11 +269,7 @@
   var SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, SELECT: 1, CODE: 1 };
   function translateTree(root) {
     if (lang() !== 'es' || !root) return;
-    if (root.nodeType === 3) {
-      var v = root.nodeValue, nv = t(v);
-      if (nv !== v) root.nodeValue = nv;
-      return;
-    }
+    if (root.nodeType === 3) { translateText(root); return; }
     if (root.nodeType !== 1 || (root.hasAttribute && root.hasAttribute('data-no-i18n'))) return;
     translateAttrs(root);
     if (SKIP[root.tagName]) return;
@@ -259,10 +284,16 @@
       }
     });
     var node;
-    while ((node = walker.nextNode())) {
-      var val = node.nodeValue, next = t(val);
-      if (next !== val) node.nodeValue = next;
-    }
+    while ((node = walker.nextNode())) translateText(node);
+  }
+  /* Se guarda el ingles de cada texto: cuando llega el diccionario del
+     servidor se vuelve a traducir desde el original, no desde lo que
+     ya quedo a medias ("Drywall Patch — Cant.: 2"). */
+  function translateText(node) {
+    var cur = node.nodeValue;
+    var src = (node.__gsOut !== undefined && cur === node.__gsOut) ? node.__gsEn : cur;
+    var next = t(src);
+    if (next !== cur) { node.__gsEn = src; node.__gsOut = next; node.nodeValue = next; }
   }
   function translateAttrs(el) {
     ['placeholder', 'title', 'aria-label'].forEach(function (a) {
@@ -276,9 +307,39 @@
     }
   }
 
+  /* Pide el diccionario al servidor (solo en ESP y con sesion). Lo del
+     telefono se usa luego luego; se refresca cada 30 min. */
+  function loadTerms() {
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem(TERMS_KEY) || 'null'); } catch (e) {}
+    if (cached && cached.at && Date.now() - cached.at < 30 * 60 * 1000 && !cached.missing) return;
+    var hasSession = false;
+    try { hasSession = !!sessionStorage.getItem('gs_tech'); } catch (e) {}
+    if (!hasSession || !window.fetch) return;
+    fetch('/api/get-es-terms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.terms) return;
+        DYN = d.terms;
+        try { localStorage.setItem(TERMS_KEY, JSON.stringify({ at: Date.now(), terms: DYN, missing: d.missing || 0 })); } catch (e) {}
+        translateTree(document.body);
+      })
+      .catch(function () {});
+  }
+
+  /* Fechas: las pantallas piden 'en-US'; en ESP se cambia a 'es-MX'. */
+  ['toLocaleDateString', 'toLocaleTimeString', 'toLocaleString'].forEach(function (fn) {
+    var orig = Date.prototype[fn];
+    Date.prototype[fn] = function (loc, opts) {
+      if (lang() === 'es' && (!loc || loc === 'en-US' || loc === 'en')) loc = 'es-MX';
+      return orig.call(this, loc, opts);
+    };
+  });
+
   function start() {
     if (lang() !== 'es') return;
     document.documentElement.lang = 'es';
+    loadTerms();
     translateTree(document.body);
     if (document.title) document.title = t(document.title);
     new MutationObserver(function (muts) {
@@ -353,7 +414,7 @@
     return true;
   }
 
-  window.GSI18n = { t: t, lang: lang, setLang: setLang, mountToggle: mountToggle, translateTree: translateTree, adoptFromSession: adoptFromSession, ES: ES };
+  window.GSI18n = { t: t, lang: lang, setLang: setLang, mountToggle: mountToggle, translateTree: translateTree, adoptFromSession: adoptFromSession, ES: ES, terms: function () { return DYN; } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 })();

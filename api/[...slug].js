@@ -29,7 +29,8 @@ const handlers = {
   'submit-service-complete': require('../submit-service-complete').handler,
   'submit-extra-request': require('../submit-extra-request').handler,
   'submit-inspection-done': require('../submit-inspection-done').handler,
-  'save-tech-language': require('../save-tech-language').handler
+  'save-tech-language': require('../save-tech-language').handler,
+  'get-es-terms': require('../get-es-terms').handler
 };
 
 module.exports = async (req, res) => {

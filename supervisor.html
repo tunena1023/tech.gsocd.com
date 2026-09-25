@@ -1463,7 +1463,11 @@ if (tech) {
     const addedSkus = new Set(umAdded.map(c => c.sku));
     const currentSkus = new Set(umServices.map(s => s.sku));
     let remaining = umCatalogCache.filter(c => !addedSkus.has(c.sku) && !currentSkus.has(c.sku));
-    remaining = remaining.filter(c => c.serviceName.toLowerCase().indexOf(q) !== -1);
+    /* En ESP tambien se busca por el nombre en espanol (i18n.js). */
+    const esName = n => (window.GSI18n ? GSI18n.t(n) : n);
+    const plain = x => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const pq = plain(q);
+    remaining = remaining.filter(c => plain(c.serviceName).indexOf(pq) !== -1 || plain(esName(c.serviceName)).indexOf(pq) !== -1);
     grid.innerHTML = '<div class="um-add-grid" style="margin-top:8px">' +
       remaining.map(c => '<button type="button" class="um-add-chip" data-sku="' + escAttr(c.sku) + '" data-name="' + escAttr(c.serviceName) + '" onclick="umAddCatalog(this)">' + esc(c.serviceName) + '</button>').join('') +
       (remaining.length ? '' : '<p class="empty-note">No matching services.</p>') +
@@ -1492,7 +1496,7 @@ if (tech) {
     if (umListeningFor === i) { umStopMic(); return; }
     umStopMic();
     umRecognition = new SpeechRecognition();
-    umRecognition.lang = 'en-US';
+    umRecognition.lang = (window.GSI18n && GSI18n.lang() === 'es') ? 'es-MX' : 'en-US';
     umRecognition.continuous = true;
     umRecognition.interimResults = false;
     const textarea = $('um-note-input-' + i);
