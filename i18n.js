@@ -75,6 +75,13 @@
     'You\'re all set': 'Todo listo',
     'Confirm — This Is Me': 'Confirmar — Soy yo',
     'Tap below to set up this phone. You\'ll only need to do this once — after that, this icon will take you straight to your orders.': 'Toca abajo para configurar este teléfono. Solo se hace una vez; después, este ícono te lleva directo a tus órdenes.',
+    'Tap below to set up this phone. When it asks about notifications, tap Allow — that\'s how you get your job alerts. You\'ll only need to do this once.': 'Toca abajo para configurar este teléfono. Cuando te pregunte por notificaciones, toca Permitir: así te llegan los avisos de tus trabajos. Solo se hace una vez.',
+    'First, add the app to this iPhone\'s home screen:': 'Primero, agrega la app a la pantalla de inicio de este iPhone:',
+    'Tap the Share button (square with an arrow ↑) at the bottom of Safari.': 'Toca el botón Compartir (cuadro con flecha ↑) abajo en Safari.',
+    'Tap "Add to Home Screen", then "Add".': 'Toca "Agregar a inicio" y luego "Agregar".',
+    'Close Safari and open GS Tech from the new icon to finish.': 'Cierra Safari y abre GS Tech desde el ícono nuevo para terminar.',
+    '🔔 Job alerts are on.': '🔔 Avisos de trabajo activados.',
+    '🔕 Job alerts are off on this phone. Ask the office to help you turn on notifications.': '🔕 Los avisos están apagados en este teléfono. Pide a la oficina que te ayude a activar las notificaciones.',
     'You\'ll use your name and phone digits to sign in from now on.': 'De ahora en adelante vas a entrar con tu nombre y los dígitos de tu teléfono.',
     'This link is missing information. Please ask the office for a new QR code.': 'A este enlace le falta información. Pide a la oficina un código QR nuevo.',
     'e.g. (515) 555-4021': 'ej. (515) 555-4021',
@@ -167,23 +174,6 @@
     'Camera': 'Cámara',
     '0 / 10 photos': '0 / 10 fotos',
 
-    /* --- avisos push --- */
-    'Turn on job alerts': 'Activa los avisos de trabajo',
-    'Get a notification when the office assigns, changes or cancels your jobs.': 'Recibe un aviso cuando la oficina te asigne, cambie o cancele un trabajo.',
-    'Turn on alerts': 'Activar avisos',
-    'Not now': 'Ahora no',
-    'Job alerts are on.': 'Avisos activados.',
-    'Get job alerts on your iPhone': 'Recibe avisos de trabajo en tu iPhone',
-    'Alerts only work from the app icon on your home screen:': 'Los avisos solo funcionan desde el ícono de la app en tu pantalla de inicio:',
-    'Tap the Share button': 'Toca el botón Compartir',
-    '(square with an arrow ↑)': '(cuadro con flecha ↑)',
-    'at the bottom of Safari.': 'abajo en Safari.',
-    'Tap "Add to Home Screen", then "Add".': 'Toca "Agregar a inicio" y luego "Agregar".',
-    'Open GS from the new icon and tap "Turn on alerts".': 'Abre GS desde el ícono nuevo y toca "Activar avisos".',
-    'Job alerts are blocked': 'Los avisos están bloqueados',
-    'Turn on notifications for this app in your phone settings to know when the office assigns, changes or cancels your jobs.': 'Activa las notificaciones de esta app en la configuración de tu teléfono para saber cuándo la oficina te asigne, cambie o cancele un trabajo.',
-    'Job alerts': 'Avisos de trabajo',
-
     /* --- inspeccion --- */
     'Inspection': 'Inspección',
     '📷 Take inspection photos': '📷 Tomar fotos de inspección',
@@ -224,7 +214,6 @@
     [/^(\d+) photos?$/, function (m, n) { return n + (n === '1' ? ' foto' : ' fotos'); }],
     [/^Not scheduled yet · (\d+) services?$/, function (m, n) { return 'Sin programar · ' + n + (n === '1' ? ' servicio' : ' servicios'); }],
     [/^Service changes saved \((\d+) services\)\. They go to the office when you finish the inspection\.$/, 'Cambios de servicios guardados ($1 servicios). Se mandan a la oficina cuando termines la inspección.'],
-    [/^Could not turn on alerts: (.*)$/, 'No se pudieron activar los avisos: $1'],
     [/^Could not (send the inspection|send this update|send it|send the report|save that|mark this done|mark this service done|mark this order Completed): (.*)$/, function (m, what, err) {
       var map = { 'send the inspection': 'enviar la inspección', 'send this update': 'enviar este cambio', 'send it': 'enviarlo', 'send the report': 'enviar el reporte',
         'save that': 'guardar', 'mark this done': 'marcar como terminado', 'mark this service done': 'marcar el servicio como terminado', 'mark this order Completed': 'marcar la orden como completada' };

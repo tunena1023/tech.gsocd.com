@@ -3,7 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" id="manifest-link" href="/manifest.webmanifest">
+<script>
+  /* El icono de inicio (iPhone) debe abrir ESTE mismo link del QR para
+     terminar aqui la configuracion (ver setup-manifest.js). */
+  (function () {
+    var t = new URLSearchParams(location.search).get('setup');
+    if (t) document.getElementById('manifest-link').href = '/api/setup-manifest?setup=' + encodeURIComponent(t);
+  })();
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GS Tech">
@@ -29,6 +37,8 @@
   .btn-gold:disabled{opacity:.6;cursor:default}
   .error-msg{font-size:13px;color:#B33A3A;margin-top:16px;line-height:1.6;white-space:pre-line;text-align:left}
   .spinner-note{font-size:13px;color:var(--gray)}
+  .steps{margin:0 0 8px;padding-left:20px;font-size:14px;line-height:1.55;text-align:left}
+  .steps li{margin:0 0 10px}
   .view{display:none}
   .view.active{display:block}
 
@@ -49,8 +59,19 @@
 
   <div class="view" id="view-confirm">
     <h2>Hi, <span id="tech-name"></span></h2>
-    <p class="sub">Tap below to set up this phone. You'll only need to do this once — after that, this icon will take you straight to your orders.</p>
+    <p class="sub">Tap below to set up this phone. When it asks about notifications, tap Allow — that's how you get your job alerts. You'll only need to do this once.</p>
     <button class="gs-ofp-btn-primary" id="confirm-btn" style="width:100%" onclick="confirmIdentity()">Confirm — This Is Me</button>
+  </div>
+
+  <!-- iPhone en Safari: primero el icono (sin el, iPhone no manda avisos). -->
+  <div class="view" id="view-ios">
+    <h2>Hi, <span id="tech-name-ios"></span></h2>
+    <p class="sub" style="margin-bottom:14px">First, add the app to this iPhone's home screen:</p>
+    <ol class="steps">
+      <li>Tap the Share button (square with an arrow ↑) at the bottom of Safari.</li>
+      <li>Tap "Add to Home Screen", then "Add".</li>
+      <li>Close Safari and open GS Tech from the new icon to finish.</li>
+    </ol>
   </div>
 
   <div class="view" id="view-error">
@@ -60,6 +81,7 @@
 
   <div class="view" id="view-done">
     <h2>You're all set</h2>
+    <p class="sub" id="done-alerts" style="margin-bottom:10px"></p>
     <p class="sub" id="done-text">Taking you to your orders…</p>
   </div>
 </div>
@@ -90,8 +112,14 @@
       try {
         const res = await GS.api('/device-auth', { body: { action: 'verify-setup', setupToken } });
         document.getElementById('tech-name').textContent = res.firstName;
-        showView('confirm');
+        document.getElementById('tech-name-ios').textContent = res.firstName;
+        /* iPhone: los avisos solo existen desde el icono de inicio. En
+           Safari se pide el icono primero; el link del QR no se gasta. */
+        showView(GS.isIOS() && !GS.isStandalone() ? 'ios' : 'confirm');
       } catch (e) {
+        /* El icono (iPhone) siempre abre el link del QR; despues de usarlo
+           ya no sirve -> este telefono ya esta configurado: a sus ordenes. */
+        if (localStorage.getItem('gs_device_token')) { location.replace('index.html'); return; }
         let msg = e.message;
         if (e.debug) {
           msg += '\n\n[DEBUG TEMPORAL]\nTitle guardado: "' + e.debug.titleValue + '" (' + e.debug.titleType + ')\n'
@@ -107,15 +135,28 @@
     const btn = document.getElementById('confirm-btn');
     btn.disabled = true;
     btn.textContent = 'Setting up…';
+    /* Permiso de avisos: se pide AQUI, en el mismo toque (iPhone y Chrome
+       solo lo muestran si viene directo de un toque). El tecnico no
+       tiene otra opcion para prenderlos despues. */
+    const canAsk = GS.pushState() === 'off';
+    const permission = canAsk ? Notification.requestPermission().catch(() => 'default') : Promise.resolve(null);
     try {
       const res = await GS.api('/device-auth', { body: { action: 'activate-device', setupToken } });
       localStorage.setItem('gs_device_token', res.deviceToken);
       GSI18n.adoptFromSession(res.tech);
       GS.session.set(res.tech);
+      await permission;
+      let alertsOn = false;
+      if (GS.pushState() === 'on') {
+        try { alertsOn = await GS.subscribePush(res.tech.id); } catch (e) { alertsOn = false; }
+      }
+      document.getElementById('done-alerts').textContent = alertsOn
+        ? '🔔 Job alerts are on.'
+        : '🔕 Job alerts are off on this phone. Ask the office to help you turn on notifications.';
       showView('done');
       setTimeout(() => {
         location.href = (res.tech.role === 'Supervisor' || res.tech.role === 'Developer') ? 'supervisor.html' : 'employee.html';
-      }, 900);
+      }, alertsOn ? 1200 : 3500);
     } catch (e) {
       btn.disabled = false;
       btn.textContent = 'Confirm — This Is Me';

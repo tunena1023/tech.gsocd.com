@@ -5,7 +5,7 @@ const { toVercel } = require('../lib/vercel-adapter');
    401. Quien es (techId, rol, nombre, division) sale de la cookie y se
    escribe encima del body: el navegador ya no lo puede cambiar. */
 const { readSession } = require('../lib/tech-auth');
-const PUBLIC = new Set(['register-tech', 'login-tech', 'device-auth', 'site-image', 'get-catalog']);
+const PUBLIC = new Set(['register-tech', 'login-tech', 'device-auth', 'site-image', 'get-catalog', 'setup-manifest']);
 
 const handlers = {
   'register-tech': require('../register-tech').handler,
@@ -30,7 +30,8 @@ const handlers = {
   'submit-extra-request': require('../submit-extra-request').handler,
   'submit-inspection-done': require('../submit-inspection-done').handler,
   'save-tech-language': require('../save-tech-language').handler,
-  'get-es-terms': require('../get-es-terms').handler
+  'get-es-terms': require('../get-es-terms').handler,
+  'setup-manifest': require('../setup-manifest').handler
 };
 
 module.exports = async (req, res) => {

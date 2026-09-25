@@ -70,19 +70,14 @@ const GS = {
      secreta). */
   VAPID_PUBLIC_KEY: 'BI1jC4_r9hiZyvkQAl6Kyj8Lh2TQPxCxy8APpYF08PmSG-XKGs79wv4xDNUGfrNBCLyMppFLhETkedHERiXOPJw',
 
-  /* Avisos push (rehecho 25/09/2026, pedido del dueño: "los tecnicos
-     no ven emails... quiero push notificaciones para ellos", Android
-     y iPhone). Antes se pedia el permiso solo al entrar: iPhone y
-     Chrome lo ignoran si no viene de un toque, y en iPhone ademas el
-     push solo existe si la app se agrego a la pantalla de inicio.
-     Ahora:
+  /* Avisos push (rehecho 25/09/2026, pedido del dueño). El tecnico NO
+     tiene opcion de prenderlos o apagarlos: el permiso se da una sola
+     vez al configurar el telefono en la oficina (device-setup.html,
+     QR de "Set Up Phone" en Admin), junto con lo demas. Aqui solo:
        - pushState(): 'on' | 'off' | 'denied' | 'ios-install' | 'unsupported'
-       - initPushNotifications(techId): al entrar, si ya habia permiso,
-         renueva la suscripcion en silencio (no pregunta nada).
-       - enablePush(techId): lo llama el boton (un toque) -> permiso +
-         suscripcion + se guarda en SharePoint.
-       - mountPushBanner(afterEl, techId): la tarjeta "Turn on job
-         alerts" (o los pasos de iPhone) hasta que queden prendidos. */
+       - subscribePush(techId): suscribe este telefono y lo guarda.
+       - initPushNotifications(techId): al entrar al portal, si ya hay
+         permiso, renueva la suscripcion en silencio (nunca pregunta). */
   isIOS() {
     return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   },
@@ -117,86 +112,6 @@ const GS = {
   async initPushNotifications(techId) {
     try { if (GS.pushState() === 'on') await GS.subscribePush(techId); } catch (e) { /* sin avisos en este telefono */ }
   },
-
-  /* Desde el boton. Devuelve el estado final. */
-  async enablePush(techId) {
-    if (GS.pushState() !== 'off' && GS.pushState() !== 'on') return GS.pushState();
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return GS.pushState();
-    await GS.subscribePush(techId);
-    return 'on';
-  },
-
-  mountPushBanner(afterEl, techId) {
-    if (!afterEl || document.getElementById('push-banner')) return;
-    const state = GS.pushState();
-    if (state === 'on' || state === 'unsupported') return;
-    let snooze = 0;
-    try { snooze = Number(localStorage.getItem('gs_push_snooze') || 0); } catch (e) {}
-    if (snooze > Date.now()) return;
-
-    if (!document.getElementById('push-banner-style')) {
-      const st = document.createElement('style');
-      st.id = 'push-banner-style';
-      st.textContent = '#push-banner{display:flex;gap:12px;align-items:flex-start;margin:0 0 16px;padding:14px;border:1px solid var(--border,#E0D9CC);border-left:3px solid var(--gold,#C9A84C);border-radius:8px;background:var(--off,#F7F6F3);font-size:13px;line-height:1.45;color:var(--black,#111)}' +
-        '#push-banner .pb-ic{font-size:20px;line-height:1}' +
-        '#push-banner .pb-main{flex:1;min-width:0}' +
-        '#push-banner b{display:block;font-size:14px;margin-bottom:2px}' +
-        '#push-banner ol{margin:6px 0 0;padding-left:18px}#push-banner li{margin:3px 0}' +
-        '#push-banner .pb-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}' +
-        '#push-banner button{font:600 12px/1 Inter,sans-serif;letter-spacing:.04em;padding:10px 14px;border-radius:6px;cursor:pointer;min-height:40px}' +
-        '#push-banner .pb-on{background:var(--gold,#C9A84C);color:#fff;border:0}' +
-        '#push-banner .pb-later{background:transparent;color:var(--gray,#6B6B6B);border:1px solid var(--border,#E0D9CC)}' +
-        '#push-banner .pb-err{color:var(--red,#c0392b);margin-top:6px}';
-      document.head.appendChild(st);
-    }
-
-    const box = document.createElement('div');
-    box.id = 'push-banner';
-    box.setAttribute('role', 'region');
-    box.setAttribute('aria-label', 'Job alerts');
-    const later = '<button type="button" class="pb-later">Not now</button>';
-    if (state === 'ios-install') {
-      box.innerHTML = '<div class="pb-ic" aria-hidden="true">🔔</div><div class="pb-main"><b>Get job alerts on your iPhone</b>' +
-        'Alerts only work from the app icon on your home screen:' +
-        '<ol><li>Tap the Share button <span aria-hidden="true">(square with an arrow ↑)</span> at the bottom of Safari.</li>' +
-        '<li>Tap "Add to Home Screen", then "Add".</li>' +
-        '<li>Open GS from the new icon and tap "Turn on alerts".</li></ol>' +
-        '<div class="pb-actions">' + later + '</div></div>';
-    } else if (state === 'denied') {
-      box.innerHTML = '<div class="pb-ic" aria-hidden="true">🔕</div><div class="pb-main"><b>Job alerts are blocked</b>' +
-        'Turn on notifications for this app in your phone settings to know when the office assigns, changes or cancels your jobs.' +
-        '<div class="pb-actions">' + later + '</div></div>';
-    } else {
-      box.innerHTML = '<div class="pb-ic" aria-hidden="true">🔔</div><div class="pb-main"><b>Turn on job alerts</b>' +
-        'Get a notification when the office assigns, changes or cancels your jobs.' +
-        '<div class="pb-actions"><button type="button" class="pb-on">Turn on alerts</button>' + later + '</div>' +
-        '<div class="pb-err" hidden></div></div>';
-    }
-    box.addEventListener('click', async (ev) => {
-      const btn = ev.target.closest('button');
-      if (!btn) return;
-      if (btn.classList.contains('pb-later')) {
-        try { localStorage.setItem('gs_push_snooze', String(Date.now() + 3 * 24 * 3600 * 1000)); } catch (e) {}
-        box.remove();
-        return;
-      }
-      if (btn.classList.contains('pb-on')) {
-        btn.disabled = true;
-        const err = box.querySelector('.pb-err');
-        try {
-          const st = await GS.enablePush(techId);
-          if (st === 'on') { box.remove(); if (typeof window.showToast === 'function') window.showToast('Job alerts are on.'); return; }
-          box.remove();
-          GS.mountPushBanner(afterEl, techId);
-        } catch (e) {
-          btn.disabled = false;
-          if (err) { err.hidden = false; err.textContent = 'Could not turn on alerts: ' + e.message; }
-        }
-      }
-    });
-    afterEl.insertAdjacentElement('afterend', box);
-  }
 };
 
 /* Logo automatico en cualquier pagina que no sea el login */

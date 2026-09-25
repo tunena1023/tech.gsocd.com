@@ -291,8 +291,6 @@ if (tech) {
   GSNavPremium.applyChrome();
   GSPhotoHoverPreview.setup();
   GS.initPushNotifications(tech.id);
-  /* Tarjeta "Turn on job alerts" / pasos de iPhone (shared.js). */
-  GS.mountPushBanner(document.querySelector('#view-active .sub'), tech.id);
 
   /* Mismo dbName que employee.html -- Employee y Supervisor son la
      misma app (mismo dominio), asi que comparten el mismo cajon de

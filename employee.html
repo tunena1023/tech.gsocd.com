@@ -197,8 +197,6 @@ if (tech) {
   GSNavPremium.applyChrome();
   GSPhotoHoverPreview.setup();
   GS.initPushNotifications(tech.id);
-  /* Tarjeta "Turn on job alerts" / pasos de iPhone (shared.js). */
-  GS.mountPushBanner(document.querySelector('#view-active .sub'), tech.id);
 
   /* Mismo dbName que camera-capture.html -- esto es lo que hace que
      los reintentos y el contador de "esperando señal" funcionen
