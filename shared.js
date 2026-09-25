@@ -41,6 +41,7 @@ const GS = {
     }
     if (!res.ok) {
       const err = new Error(data.error || ('Request failed (' + res.status + ')'));
+      err.status = res.status;
       if (data.debug) err.debug = data.debug;
       throw err;
     }

@@ -110,16 +110,33 @@
      persona), entra derecho a sus ordenes sin ver el login nunca --
      si no tiene, o si se lo revocaron, cae al formulario normal de
      siempre. */
+  /* Acceso directo (25/09/2026, pedido del dueño: "cuando entran desde
+     ahi es cuando los bloquea"). Cada vez que se abre el acceso directo
+     la sesion del navegador viene vacia. Orden:
+       1) QR (DeviceToken) -> verify-device. Solo se borra el token si el
+          servidor dice que ese telefono ya no sirve (403/404). Antes se
+          borraba con CUALQUIER falla (sin señal, servidor lento) y el
+          telefono quedaba "desconectado" para siempre sin razon.
+       2) Si no hay QR (entro con nombre + 4 digitos), la cookie firmada
+          de 30 dias: tech-session 'restore'. Asi ya no le vuelve a
+          pedir el login cada vez que abre el acceso directo.
+       3) Si nada de eso sirve, el login de siempre. */
   (async () => {
     const deviceToken = localStorage.getItem('gs_device_token');
-    if (!deviceToken) { showView('signin'); return; }
-    try {
-      const res = await GS.api('/device-auth', { body: { action: 'verify-device', deviceToken } });
-      goToPortal(res.tech);
-    } catch (e) {
-      localStorage.removeItem('gs_device_token');
-      showView('signin');
+    if (deviceToken) {
+      try {
+        const res = await GS.api('/device-auth', { body: { action: 'verify-device', deviceToken } });
+        goToPortal(res.tech);
+        return;
+      } catch (e) {
+        if (e.status === 403 || e.status === 404) localStorage.removeItem('gs_device_token');
+      }
     }
+    try {
+      const res = await GS.api('/tech-session', { body: { action: 'restore' } });
+      if (res && res.tech) { goToPortal(res.tech); return; }
+    } catch (e) { /* sin cookie valida: al login */ }
+    showView('signin');
   })();
 
   async function doSignIn() {

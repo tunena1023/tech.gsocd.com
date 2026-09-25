@@ -229,7 +229,13 @@ if (tech) {
     window.__toastTimer = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(20px)'; }, 3500);
   }
 
-  function doSignout() { GS.session.clear(); location.href = 'index.html'; }
+  /* Sign out tambien borra la cookie (si no, index.html lo vuelve a
+     meter solo con tech-session 'restore'). */
+  async function doSignout() {
+    try { await fetch('/api/tech-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"action":"logout"}' }); } catch (e) {}
+    GS.session.clear();
+    location.href = 'index.html';
+  }
 
   $('nav-user').textContent = tech.firstName + ' ' + tech.lastName + (tech.division ? ' · ' + tech.division : '');
   /* ENG | ESP junto al nombre (25/09/2026, i18n.js) */

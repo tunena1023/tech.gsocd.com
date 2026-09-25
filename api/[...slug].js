@@ -30,7 +30,8 @@ const handlers = {
   'submit-extra-request': require('../submit-extra-request').handler,
   'submit-inspection-done': require('../submit-inspection-done').handler,
   'save-tech-language': require('../save-tech-language').handler,
-  'get-es-terms': require('../get-es-terms').handler
+  'get-es-terms': require('../get-es-terms').handler,
+  'tech-session': require('../tech-session').handler
 };
 
 module.exports = async (req, res) => {
