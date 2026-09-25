@@ -32,6 +32,13 @@ const GS = {
     });
     let data = {};
     try { data = await res.json(); } catch (e) { /* body no-JSON */ }
+    /* 25/09/2026: sin sesion firmada (cookie) el servidor contesta 401.
+       De regreso a index.html, que vuelve a validar el dispositivo (QR) y
+       renueva la cookie sola -- el tecnico casi nunca lo nota. */
+    if (res.status === 401 && data && data.signin) {
+      GS.session.clear();
+      if (!/index\.html$|\/$/.test(location.pathname)) location.replace('index.html');
+    }
     if (!res.ok) {
       const err = new Error(data.error || ('Request failed (' + res.status + ')'));
       if (data.debug) err.debug = data.debug;

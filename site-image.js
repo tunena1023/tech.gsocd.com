@@ -23,6 +23,12 @@ exports.handler = async (event) => {
     const params = event.queryStringParameters || {};
     const name = params.name;
     if (!name) return jsonResponse(400, { error: 'name is required' });
+    /* SEGURIDAD (25/09/2026): funcion publica. Antes cualquier ruta del
+       SharePoint pasaba directo (fotos, PDFs...). Ahora solo imagenes de
+       la raiz, un solo segmento, sin '/', '\\' ni '..'. */
+    if (/[\\/]|\.\./.test(String(name)) || !/^image\//.test(typeOf(String(name)))) {
+      return jsonResponse(404, { error: 'not found' });
+    }
 
     const item = await driveItemByPath(String(name));
     if (!item || (item.size || 0) > MAX_BYTES) {

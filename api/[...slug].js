@@ -1,6 +1,11 @@
 /* api/[...slug].js — un solo endpoint que reparte el trafico a todas
    las funciones de la raiz, igual que en admin/orders. */
 const { toVercel } = require('../lib/vercel-adapter');
+/* 25/09/2026: sesion firmada del tecnico (lib/tech-auth.js). Sin ella,
+   401. Quien es (techId, rol, nombre, division) sale de la cookie y se
+   escribe encima del body: el navegador ya no lo puede cambiar. */
+const { readSession } = require('../lib/tech-auth');
+const PUBLIC = new Set(['register-tech', 'login-tech', 'device-auth', 'site-image', 'get-catalog']);
 
 const handlers = {
   'register-tech': require('../register-tech').handler,
@@ -33,6 +38,18 @@ module.exports = async (req, res) => {
   if (!h) {
     res.status(404).json({ error: 'Unknown endpoint: ' + slug });
     return;
+  }
+  if (!PUBLIC.has(slug)) {
+    const s = readSession(req.headers);
+    if (!s) { res.status(401).json({ error: 'Please sign in again.', signin: true }); return; }
+    let body = req.body;
+    if (typeof body === 'string') { try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; } }
+    if (!body || typeof body !== 'object') body = {};
+    body.techId = s.tid;
+    body.role = s.role;
+    body.division = s.division;
+    body.actor = s.name;
+    req.body = body;
   }
   return toVercel(h)(req, res);
 };

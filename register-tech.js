@@ -17,6 +17,7 @@
 ============================================================ */
 
 const { TECHS_LIST, createListItem, graphFetch, siteListPath, jsonResponse } = require('./lib/graph');
+const { sessionCookie, withCookie } = require('./lib/tech-auth');
 
 async function fetchAll(listName) {
   let url = siteListPath(listName) + '?$expand=fields&$top=500';
@@ -74,7 +75,8 @@ exports.handler = async (event) => {
       Active: true
     });
 
-    return jsonResponse(200, {
+    const cookie = sessionCookie({ id: created.id, fields: { FirstName: firstName, LastName: lastName, Role: 'Employee', Division: '' } });
+    return withCookie(jsonResponse(200, {
       success: true,
       tech: {
         id: created.id,
@@ -83,7 +85,7 @@ exports.handler = async (event) => {
         division: '',
         tempId
       }
-    });
+    }), cookie);
   } catch (e) {
     return jsonResponse(500, { error: e.message });
   }

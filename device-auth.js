@@ -22,6 +22,8 @@ const {
   TECHS_LIST, TECH_DEVICE_TOKENS_LIST,
   createListItem, updateListItemByItemId, graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
+/* Sesion firmada del tecnico (lib/tech-auth.js, 25/09/2026). */
+const { sessionCookie, withCookie } = require('./lib/tech-auth');
 
 async function fetchAll(listName) {
   let url = siteListPath(listName) + '?$expand=fields&$top=500';
@@ -65,16 +67,9 @@ exports.handler = async (event) => {
       if (truthy(setupRow.fields.SetupTokenUsed)) return jsonResponse(409, { error: 'This link was already used. Please ask the office for a new one.' });
 
       const techRow = techRows.find(it => it.id === String(setupRow.fields.Title || ''));
-      if (!techRow) return jsonResponse(404, {
-        error: 'Could not find that account. Please ask the office for a new link.',
-        /* Diagnostico temporal -- se quita en cuanto se resuelva. */
-        debug: {
-          titleValue: setupRow.fields.Title,
-          titleType: typeof setupRow.fields.Title,
-          techCount: techRows.length,
-          techIds: techRows.filter(it => it.fields).map(it => it.id)
-        }
-      });
+      /* 25/09/2026: se quito el "diagnostico temporal" que regresaba los
+         ids internos de TODOS los tecnicos a quien trajera un link malo. */
+      if (!techRow) return jsonResponse(404, { error: 'Could not find that account. Please ask the office for a new link.' });
 
       return jsonResponse(200, { firstName: techRow.fields.FirstName || '', lastName: techRow.fields.LastName || '' });
     }
@@ -110,7 +105,7 @@ exports.handler = async (event) => {
         ...otherActive.map(it => updateListItemByItemId(TECH_DEVICE_TOKENS_LIST, it.id, { Active: false }))
       ]);
 
-      return jsonResponse(200, { success: true, deviceToken, tech: techSessionShape(techRow) });
+      return withCookie(jsonResponse(200, { success: true, deviceToken, tech: techSessionShape(techRow) }), sessionCookie(techRow));
     }
 
     if (action === 'verify-device') {
@@ -130,7 +125,7 @@ exports.handler = async (event) => {
       }
 
       try { await updateListItemByItemId(TECH_DEVICE_TOKENS_LIST, deviceRow.id, { LastUsedDate: new Date().toISOString() }); } catch (e) { /* no bloquea el acceso si esto falla */ }
-      return jsonResponse(200, { tech: techSessionShape(techRow) });
+      return withCookie(jsonResponse(200, { tech: techSessionShape(techRow) }), sessionCookie(techRow));
     }
 
     return jsonResponse(400, { error: 'Unknown action: ' + action });

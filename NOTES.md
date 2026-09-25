@@ -7,6 +7,29 @@ de features, bugs, decisiones y pendientes, en orden cronológico.
 (más de ~3 semanas sin tocarse) a un párrafo o moverlas a NOTES_ARCHIVE.md,
 en vez de seguir apilando sin límite.
 
+## EN PREVIEW (25/09/2026): el servidor ya no le cree al navegador quién es el técnico
+
+- Antes, cada función tomaba del body `techId`, `role`, `division` y `actor`
+  (nombre). Cualquiera podía pedir `/api/get-my-orders` con el techId de otro, o
+  mandar un Supervisor Update a nombre de un supervisor.
+- `lib/tech-auth.js`: cookie firmada `gs_tech_auth` (HttpOnly, 30 días) con techId,
+  rol, nombre y división leídos de la lista Techs. Se da en device-auth
+  (activate-device, y verify-device cada vez que se abre la app), login-tech y
+  register-tech. Clave: `TECH_SESSION_SECRET` en Vercel (una distinta en Production
+  y en Preview; ya puesta el 25/09/2026).
+- `api/[...slug].js`: sin cookie → 401 (`GS.api` regresa a index.html, que revalida
+  el QR y renueva la cookie solo). Con cookie, techId/role/division/actor se
+  escriben encima del body. Públicas: register-tech, login-tech, device-auth,
+  site-image, get-catalog.
+- Se quitó el "diagnóstico temporal" de verify-setup, que regresaba los ids de
+  TODOS los técnicos a quien trajera un link malo.
+- site-image: solo imágenes de la raíz. Antes se podía bajar cualquier archivo del
+  SharePoint pasando una ruta.
+- **Pendiente (decidir con el dueño):** cualquiera se puede auto-registrar y queda
+  Active como Employee. El login viejo (nombre + últimos 4 del teléfono) no tiene
+  freno de intentos. Opciones: registrarse como inactivo hasta que la oficina lo
+  apruebe, y/o dejar solo el QR.
+
 ## SUBIDO A PRODUCCIÓN (25/09/2026): correos de notificación (reemplaza Power Automate)
 
 **Así quedó Vercel (25/09/2026, final, los 3 proyectos):**

@@ -5,6 +5,7 @@
 ============================================================ */
 
 const { TECHS_LIST, graphFetch, siteListPath, jsonResponse } = require('./lib/graph');
+const { sessionCookie, withCookie } = require('./lib/tech-auth');
 
 async function fetchAll(listName) {
   let url = siteListPath(listName) + '?$expand=fields&$top=500';
@@ -42,7 +43,7 @@ exports.handler = async (event) => {
       return jsonResponse(403, { error: 'This account is inactive. Please contact the office.' });
     }
 
-    return jsonResponse(200, {
+    return withCookie(jsonResponse(200, {
       success: true,
       tech: {
         id: match.id,
@@ -52,7 +53,7 @@ exports.handler = async (event) => {
         division: match.fields.Division || '',
         tempId: match.fields.TempID
       }
-    });
+    }), sessionCookie(match));
   } catch (e) {
     return jsonResponse(500, { error: e.message });
   }
