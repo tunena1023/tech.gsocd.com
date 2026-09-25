@@ -7,7 +7,18 @@ de features, bugs, decisiones y pendientes, en orden cronológico.
 (más de ~3 semanas sin tocarse) a un párrafo o moverlas a NOTES_ARCHIVE.md,
 en vez de seguir apilando sin límite.
 
-## PENDIENTE DE "SÚBELO" (25/09/2026): correos de notificación (reemplaza Power Automate)
+## SUBIDO A PRODUCCIÓN (25/09/2026): correos de notificación (reemplaza Power Automate)
+
+**Estado en Vercel al subir:** producción y Preview con `NOTIFY_MODE=live` y
+`NOTIFY_FROM=noreply@gsocd.com`. El dueño confirmó que todavía NO hay clientes
+reales: todos los emails del SharePoint son suyos. **En cuanto entre el primer
+cliente real, Preview debe regresar a `NOTIFY_MODE=test`** (con `NOTIFY_TEST_TO`,
+hoy CFO@gsocd.com), porque Preview usa el mismo SharePoint. Probado de verdad en
+Preview: "We received your order" (cliente) y "Client request" (oficina) llegaron.
+orders@ es un grupo: sus correos caen en las bandejas de CFO@, Admin@, Service@ y
+customercare@, no tiene bandeja propia. Pendiente para otra sesión: la pantalla
+nueva de "Order received" en customer.html (mini:
+https://claude.ai/artifact/Y6gXdcvdjwS8MySDXoF8Cg, sin aprobar todavía).
 
 El envío vive en `lib/notify.js`, que es una COPIA de `gsocd-shared/lib/notify.js`
 (mismo criterio que division-rules: Vercel no reinstala tags nuevos). Manda desde
