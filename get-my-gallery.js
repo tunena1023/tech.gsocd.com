@@ -16,6 +16,8 @@ const {
   ORDERS_LIST, ORDER_SERVICES_LIST, SCHEDULING_LIST, TECHS_LIST,
   listChildren, graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
+const lq = require('./lib/list-query');
+const galleryScan = require('./lib/gallery-scan');
 const graph = require('./lib/graph');
 const orderDocs = require('./lib/order-docs');
 
@@ -79,12 +81,13 @@ async function fetchByOrderId(listName, orderId) {
    (columna "Scheduled Services" de Gallery, rediseño 19/09/2026) --
    ya no se puede saltar el query aunque ninguna foto traiga el
    prefijo svc-, la lista se necesita independiente de las fotos. */
-async function buildServiceCaptionsAndList(orderId, photoNames) {
+async function buildServiceCaptionsAndList(orderId, photoNames, svcRowsByOrder) {
   const svcNamesInPhotos = photoNames
     .map(n => (n.match(SVC_PHOTO_PREFIX) || [])[1])
     .filter(Boolean);
 
-  const rows = await fetchByOrderId(ORDER_SERVICES_LIST, orderId);
+  /* Servicios ya traidos de una vez para todas las ordenes (velocidad, 25/09/2026). */
+  const rows = (svcRowsByOrder && svcRowsByOrder[orderId]) || [];
   const bySafeName = {};
   const services = [];
   rows.forEach(it => {
@@ -139,13 +142,31 @@ function clientFolderName(f) {
 /* Ordenes que este tecnico puede ver (mismo criterio que get-my-orders).
    Tambien lo usa order-docs.js para dejar ver un documento. */
 async function scopedOrders(techId, role, division) {
-  const [orderRows, schedulingRows, techRows] = await Promise.all([
-    fetchAll(ORDERS_LIST),
-    role === 'Employee' ? fetchAll(SCHEDULING_LIST) : Promise.resolve([]),
-    role === 'Employee' ? fetchAll(TECHS_LIST) : Promise.resolve([])
-  ]);
-
-  let myOrders = orderRows.filter(it => it.fields);
+  /* Velocidad (25/09/2026): Employee -> solo su renglon de Techs, sus
+     renglones de Scheduling y SUS ordenes; Supervisor -> solo su division.
+     Mismo resultado que antes (lib/list-query.js cae a la lista completa
+     si un filtro falla). */
+  let myOrders;
+  if (role === 'Developer' || (role === 'Supervisor' && division.toLowerCase() === 'mixed')) {
+    myOrders = (await lq.fetchAll(ORDERS_LIST)).filter(it => it.fields);
+  } else if (role === 'Supervisor') {
+    myOrders = (await lq.fetchWhere(ORDERS_LIST, `fields/Division eq '${division.replace(/'/g, "''")}'`,
+      f => String(f.Division || '').toLowerCase() === division.toLowerCase())).filter(it => it.fields);
+  } else {
+    myOrders = null;
+  }
+  const schedulingRows = [], techRows = [];
+  if (myOrders === null) {
+    const me = await lq.fetchById(TECHS_LIST, techId);
+    if (me) techRows.push(me);
+    const pid = me && me.fields ? String(me.fields.PayrollID || '').trim() : '';
+    (pid ? await lq.fetchWhere(SCHEDULING_LIST, `fields/PayrollNumber eq '${pid.replace(/'/g, "''")}'`, f => String(f.PayrollNumber || '').trim() === pid)
+      : await lq.fetchAll(SCHEDULING_LIST)).forEach(r => schedulingRows.push(r));
+    const ids = schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === pid).map(it => it.fields.OrderID);
+    myOrders = (await lq.fetchByValues(ORDERS_LIST, 'OrderID', ids)).filter(it => it.fields);
+    /* Mismo orden que la lista completa (por id de SharePoint). */
+    myOrders.sort((a, b) => Number(a.id) - Number(b.id));
+  }
   if (role === 'Developer') {
     /* Ve todo -- mismo criterio que get-my-orders.js/get-my-history.js. */
   } else if (role === 'Supervisor') {
@@ -181,14 +202,27 @@ exports.handler = async (event) => {
 
     const myOrders = await scopedOrders(techId, role, division);
 
-    const groups = await Promise.all(myOrders.map(async (it) => {
+    /* Velocidad (25/09/2026): solo se abren las ordenes que SI tienen
+       carpeta (una consulta por cliente, lib/gallery-scan.js), y los
+       servicios de todas se piden juntos en vez de uno por orden. */
+    const withFolders = await galleryScan.ordersWithFolders(myOrders, clientFolderName, PHOTOS_FOLDER);
+    const listed = await Promise.all(withFolders.map(async (it) => {
       const f = it.fields;
       const orderId = f.OrderID || f.Title || '';
       const folderPath = PHOTOS_FOLDER + '/' + clientFolderName(f) + '/' + orderId + '/Photos';
       const kids = await listChildren(folderPath);
       const photos = kids.filter(k => k.isFile).sort((a, b) => a.name.localeCompare(b.name));
-      if (!photos.length) return null;
-      const { captions, services } = await buildServiceCaptionsAndList(orderId, photos.map(p => p.name));
+      return photos.length ? { it, photos } : null;
+    }));
+    const found = listed.filter(Boolean);
+    const svcRowsByOrder = {};
+    (await lq.fetchByValues(ORDER_SERVICES_LIST, 'OrderID', found.map(x => x.it.fields.OrderID || x.it.fields.Title))).forEach(r => {
+      if (r.fields && r.fields.OrderID) (svcRowsByOrder[r.fields.OrderID] = svcRowsByOrder[r.fields.OrderID] || []).push(r);
+    });
+    const groups = await Promise.all(found.map(async ({ it, photos }) => {
+      const f = it.fields;
+      const orderId = f.OrderID || f.Title || '';
+      const { captions, services } = await buildServiceCaptionsAndList(orderId, photos.map(p => p.name), svcRowsByOrder);
       return {
         orderId,
         clientLabel: f.BusinessName || f.ClientID || '',

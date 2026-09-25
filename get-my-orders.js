@@ -16,21 +16,17 @@
 const {
   ORDERS_LIST, ORDER_SERVICES_LIST, SCHEDULING_LIST, SERVICE_ASSIGNMENTS_LIST,
   TECHS_LIST, RECURRING_SERVICES_LIST, RECURRING_ASSIGNMENTS_LIST, CLIENTS_LIST,
-  graphFetch, siteListPath, jsonResponse
+  jsonResponse
 } = require('./lib/graph');
 
 const LIVE_STATUSES = ['Assigned', 'Updated'];
-
-async function fetchAll(listName) {
-  let url = siteListPath(listName) + '?$expand=fields&$top=500';
-  const out = [];
-  while (url) {
-    const data = await graphFetch(url);
-    out.push(...(data.value || []));
-    url = data['@odata.nextLink'] || null;
-  }
-  return out;
-}
+/* Velocidad (25/09/2026): antes, cada vez que un tecnico abria la app,
+   se bajaban TODAS las ordenes, servicios, clientes, tecnicos, Scheduling
+   y asignaciones de la empresa. Ahora solo las ordenes vivas y, de esas,
+   sus servicios/asignaciones; lo del tecnico por su PayrollID; y solo los
+   clientes de sus recurrentes. lib/list-query.js cae sola a la lista
+   completa si un filtro falla, asi que el resultado es el mismo. */
+const lq = require('./lib/list-query');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
@@ -42,18 +38,12 @@ exports.handler = async (event) => {
     const division = String(b.division || '').trim();
     if (!techId || !role) return jsonResponse(400, { error: 'techId and role are required' });
 
-    const [orderRows, svcRows, schedulingRows, techRows, recurringServiceRows, recurringAssignRows, clientRows, serviceAssignRows] = await Promise.all([
-      fetchAll(ORDERS_LIST),
-      fetchAll(ORDER_SERVICES_LIST),
-      role === 'Employee' ? fetchAll(SCHEDULING_LIST) : Promise.resolve([]),
-      fetchAll(TECHS_LIST),
-      fetchAll(RECURRING_SERVICES_LIST),
-      fetchAll(RECURRING_ASSIGNMENTS_LIST),
-      fetchAll(CLIENTS_LIST),
-      /* "Assign by service" (21/09/2026) -- solo se necesita para
-         Employee (ver mas abajo); se trae siempre para no tener que
-         checar el role antes de decidir si pedirla. */
-      fetchAll(SERVICE_ASSIGNMENTS_LIST)
+    const wanted = lq.statusIn(LIVE_STATUSES.concat(['Inspection']));
+    const [orderRows, techRows, recurringServiceRows] = await Promise.all([
+      lq.fetchWhere(ORDERS_LIST, wanted.filter, wanted.test),
+      /* Employee: solo su renglon. Supervisor/Developer: todos (crewOptions). */
+      role === 'Employee' ? lq.fetchById(TECHS_LIST, techId).then(r => r ? [r] : []) : lq.fetchAllCached(TECHS_LIST),
+      lq.fetchAllCached(RECURRING_SERVICES_LIST)
     ]);
 
     /* PayrollID del empleado logueado -- se necesita ANTES del filtro
@@ -66,6 +56,18 @@ exports.handler = async (event) => {
        NOMBRES (texto, coma-separado si hay varios), no PayrollID --
        mismo criterio que ya usa Admingsocd.com para esto. */
     const myName = myTechRow && myTechRow.fields ? (String(myTechRow.fields.FirstName || '') + ' ' + String(myTechRow.fields.LastName || '')).trim() : '';
+
+    /* Asignaciones por servicio de las ordenes vivas (las unicas que
+       importan abajo), y lo de Scheduling/recurrentes de este empleado. */
+    const candidateIds = orderRows.filter(it => it.fields).map(it => it.fields.OrderID || it.fields.Title);
+    const byPayroll = list => myPayrollId
+      ? lq.fetchWhere(list, `fields/PayrollNumber eq '${myPayrollId.replace(/'/g, "''")}'`, f => String(f.PayrollNumber || '').trim() === myPayrollId)
+      : lq.fetchAll(list);
+    const [serviceAssignRows, schedulingRows, recurringAssignRows] = await Promise.all([
+      lq.fetchByValues(SERVICE_ASSIGNMENTS_LIST, 'OrderID', candidateIds),
+      role === 'Employee' ? byPayroll(SCHEDULING_LIST) : Promise.resolve([]),
+      role === 'Employee' ? byPayroll(RECURRING_ASSIGNMENTS_LIST) : Promise.resolve([])
+    ]);
 
     let liveOrders = orderRows.filter(it => it.fields && LIVE_STATUSES.includes(it.fields.Status));
     /* Inspecciones (25/09/2026): una orden en 'Inspection' la ve SOLO el
@@ -119,6 +121,8 @@ exports.handler = async (event) => {
       liveOrders = liveOrders.filter(it => myOrderIds.has(it.fields.OrderID || it.fields.Title));
     }
     liveOrders = liveOrders.concat(inspectionOrders);
+
+    const svcRows = await lq.fetchByValues(ORDER_SERVICES_LIST, 'OrderID', liveOrders.map(it => it.fields.OrderID || it.fields.Title));
 
     const servicesByOrder = {};
     svcRows.forEach(it => {
@@ -215,6 +219,9 @@ exports.handler = async (event) => {
        de su division, igual que ya hace con las ordenes normales.
        myPayrollId ya se calculo arriba, junto al filtro de ordenes. */
 
+    /* Solo los clientes de los recurrentes que se van a mostrar. */
+    const clientRows = await lq.fetchByValues(CLIENTS_LIST, 'ClientID',
+      recurringServiceRows.filter(it => it.fields).map(it => it.fields.ClientID));
     const businessNameByClient = {};
     const addressByClient = {};
     clientRows.forEach(it => {

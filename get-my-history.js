@@ -6,10 +6,15 @@
 
 const {
   ORDERS_LIST, ORDER_SERVICES_LIST, ORDER_HISTORY_LIST, SCHEDULING_LIST, TECHS_LIST,
-  graphFetch, siteListPath, jsonResponse
+  jsonResponse
 } = require('./lib/graph');
 
 const CLOSED_STATUSES = ['Completed', 'Cancelled'];
+/* Velocidad (25/09/2026): antes se bajaban TODAS las ordenes, TODO el
+   historial y TODOS los servicios de la empresa en cada apertura. Ahora
+   solo las ordenes cerradas, y el historial/servicios de ESAS ordenes
+   (lib/list-query.js, con plan B a la lista completa si un filtro falla). */
+const lq = require('./lib/list-query');
 
 /* El tecnico solo debe ver CORRECCIONES ya confirmadas -- nunca una
    peticion todavia sin decidir. Si un cliente pide un cambio de
@@ -25,17 +30,6 @@ const PENDING_REQUEST_TYPES = [
    la orden. */
 const HIDDEN_HISTORY_TYPES = ['Document Generated', 'Document Failed', 'Archived'];
 
-async function fetchAll(listName) {
-  let url = siteListPath(listName) + '?$expand=fields&$top=500';
-  const out = [];
-  while (url) {
-    const data = await graphFetch(url);
-    out.push(...(data.value || []));
-    url = data['@odata.nextLink'] || null;
-  }
-  return out;
-}
-
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
 
@@ -46,12 +40,10 @@ exports.handler = async (event) => {
     const division = String(b.division || '').trim();
     if (!techId || !role) return jsonResponse(400, { error: 'techId and role are required' });
 
-    const [orderRows, svcRows, histRows, schedulingRows, techRows] = await Promise.all([
-      fetchAll(ORDERS_LIST),
-      fetchAll(ORDER_SERVICES_LIST),
-      fetchAll(ORDER_HISTORY_LIST),
-      role === 'Employee' ? fetchAll(SCHEDULING_LIST) : Promise.resolve([]),
-      role === 'Employee' ? fetchAll(TECHS_LIST) : Promise.resolve([])
+    const closed = lq.statusIn(CLOSED_STATUSES);
+    const [orderRows, myTechRow] = await Promise.all([
+      lq.fetchWhere(ORDERS_LIST, closed.filter, closed.test),
+      role === 'Employee' ? lq.fetchById(TECHS_LIST, techId) : Promise.resolve(null)
     ]);
 
     let closedOrders = orderRows.filter(it => it.fields && CLOSED_STATUSES.includes(it.fields.Status));
@@ -68,14 +60,24 @@ exports.handler = async (event) => {
          real en Scheduling con el PayrollNumber del tecnico, nunca en
          OrderAssignments/TechID (esa lista nunca se llena en el flujo
          normal). */
-      const myTechRow = techRows.find(it => it.id === techId);
       const myPayrollId = myTechRow && myTechRow.fields ? String(myTechRow.fields.PayrollID || '').trim() : '';
+      /* Solo los renglones de Scheduling de este tecnico. Sin PayrollID se
+         usa la lista completa, igual que antes. */
+      const schedulingRows = myPayrollId
+        ? await lq.fetchWhere(SCHEDULING_LIST, `fields/PayrollNumber eq '${myPayrollId.replace(/'/g, "''")}'`, f => String(f.PayrollNumber || '').trim() === myPayrollId)
+        : await lq.fetchAll(SCHEDULING_LIST);
       const myOrderIds = new Set(
         schedulingRows.filter(it => it.fields && String(it.fields.PayrollNumber || '').trim() === myPayrollId)
           .map(it => it.fields.OrderID)
       );
       closedOrders = closedOrders.filter(it => myOrderIds.has(it.fields.OrderID || it.fields.Title));
     }
+
+    const closedIds = closedOrders.map(it => it.fields.OrderID || it.fields.Title);
+    const [svcRows, histRows] = await Promise.all([
+      lq.fetchByValues(ORDER_SERVICES_LIST, 'OrderID', closedIds),
+      lq.fetchByValues(ORDER_HISTORY_LIST, 'OrderID', closedIds)
+    ]);
 
     const historyByOrder = {};
     histRows.forEach(it => {
