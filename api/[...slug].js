@@ -31,7 +31,8 @@ const handlers = {
   'submit-inspection-done': require('../submit-inspection-done').handler,
   'save-tech-language': require('../save-tech-language').handler,
   'get-es-terms': require('../get-es-terms').handler,
-  'setup-manifest': require('../setup-manifest').handler
+  'setup-manifest': require('../setup-manifest').handler,
+  'tech-session': require('../tech-session').handler
 };
 
 module.exports = async (req, res) => {
