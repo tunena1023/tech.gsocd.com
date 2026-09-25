@@ -45,6 +45,16 @@ function randomSuffix() {
   return Math.random().toString(36).slice(2, 6);
 }
 
+/* photoKey (gsocd-shared camera-queue v1.70.0, 25/09/2026): nombre fijo
+   que la foto trae desde que se tomo ("AAAA-MM-DD_HHMMSS-xxxxxx", UTC).
+   Si la misma foto llega 2 veces (Done antes de que terminara de subir y
+   la otra pagina la reenvia), se escribe en el MISMO archivo en vez de
+   crear una copia. Sin photoKey (fotos viejas en la cola), como antes. */
+function photoStamp(b, now) {
+  const k = String((b && b.photoKey) || '');
+  return /^\d{4}-\d{2}-\d{2}_\d{6}-[a-z0-9]{4,12}$/.test(k) ? k : fileTimestamp(now || new Date()) + '-' + randomSuffix();
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
 
@@ -82,7 +92,7 @@ exports.handler = async (event) => {
        lo usan para separar "Inspection (antes)" de "Work (despues)".
        Las fotos son publicas: el cliente las ve igual que las demas. */
     const stagePrefix = f.Status === 'Inspection' ? 'insp-' : '';
-    const fileName = stagePrefix + fileTimestamp(now) + '-' + randomSuffix() + '.' + ext;
+    const fileName = stagePrefix + photoStamp(b, now) + '.' + ext;
 
     await ensureFolder(folderPath);
     const result = await uploadFile(folderPath, fileName, buffer, contentType);
@@ -91,7 +101,15 @@ exports.handler = async (event) => {
        tumba la subida (el archivo ya se guardo bien, que es lo que
        de verdad importa para el trabajo del dia a dia). */
     try {
-      await createListItem(TECH_PHOTO_LOG_LIST, {
+      /* Reenvio de la misma foto (photoKey): el archivo se reemplazo, el
+         registro ya existe -- no se duplica. */
+      let alreadyLogged = false;
+      if (b.photoKey) {
+        const q = siteListPath(TECH_PHOTO_LOG_LIST) + '?$expand=fields&$top=1&$filter=' + encodeURIComponent(`fields/FileName eq '${fileName.replace(/'/g, "''")}'`);
+        const found = await graphFetch(q, { headers: { Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' } }).catch(() => null);
+        alreadyLogged = !!(found && found.value && found.value.length);
+      }
+      if (!alreadyLogged) await createListItem(TECH_PHOTO_LOG_LIST, {
         Title: orderId,
         TechId: techId,
         FileName: fileName,

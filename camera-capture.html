@@ -120,7 +120,7 @@
 
 <script src="shared.js"></script>
 <script src="i18n.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.28.10/camera-queue/camera-queue.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@71670c4e06fbb09c07fe248cf4a5a89c3399b384/camera-queue/camera-queue.js"></script>
 <script>
   const tech = GS.requireSession(); // cualquier rol -- Employee y Supervisor entran ambos aqui
 
@@ -239,13 +239,12 @@
 
   async function capture() {
     if (count >= MAX_PHOTOS || !stream) return;
-    /* El boton se bloquea durante TODO capture() -- incluido el
-       await de getLocationSafe(), que puede tardar hasta 8 segundos
-       si el GPS esta lento. Sin esto, un segundo toque mientras
-       espera dispara una captura duplicada de la misma imagen. */
+    /* Sin candado entre fotos (25/09/2026, el dueño: quiere poder tomar
+       fotos seguidas). Cada toque toma SU foto al instante; ya no se
+       duplican porque cada una lleva su propio photoKey (camera-queue
+       v1.70.0) y el servidor la guarda con ese nombre. Solo se apaga
+       al llegar al maximo. */
     const btn = document.getElementById('shutter-btn');
-    if (btn.disabled) return;
-    btn.disabled = true;
 
     count++;
     document.getElementById('counter-pill').textContent = count + ' / ' + MAX_PHOTOS + ' photos';
@@ -290,9 +289,7 @@
       });
       thumbById[id] = { thumb, status };
     } finally {
-      /* Se reactiva salvo que ya se haya llegado al maximo -- ese
-         candado si debe quedarse (comportamiento de siempre). */
-      if (count < MAX_PHOTOS) btn.disabled = false;
+      if (count >= MAX_PHOTOS) btn.disabled = true;
     }
   }
   document.getElementById('shutter-btn').addEventListener('click', capture);
