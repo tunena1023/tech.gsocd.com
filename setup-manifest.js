@@ -19,7 +19,8 @@ exports.handler = async (event) => {
     display: 'standalone',
     background_color: '#111111',
     theme_color: '#111111',
-    icons: [{ src: '/api/site-image?name=Logo.jpg', sizes: 'any', type: 'image/jpeg', purpose: 'any' }]
+    /* Iconos de la app (icons/, hechos con el logo de GS, 25/09/2026). */
+    icons: [{'src': '/icons/icon-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any'}, {'src': '/icons/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'}, {'src': '/icons/icon-maskable-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'}, {'src': '/icons/icon-monochrome-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'monochrome'}]
   };
   return {
     statusCode: 200,

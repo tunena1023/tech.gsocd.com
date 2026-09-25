@@ -15,8 +15,8 @@ self.addEventListener('push', function (event) {
   const title = data.title || 'GS Solutions';
   const options = {
     body: data.body || '',
-    icon: '/api/site-image?name=Logo.jpg',
-    badge: '/api/site-image?name=Logo.jpg',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-monochrome-512.png',
     data: { url: data.url || '/employee.html' },
     /* Mismo tag = reemplaza al aviso anterior de la misma orden en vez
        de amontonar (lib/push.js de Admin lo manda). */
