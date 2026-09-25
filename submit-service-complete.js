@@ -19,6 +19,11 @@ const {
   updateListItemByItemId, createListItem,
   graphFetch, siteListPath, listChildren, jsonResponse
 } = require('./lib/graph');
+/* Aviso a la oficina de que el tecnico termino y falta revisar
+   (lib/notify.js, 25/09/2026). Al cliente no le llega nada aqui: solo
+   cuando la oficina cierra la orden (dueño, 25/09/2026). Nunca truena. */
+const graph = require('./lib/graph');
+const { notifyOffice } = require('./lib/notify');
 
 const PHOTOS_FOLDER = process.env.GRAPH_PHOTOS_FOLDER || 'TechPhotos';
 
@@ -133,6 +138,18 @@ exports.handler = async (event) => {
         ? { serviceName: b.category, services: targets.map(t => t.fields.ServiceName) }
         : { serviceName: b.serviceName })
     });
+
+    /* Por servicio, si. Por LUGAR de una recurrente (placeMode) no:
+       una visita tiene muchos lugares y seria un correo por cada uno;
+       esas las revisa la oficina en Recurring como siempre. */
+    if (!placeMode) {
+      await notifyOffice(graph, {
+        event: 'tech-done',
+        order: Object.assign({}, f, { OrderID: b.orderId }),
+        tech: myName,
+        service: b.serviceName + (b.category ? ' — ' + b.category : '')
+      });
+    }
 
     return jsonResponse(200, { success: true, orderId: b.orderId });
   } catch (err) {

@@ -29,6 +29,11 @@ const {
   createListItem, updateListItemByItemId,
   graphFetch, siteListPath, listChildren, jsonResponse
 } = require('./lib/graph');
+/* Aviso a la oficina de que el tecnico termino y falta revisar
+   (lib/notify.js, 25/09/2026). Al cliente no le llega nada aqui: solo
+   cuando la oficina cierra la orden (dueño, 25/09/2026). Nunca truena. */
+const graph = require('./lib/graph');
+const { notifyOffice } = require('./lib/notify');
 
 const LIVE_STATUSES = ['Assigned', 'Updated'];
 const PHOTOS_FOLDER = process.env.GRAPH_PHOTOS_FOLDER || 'TechPhotos';
@@ -120,6 +125,12 @@ exports.handler = async (event) => {
       Title: orderId + '-tech-marked-done', ChangeType: 'Tech Marked Complete', FieldChanged: 'TechMarkedComplete',
       Notes: techName + ' marked their work as done. The office still needs to confirm and close the order.',
       OldValue: 'false', NewValue: 'true'
+    });
+
+    await notifyOffice(graph, {
+      event: 'tech-done',
+      order: Object.assign({}, f, { OrderID: orderId }),
+      tech: techName
     });
 
     return jsonResponse(200, { success: true, techMarkedComplete: true });
