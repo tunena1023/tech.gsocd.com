@@ -7,6 +7,26 @@ de features, bugs, decisiones y pendientes, en orden cronológico.
 (más de ~3 semanas sin tocarse) a un párrafo o moverlas a NOTES_ARCHIVE.md,
 en vez de seguir apilando sin límite.
 
+## POR SI VUELVE A PASAR (25/09/2026): "entra y la saca" del portal de técnicos
+
+- Caso: Julia entraba al portal y la regresaba al login. Se compuso sola antes de
+  tocar nada; el dueño pidió solo dejar esta nota.
+- Causa más probable si se repite: **rol `Contractor`**. Admin deja dar de alta
+  gente a mano con ese rol (Techs & Roles > Add Person Manually), pero este portal
+  no lo conoce: `employee.html` pide `GS.requireSession('Employee')`, así que un
+  Contractor entra y lo regresa a index.html. Con celular configurado por QR se
+  queda en vuelta: index → employee → index.
+- Primero revisar en Admin > Techs & Roles qué rol tiene la persona. Si es
+  Contractor, un parche rápido es ponerla como Employee.
+- Arreglo de fondo (ya se escribió y probó, no se subió): `requireSession` acepta
+  una lista y employee.html pide `['Employee', 'Contractor']`; en get-my-orders,
+  get-my-gallery y get-my-history tratar Contractor como Employee (traer
+  Scheduling y ServiceAssignments) y buscar sus trabajos por PayrollID **o**
+  `tech:<id>`, que es como Scheduling guarda a quien no tiene número de nómina.
+- Otras cosas que se ven igual: 401 de cualquier /api (cookie vencida o sin
+  `TECH_SESSION_SECRET`) regresa al login; nombre o 4 dígitos que no coinciden
+  dan 404 en login-tech ("We could not find an account…").
+
 ## EN PREVIEW (25/09/2026): el servidor ya no le cree al navegador quién es el técnico
 
 - Antes, cada función tomaba del body `techId`, `role`, `division` y `actor`
