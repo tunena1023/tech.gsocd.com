@@ -19,7 +19,7 @@ exports.handler = async (event) => {
     const mine = await scopedOrders(String(b.techId || ''), String(b.role || ''), String(b.division || ''));
     if (!mine.some(it => (it.fields.OrderID || it.fields.Title) === orderId)) return jsonResponse(404, { error: 'Document not found.' });
     const row = await orderDocs.getRow(graph, String(b.docId || ''));
-    if (!row || (row.fields || {}).OrderID !== orderId) return jsonResponse(404, { error: 'Document not found.' });
+    if (!row || orderDocs.orderIdOf(row) !== orderId) return jsonResponse(404, { error: 'Document not found.' });
     return jsonResponse(200, await orderDocs.viewUrls(graph, row));
   } catch (e) {
     return jsonResponse(e.status || 500, { error: e.message });
