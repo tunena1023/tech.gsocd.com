@@ -177,7 +177,22 @@ exports.handler = async (event) => {
     const division = String(b.division || '').trim();
     if (!techId || !role) return jsonResponse(400, { error: 'techId and role are required' });
 
-    const myOrders = await scopedOrders(techId, role, division);
+    /* Miniaturas de las tarjetas (tech-photos.js, 26/09/2026): solo las
+       ordenes que estan en pantalla y sin documentos. Mismo alcance de
+       siempre: Supervisor solo su division (Mixed/Developer todas),
+       Employee solo las suyas (scopedOrders). Para no bajar TODAS las
+       ordenes de la empresa por unas miniaturas, Supervisor/Developer
+       piden solo esas por OrderID. */
+    const onlyIds = Array.isArray(b.orderIds) ? [...new Set(b.orderIds.map(x => String(x || '').trim()).filter(Boolean))].slice(0, 200) : null;
+    let myOrders;
+    if (onlyIds && role !== 'Employee') {
+      const allDiv = role === 'Developer' || division.toLowerCase() === 'mixed';
+      myOrders = (await lq.fetchByValues(ORDERS_LIST, 'OrderID', onlyIds)).filter(it => it.fields &&
+        (allDiv || String(it.fields.Division || '').toLowerCase() === division.toLowerCase()));
+    } else {
+      myOrders = await scopedOrders(techId, role, division);
+      if (onlyIds) myOrders = myOrders.filter(it => onlyIds.includes(String(it.fields.OrderID || it.fields.Title || '')));
+    }
 
     /* Velocidad (25/09/2026): solo se abren las ordenes que SI tienen
        carpeta (una consulta por cliente, lib/gallery-scan.js), y los
@@ -231,6 +246,7 @@ exports.handler = async (event) => {
     }));
 
     const nonEmpty = groups.filter(Boolean).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    if (b.photosOnly) return jsonResponse(200, { groups: nonEmpty });
 
     /* Documentos (Gallery > Docs, 25/09/2026): solo ver, de las mismas
        ordenes que puede ver en su portal. */

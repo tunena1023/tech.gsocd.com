@@ -287,6 +287,7 @@
 
 <script src="shared.js"></script>
 <script src="i18n.js"></script>
+<script src="tech-photos.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.6/nav-premium/nav-premium.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@04eb775d299d426f3176d8bd2821580cb8656cd2/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.30.0/order-card-header/order-card-header.js"></script>
@@ -335,6 +336,7 @@ if (tech) {
     retryIntervalMs: 20000,
     uploadFn: async function (item) { return GS.api(item.endpoint, { body: item.body }); },
     onChange: function (pending) {
+      if (window.TechPhotos) TechPhotos.onQueue(pending);
       const banner = document.getElementById('camera-queue-banner');
       const waiting = pending.filter(p => !p.failed).length;
       const failed = pending.filter(p => p.failed).length;
@@ -349,6 +351,10 @@ if (tech) {
       }
     }
   });
+
+  /* Miniaturas de fotos y "regresar al mismo lugar" (tech-photos.js). */
+  TechPhotos.init({ api: GS.api, who: () => ({ techId: tech.id, role: tech.role, division: tech.division }) });
+  GSCameraQueue.getPending().then(p => TechPhotos.onQueue(p)).catch(() => {});
 
   const $ = id => document.getElementById(id);
   function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
@@ -511,7 +517,7 @@ if (tech) {
         const isToday = r.daysUntil === 0;
         const visitDate = nextVisitDateISO(r.daysUntil);
         return `
-        <div class="order-card recurring-card">
+        <div class="order-card recurring-card" data-rc="${esc(r.id)}">
           <div class="order-head" onclick="toggleRecurringCard(this, '${esc(r.id)}')">
             <div>
               <div class="order-id">${esc(r.businessName)}</div>
@@ -840,6 +846,7 @@ if (tech) {
         const svcSafe = esc(s.ServiceName).replace(/[^a-z0-9]/gi, '_');
         return '<div class="svc-row">' +
           '<div class="svc-row-name">' + esc(s.ServiceName) + lvl + qty + '</div>' +
+          '<span class="tp-svc" data-tp-order="' + esc(o.OrderID) + '" data-tp-svc="' + esc(s.ServiceName) + '"></span>' +
           '<button type="button" class="svc-row-cam" id="svc-cam-' + safe + '-' + catSafe + '-' + svcSafe + '" ' +
             'title="Add a photo for this service" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(s.Category || '') + '\',\'' + jsStr(s.ServiceName) + '\')">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>' +
@@ -899,19 +906,22 @@ if (tech) {
                   <button type="button" class="photo-btn" style="margin-top:0" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
                   <button type="button" class="photo-btn" style="margin-top:0" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
                 </div>
+                <div class="tp-strip" data-tp-order="${esc(o.OrderID)}"></div>
                 <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
                 ${isMySupervisorOrder(o) && !o.Waiting
                   ? (o.TechMarkedComplete
                       ? '<p class="tech-done-note">✓ You marked this as done — waiting for the office to confirm and close it.</p>'
                       : '<button type="button" class="gs-ofp-btn-primary" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>')
                   : ''}
-                ${cardHistoryHtml(o)}
               </div>
               <div class="col-right" id="editpanel-${esc(o.OrderID)}"></div>
             </div>
+            ${cardHistoryHtml(o)}
           </div>
         </div>`;
     }).join('');
+    /* Miniaturas: se pintan con lo que ya se tenga y se piden las que falten. */
+    TechPhotos.load(orders.map(o => o.OrderID));
   }
 
 
@@ -967,6 +977,7 @@ if (tech) {
                 <button type="button" class="photo-btn" style="margin-top:0" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take inspection photos</button>
                 <button type="button" class="photo-btn" style="margin-top:0" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
               </div>
+              <div class="tp-strip" data-tp-order="${esc(o.OrderID)}"></div>
               <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
               <div class="insp-sec">
                 <div class="insp-sec-t">What did you find?</div>
@@ -977,10 +988,10 @@ if (tech) {
                 ${crew}
               </div>
               <button type="button" class="gs-ofp-btn-primary insp-done-btn" id="insp-done-${esc(o.OrderID)}" onclick="submitInspectionDone('${id}')">✓ Inspection done</button>
-              ${cardHistoryHtml(o)}
             </div>
             <div class="col-right" id="editpanel-${esc(o.OrderID)}"></div>
           </div>
+          ${cardHistoryHtml(o)}
         </div>
       </div>`;
   }
@@ -1044,6 +1055,7 @@ if (tech) {
      esto -- no navega fuera de la pagina, solo abre el selector
      nativo del telefono sobre la misma pantalla. */
   function saveSupervisorEditSnapshot() {
+    TechReturn.save();
     const snap = {};
     if (umOrder) {
       snap.regular = {
@@ -1426,6 +1438,11 @@ if (tech) {
     umCatalogCache = null;
     wrap.classList.add('open');
     renderUpdateModal();
+    /* En telefono el panel sale debajo de la tarjeta: se baja hasta el. */
+    if (window.matchMedia('(max-width:700px)').matches) {
+      const pnl = $('editpanel-' + orderId);
+      if (pnl) pnl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
     /* Precargar el catalogo AQUI, apenas se abre el panel -- igual que
        Create Order en Admin (loadCreateServices se dispara solo al
        elegir division, nunca hay que darle clic a un boton "cargar"
@@ -1716,7 +1733,10 @@ if (tech) {
     }
   }
 
-  loadOrders().then(restoreSupervisorEditSnapshotIfAny);
+  loadOrders().then(async () => {
+    await restoreSupervisorEditSnapshotIfAny();
+    TechReturn.restore(showTab);
+  });
 
   /* Si venimos de regreso de camera-capture.html con la foto
      obligatoria de "Mark as Completed" ya tomada (ver
