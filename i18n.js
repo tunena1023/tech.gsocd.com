@@ -138,6 +138,11 @@
     'The office is reviewing it. See the history below. You can still add photos.': 'La oficina lo está revisando. Mira el historial abajo. Todavía puedes subir fotos.',
     'The office is reviewing a change': 'La oficina está revisando un cambio',
     'See the history below. You can still add photos.': 'Mira el historial abajo. Todavía puedes subir fotos.',
+    /* --- sub-tabs de Active Orders del supervisor (26/09/2026) --- */
+    'My Work': 'Mi trabajo',
+    'Team': 'Equipo',
+    'Nothing assigned to you right now.': 'Ahorita no tienes nada asignado.',
+    'No other active orders in your department right now.': 'Ahorita no hay más órdenes activas en tu departamento.',
     /* --- "Mark my part done" por dia (26/09/2026) --- */
     '✓ Mark my part done': '✓ Marcar mi parte como terminada',
     '✓ You marked your part as done — waiting for the office to confirm.': '✓ Marcaste tu parte como terminada; esperando a que la oficina la confirme.',

@@ -216,6 +216,9 @@
   .gal-subtab { padding: 10px 4px; margin-right: 26px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gray); cursor: pointer; border: none; border-bottom: 2px solid transparent; background: none; font-family: inherit; }
   .gal-subtab.active { color: var(--black); border-bottom-color: var(--gold); }
   .gal-subtab:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .gal-subtab .sub-count { display: inline-block; min-width: 18px; margin-left: 4px; padding: 1px 6px; border-radius: 9px; background: #EFEDE7; color: var(--gray); font-size: 10px; letter-spacing: 0; }
+  .gal-subtab.active .sub-count { background: var(--gold); color: var(--black); }
+  .gal-subtab .sub-count:empty { display: none; }
   .gal-subview { display: none; }
   .gal-subview.active { display: block; }
   /* Orden esperando a la oficina/cliente (26/09/2026): sigue visible. */
@@ -247,6 +250,11 @@
     <div class="pill" data-division="Exteriors">Exteriors</div>
   </div>
   <div class="search-bar"><input type="text" id="active-search" placeholder="Search by order number or client…" oninput="renderActive()"></div>
+  <!-- 26/09/2026 (pedido del dueño): lo suyo (asignado a el + sus inspecciones) y lo de los demas, por separado. -->
+  <div class="gal-subtabs" role="tablist" aria-label="Active orders">
+    <button type="button" class="gal-subtab active" role="tab" aria-selected="true" data-activesub="mine" onclick="showActiveSub('mine')">My Work <span class="sub-count" id="active-count-mine"></span></button>
+    <button type="button" class="gal-subtab" role="tab" aria-selected="false" data-activesub="team" onclick="showActiveSub('team')">Team <span class="sub-count" id="active-count-team"></span></button>
+  </div>
   <div id="active-list"><p class="empty-note">Loading…</p></div>
 </div>
 
@@ -837,12 +845,48 @@ if (tech) {
     return '<div class="card-hist"><p class="card-hist-t">History</p><div class="hist-line">' +
       GSOrderHistory.html(o.OrderID, o.History, { mode: 'tech', clientId: o.ClientID, clientName: o.BusinessName }) + '</div></div>';
   }
+  /* ===== Sub-tabs My Work / Team (26/09/2026, pedido del dueño) =====
+     My Work: donde el es el supervisor de la orden, donde tiene
+     servicios asignados (Assign by service), y sus inspecciones.
+     Team: lo de los demas de su division, para darle seguimiento. */
+  const ACTIVE_SUB_KEY = 'tech_active_sub';
+  let activeSub = null;
+  try { activeSub = sessionStorage.getItem(ACTIVE_SUB_KEY); } catch (e) { activeSub = null; }
+  function isMyWork(o) {
+    const me = myFullName().toLowerCase();
+    if (o.Status === 'Inspection' || o.Status === 'Inspected') return String(o.InspectionBy || '').trim().toLowerCase() === me;
+    if (isMySupervisorOrder(o)) return true;
+    return !!o.AssignByService && (o.MyServiceAssignments || []).some(a =>
+      String(a.AssignedTo || '').split(',').map(n => n.trim().toLowerCase()).includes(me));
+  }
+  function showActiveSub(which) {
+    activeSub = which;
+    try { sessionStorage.setItem(ACTIVE_SUB_KEY, which); } catch (e) {}
+    renderActive();
+  }
+  window.showActiveSub = showActiveSub;
+
   function renderActive() {
     const box = $('active-list');
     const q = ($('active-search').value || '').trim().toLowerCase();
-    const list = activeOf(q);
+    const all = activeOf(q);
+    const mine = all.filter(isMyWork), team = all.filter(o => !isMyWork(o));
+    /* Sin eleccion guardada: abre en My Work, o en Team si no tiene nada suyo. */
+    if (activeSub !== 'mine' && activeSub !== 'team') activeSub = orders.some(isMyWork) ? 'mine' : 'team';
+    document.querySelectorAll('[data-activesub]').forEach(b => {
+      const on = b.dataset.activesub === activeSub;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    $('active-count-mine').textContent = orders.length ? String(mine.length) : '';
+    $('active-count-team').textContent = orders.length ? String(team.length) : '';
+    const list = activeSub === 'mine' ? mine : team;
     if (!orders.length) { box.innerHTML = '<p class="empty-note">No active orders in your department right now.</p>'; return; }
-    if (!list.length) { box.innerHTML = '<p class="empty-note">No orders match that search.</p>'; return; }
+    if (!list.length) {
+      box.innerHTML = '<p class="empty-note">' + (q ? 'No orders match that search.'
+        : (activeSub === 'mine' ? 'Nothing assigned to you right now.' : 'No other active orders in your department right now.')) + '</p>';
+      return;
+    }
     const sorted = list.filter(o => o.Status === 'Inspection').concat(list.filter(o => o.Status !== 'Inspection'));
     box.innerHTML = sorted.map(o => {
       if (o.Status === 'Inspection') return inspectionCardHtml(o);
@@ -985,7 +1029,7 @@ if (tech) {
               name: o.BusinessName, orderId: o.OrderID, division: o.Division,
               unitNumber: o.UnitNumber, bedrooms: o.Bedrooms, bathrooms: o.Bathrooms,
               supervisor: o.InspectionBy || '',
-              extraLine: addr + (when ? ' · Inspection ' + when : '')
+              extraLine: [addr, when ? 'Inspection ' + when : ''].filter(Boolean).join(' · ')
             })}
           </div>
           <span class="badge-row" style="flex-shrink:0"><span class="badge insp">Inspection</span></span>
