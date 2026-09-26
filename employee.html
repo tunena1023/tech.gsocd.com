@@ -493,6 +493,18 @@ if (tech) {
       String(o.BusinessName || '').toLowerCase().includes(q));
   }
 
+  /* Quien esta asignado (26/09/2026, pedido del dueño: las tarjetas no
+     decian quien). Por servicio: los nombres de sus asignaciones; si
+     no, el supervisor de la orden. */
+  function assignedNamesOf(o) {
+    if (o.AssignByService) {
+      const names = [];
+      (o.MyServiceAssignments || []).forEach(a => String(a.AssignedTo || '').split(',').map(n => n.trim()).filter(Boolean)
+        .forEach(n => { if (names.indexOf(n) === -1) names.push(n); }));
+      if (names.length) return names.join(', ');
+    }
+    return o.Supervisor || '';
+  }
   /* ===== Orden en espera (26/09/2026, pedido del dueño) =====
      Una orden que espera a la oficina (o al cliente) ya no desaparece:
      aviso de que se espera, fotos siempre, y el historial completo con
@@ -593,7 +605,9 @@ if (tech) {
                 unitNumber: o.UnitNumber,
                 bedrooms: o.Bedrooms,
                 bathrooms: o.Bathrooms,
-                extraLine: addr + ' · ' + (o.ServiceWindow || fmtDateTime(o.DispatchDate)) + (o.createdDateTime ? ' · Created ' + fmtDateTime(o.createdDateTime) : '')
+                supervisor: assignedNamesOf(o),
+                /* Sin "Created": al tecnico no le sirve (dueño, 26/09/2026). */
+                extraLine: [addr, o.ServiceWindow || (o.DispatchDate ? fmtDateTime(o.DispatchDate) : '')].filter(Boolean).join(' · ')
               })}
             </div>
             <span class="badge-row" style="flex-shrink:0">
@@ -942,7 +956,7 @@ if (tech) {
                 bathrooms: o.Bathrooms,
                 supervisor: o.Supervisor,
                 completedDateText: o.CompletedDate ? fmtDate(o.CompletedDate) : '',
-                extraLine: 'Entry ' + fmtDate(o.EntryDate) + (o.createdDateTime ? ' · Created ' + fmtDateTime(o.createdDateTime) : '')
+                extraLine: 'Entry ' + fmtDate(o.EntryDate)
               })}
             </div>
             <span class="badge-row" style="flex-shrink:0">
