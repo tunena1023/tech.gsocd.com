@@ -288,6 +288,7 @@
 <script src="shared.js"></script>
 <script src="i18n.js"></script>
 <script src="tech-photos.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@1ed0027b0c87575f6a5f6db1bc8d49441d7cb8fc/app-update/app-update.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.6/nav-premium/nav-premium.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@04eb775d299d426f3176d8bd2821580cb8656cd2/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.30.0/order-card-header/order-card-header.js"></script>
@@ -354,6 +355,9 @@ if (tech) {
 
   /* Miniaturas de fotos y "regresar al mismo lugar" (tech-photos.js). */
   TechPhotos.init({ api: GS.api, who: () => ({ techId: tech.id, role: tech.role, division: tech.division }) });
+  /* Ponerse al dia solo tras un deploy (gsocd-shared/app-update): antes de
+     recargar se guarda donde estaba el tecnico, y al volver se deja igual. */
+  if (window.GSAppUpdate) GSAppUpdate.init({ beforeReload: () => { if (typeof saveSupervisorEditSnapshot === 'function') saveSupervisorEditSnapshot(); else TechReturn.save(); } });
   TechDayDone.init({ api: GS.api, techId: () => tech.id, reload: () => loadOrders(), toast: m => showToast(m), showTab: v => showTab(v), page: 'supervisor.html' });
   GSCameraQueue.getPending().then(p => TechPhotos.onQueue(p)).catch(() => {});
 
