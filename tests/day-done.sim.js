@@ -45,5 +45,36 @@ let ok = 0, fail = 0; const check = (n, c, x) => { if (c) { ok++; console.log('O
   check('dia invalido', r.status === 400, r);
   r = await call({ orderId: 'GS-9', techId: '1', category: 'Commercial', serviceName: 'Windows' });
   check('el modo por servicio de antes sigue igual (pide foto de ese servicio)', r.status === 400 && /this service/.test(r.body.error), r);
+  /* --- Supervisor/Developer marcan la parte de OTRO, con nota --- */
+  require('../lib/tech-scope').check = async () => ({ ok: true });
+  add('Techs', { FirstName: 'Juan', LastName: 'Perez' });          // id 13 (supervisor)
+  const supId = L('Techs').find(t => t.fields.FirstName === 'Juan').id;
+  A('Tiles', 'Beto Ruiz', '2026-10-01'); A('Walls', 'Beto Ruiz', '2026-10-01');
+  r = await call({ orderId: 'GS-9', techId: supId, role: 'Supervisor', dayMode: true, day: '2026-10-01', forAssignedTo: 'Beto Ruiz' });
+  check('lo de otro sin nota: no se deja', r.status === 400 && /note/.test(r.body.error), r);
+  r = await call({ orderId: 'GS-9', techId: '1', role: 'Employee', dayMode: true, day: '2026-10-01', forAssignedTo: 'Beto Ruiz', note: 'he left early' });
+  check('un empleado no puede marcar lo de otro', r.status === 403, r);
+  r = await call({ orderId: 'GS-9', techId: supId, role: 'Supervisor', dayMode: true, day: '2026-10-01', forAssignedTo: 'Beto Ruiz', note: 'Beto forgot to mark it' });
+  check('supervisor con nota: se deja', r.status === 200, r);
+  check('marca solo lo de Beto ese dia', W('Tiles') === 'Pending Review' && W('Walls') === 'Pending Review' && W('Floors') === 'Not Started');
+  const hb = L('OrderHistory').slice(-1)[0].fields;
+  check('historial: quien, para quien y la nota', hb.ChangedBy === 'Juan Perez' && /for Beto Ruiz by Juan Perez: Beto forgot/.test(hb.Notes), hb);
+  r = await call({ orderId: 'GS-9', techId: supId, role: 'Developer', dayMode: true, day: '2026-09-29', forAssignedTo: 'Beto Ruiz', note: 'testing on phone' });
+  check('developer con nota tambien (Floors de Beto el 29)', r.status === 200 && W('Floors') === 'Pending Review', r);
+
+  /* --- Orden completa de otro (submit-employee-complete) --- */
+  const ec = require('../submit-employee-complete').handler;
+  const call2 = async b => { const x = await ec({ httpMethod: 'POST', body: JSON.stringify(b) }); return { status: x.statusCode, body: JSON.parse(x.body) }; };
+  add('Orders', { OrderID: 'GS-10', ClientID: 'C-1', BusinessName: 'Oak', Status: 'Assigned', Supervisor: 'Pedro Diaz' });
+  r = await call2({ orderId: 'GS-10', techId: supId, role: 'Supervisor' });
+  check('orden de otro supervisor sin nota: no se deja', r.status === 400 && /note/.test(r.body.error), r);
+  r = await call2({ orderId: 'GS-10', techId: supId, role: 'Supervisor', note: 'Pedro is out sick' });
+  check('orden de otro con nota: se deja', r.status === 200, r);
+  const he = L('OrderHistory').slice(-1)[0].fields;
+  check('historial de la orden: nota y para quien', /done for Pedro Diaz: Pedro is out sick/.test(he.Notes), he);
+  add('Orders', { OrderID: 'GS-11', ClientID: 'C-1', BusinessName: 'Oak', Status: 'Assigned', Supervisor: 'Juan Perez' });
+  r = await call2({ orderId: 'GS-11', techId: supId, role: 'Supervisor' });
+  check('su propia orden: sin nota, como siempre', r.status === 200, r);
+
   console.log('\n' + ok + ' OK, ' + fail + ' FAIL'); process.exit(fail ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

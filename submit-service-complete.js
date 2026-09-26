@@ -24,6 +24,7 @@ const {
    cuando la oficina cierra la orden (dueño, 25/09/2026). Nunca truena. */
 const graph = require('./lib/graph');
 const { notifyOffice } = require('./lib/notify');
+const techScope = require('./lib/tech-scope');
 
 const PHOTOS_FOLDER = process.env.GRAPH_PHOTOS_FOLDER || 'TechPhotos';
 
@@ -132,11 +133,25 @@ exports.handler = async (event) => {
 
     const assignmentRows = await fetchByOrderId(SERVICE_ASSIGNMENTS_LIST, b.orderId, true);
     const mine = it => String(it.fields.AssignedTo || '').split(',').map(n => n.trim()).includes(myName);
+    /* 26/09/2026 (pedido del dueño): Supervisor y Developer tambien pueden
+       marcar la parte de OTRA persona (forAssignedTo = el AssignedTo tal
+       cual, el mismo grupo que ven en pantalla), con una nota de por que. */
+    const forAssignedTo = dayMode ? String(b.forAssignedTo || '').trim() : '';
+    const forNames = forAssignedTo.split(',').map(n => n.trim().toLowerCase()).filter(Boolean);
+    const onBehalf = !!forAssignedTo && forNames.indexOf(myName.toLowerCase()) === -1;
+    const onBehalfNote = String(b.note || '').trim();
+    if (onBehalf) {
+      if (b.role !== 'Supervisor' && b.role !== 'Developer') return jsonResponse(403, { error: 'Only a supervisor can mark someone else\'s work as done.' });
+      if (onBehalfNote.length < 3) return jsonResponse(400, { error: 'Add a short note explaining why you are marking this done for someone else.' });
+      const access = await techScope.check(b, b.orderId);
+      if (!access.ok) return jsonResponse(access.status, { error: access.error });
+    }
     let targets;
     if (dayMode) {
-      targets = assignmentRows.filter(it => it.fields && mine(it) && String(it.fields.ScheduledDate || '').slice(0, 10) === day &&
+      const inGroup = it => onBehalf ? String(it.fields.AssignedTo || '').trim() === forAssignedTo : mine(it);
+      targets = assignmentRows.filter(it => it.fields && inGroup(it) && String(it.fields.ScheduledDate || '').slice(0, 10) === day &&
         it.fields.WorkStatus !== 'Completed' && it.fields.WorkStatus !== 'Pending Review');
-      if (!targets.length) return jsonResponse(400, { error: 'There is nothing of yours left to mark for that day.' });
+      if (!targets.length) return jsonResponse(400, { error: onBehalf ? 'There is nothing left to mark for that person on that day.' : 'There is nothing of yours left to mark for that day.' });
     } else if (placeMode) {
       const inPlace = assignmentRows.filter(it => it.fields && (it.fields.Category || '') === b.category);
       if (!inPlace.length) return jsonResponse(404, { error: 'This place is not scheduled yet.' });
@@ -163,9 +178,10 @@ exports.handler = async (event) => {
       ChangeType: 'Service Marked Done By Tech',
       ChangedBy: myName,
       ChangeDate: new Date().toISOString(),
-      Notes: '',
+      Notes: onBehalf ? 'Marked done for ' + forAssignedTo + ' by ' + myName + ': ' + onBehalfNote : '',
       NewValue: JSON.stringify(dayMode
-        ? { serviceName: targets.map(t => t.fields.ServiceName).join(', '), services: targets.map(t => t.fields.ServiceName), day }
+        ? Object.assign({ serviceName: targets.map(t => t.fields.ServiceName).join(', '), services: targets.map(t => t.fields.ServiceName), day },
+            onBehalf ? { forAssignedTo, note: onBehalfNote } : {})
         : placeMode
         ? { serviceName: b.category, services: targets.map(t => t.fields.ServiceName) }
         : { serviceName: b.serviceName })
@@ -178,7 +194,7 @@ exports.handler = async (event) => {
       await notifyOffice(graph, {
         event: 'tech-done',
         order: Object.assign({}, f, { OrderID: b.orderId }),
-        tech: myName,
+        tech: onBehalf ? myName + ' (for ' + forAssignedTo + ')' : myName,
         service: dayMode ? targets.map(t => t.fields.ServiceName).join(', ') : b.serviceName + (b.category ? ' — ' + b.category : '')
       });
     }

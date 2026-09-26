@@ -235,15 +235,29 @@
       return { day: d, rows: by[d], done: done, pending: pend };
     });
   }
-  /* Pie de cada dia: el boton, o en que va. */
-  function dayFooterHtml(o, g, several) {
+  /* Pie de cada dia: el boton, o en que va. forWho (opcional) = la parte
+     es de OTRA persona (Supervisor/Developer la marcan con una nota). */
+  function dayFooterHtml(o, g, several, forWho) {
     if (!g.day) return '';
     if (g.done) return '<p class="tech-done-note" style="background:#EAF3EC;color:#3E7A4C;border-color:#CFE5D5">✓ Completed</p>';
-    if (g.pending) return '<p class="tech-done-note">✓ You marked your part as done — waiting for the office to confirm.</p>';
+    if (g.pending) return forWho
+      ? '<p class="tech-done-note">✓ Marked as done — waiting for the office to confirm.</p>'
+      : '<p class="tech-done-note">✓ You marked your part as done — waiting for the office to confirm.</p>';
     if (o.Waiting) return '';
-    return '<button type="button" class="gs-ofp-btn-primary" style="margin-top:10px" onclick="event.stopPropagation();TechDayDone.start(\'' + jsq(o.OrderID) + '\',\'' + jsq(g.day) + '\')"><span>✓ Mark my part done</span>' +
+    var args = "'" + jsq(o.OrderID) + "','" + jsq(g.day) + "'" + (forWho ? ",'" + jsq(forWho) + "'" : '');
+    var label = forWho ? '<span>✓ Mark done for</span><span> ' + esc(forWho) + '</span>' : '<span>✓ Mark my part done</span>';
+    return '<button type="button" class="' + (forWho ? 'gs-ofp-btn-secondary' : 'gs-ofp-btn-primary') + '" style="margin-top:10px" onclick="event.stopPropagation();TechDayDone.start(' + esc(args) + ')">' + label +
       (several ? '<span> · ' + esc(fmtDay(g.day)) + '</span>' : '') + '</button>';
   }
+  /* Nota obligatoria al marcar lo de otro (dueño, 26/09/2026). */
+  function askOnBehalfNote(who) {
+    var n = window.prompt('Why are you marking this done for ' + who + '?');
+    if (n === null) return null;
+    n = String(n).trim();
+    if (n.length < 3) { if (dayCfg) dayCfg.toast('Please add a short note explaining why.'); return null; }
+    return n;
+  }
+  var PENDING_KEY = 'tech_day_done_pending';
   function waitUploads(orderId, ms) {
     var until = Date.now() + ms;
     return new Promise(function (resolve) {
@@ -257,25 +271,40 @@
   var TechDayDone = {
     init: function (opts) { dayCfg = opts; },
     fmtDay: fmtDay, groups: dayGroups, footerHtml: dayFooterHtml,
-    start: function (orderId, day) {
+    start: function (orderId, day, forWho) {
       if (!dayCfg) return;
+      var note = '';
+      if (forWho) { note = askOnBehalfNote(forWho); if (note === null) return; }
       if (count(orderId) > 0) {
-        if (!window.confirm('Mark your part of this order as done for ' + fmtDay(day) + '? The office will confirm it.')) return;
-        TechDayDone.finish(orderId, day);
+        if (!forWho && !window.confirm('Mark your part of this order as done for ' + fmtDay(day) + '? The office will confirm it.')) return;
+        TechDayDone.finish(orderId, day, forWho, note);
         return;
       }
-      /* Sin ninguna foto/video todavia: a la camara, y al volver se marca. */
+      /* Sin ninguna foto/video todavia: a la camara, y al volver se marca
+         (para quien y la nota se guardan aqui mientras tanto). */
+      try { sessionStorage.setItem(PENDING_KEY, JSON.stringify({ orderId: orderId, day: day, forWho: forWho || '', note: note })); } catch (e) {}
       TechReturn.save();
       location.href = 'camera-capture.html?context=order-photo&orderId=' + encodeURIComponent(orderId) +
         '&return=' + encodeURIComponent(dayCfg.page) + '&requireAtLeastOne=1&completeAfter=1&completeDay=' + encodeURIComponent(day) +
         '&label=' + encodeURIComponent('Order ' + orderId);
     },
-    finish: function (orderId, day) {
+    finish: function (orderId, day, forWho, note) {
       if (!dayCfg) return Promise.resolve();
+      if (forWho === undefined) {
+        /* De regreso de la camara: recuperar para quien era y la nota. */
+        try {
+          var pend = JSON.parse(sessionStorage.getItem(PENDING_KEY) || 'null');
+          sessionStorage.removeItem(PENDING_KEY);
+          if (pend && pend.orderId === orderId && pend.day === day) { forWho = pend.forWho || ''; note = pend.note || ''; }
+        } catch (e) { /* sin datos: se marca lo propio */ }
+      }
+      var body = { orderId: orderId, techId: dayCfg.techId(), dayMode: true, day: day };
+      if (forWho) { body.forAssignedTo = forWho; body.note = note; }
       var go = function () {
-        return dayCfg.api('/submit-service-complete', { body: { orderId: orderId, techId: dayCfg.techId(), dayMode: true, day: day } })
+        return dayCfg.api('/submit-service-complete', { body: body })
           .then(function () {
-            dayCfg.toast('Your part for ' + fmtDay(day) + ' is marked as done — the office will confirm.');
+            dayCfg.toast(forWho ? 'Marked as done for ' + forWho + ' — the office will confirm.'
+              : 'Your part for ' + fmtDay(day) + ' is marked as done — the office will confirm.');
             TechReturn.save();
             return Promise.resolve(dayCfg.reload()).then(function () { TechReturn.restore(dayCfg.showTab); });
           })

@@ -106,10 +106,15 @@ exports.handler = async (event) => {
        asignadas a su propio nombre -- confirmado con el usuario. Un
        Employee siempre marca lo suyo (get-my-orders.js ya solo le
        muestra sus propias ordenes, no hace falta este chequeo ahi). */
-    if (role === 'Supervisor' &&
-        String(f.Supervisor || '').trim().toLowerCase() !== techName.toLowerCase()) {
-      return jsonResponse(403, { error: 'You can only mark your own assigned orders as done.' });
+    /* 26/09/2026 (pedido del dueño): Supervisor y Developer SIEMPRE
+       pueden marcar, tambien una orden de otro, "por si lo ocupan
+       completar", pero con una nota de por que (queda en el historial). */
+    const isOwn = String(f.Supervisor || '').trim().toLowerCase() === techName.toLowerCase();
+    const onBehalfNote = String(b.note || '').trim();
+    if (!isOwn && (role === 'Supervisor' || role === 'Developer') && onBehalfNote.length < 3) {
+      return jsonResponse(400, { error: 'Add a short note explaining why you are marking this order done for someone else.' });
     }
+    const onBehalf = !isOwn && (role === 'Supervisor' || role === 'Developer');
 
     const hasPhoto = await hasAnyPhoto(f.ClientID, f.BusinessName, orderId);
     if (!hasPhoto) {
@@ -127,7 +132,9 @@ exports.handler = async (event) => {
     await createListItem(ORDER_HISTORY_LIST, {
       OrderID: orderId, ChangedBy: techName, ChangeDate: new Date().toISOString(),
       Title: orderId + '-tech-marked-done', ChangeType: 'Tech Marked Complete', FieldChanged: 'TechMarkedComplete',
-      Notes: techName + ' marked their work as done. The office still needs to confirm and close the order.',
+      Notes: onBehalf
+        ? techName + ' marked this order as done for ' + (String(f.Supervisor || '').trim() || 'the crew') + ': ' + onBehalfNote + ' The office still needs to confirm and close the order.'
+        : techName + ' marked their work as done. The office still needs to confirm and close the order.',
       OldValue: 'false', NewValue: 'true'
     });
 

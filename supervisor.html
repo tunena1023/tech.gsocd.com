@@ -929,10 +929,15 @@ if (tech) {
              que el empleado (TechDayDone). Lo de los demas, solo se ve. */
           const isMe = key => !!key && key.split('|')[0].split(',').map(n => n.trim().toLowerCase()).includes(myFullName().toLowerCase());
           let foot = '';
-          if (isMe(k)) {
+          if (k) {
             const rows = groups[k].map(s => asgBy[(s.Category || '') + '|' + (s.ServiceName || '')]).filter(Boolean);
             const g = TechDayDone.groups(rows)[0];
-            if (g) foot = TechDayDone.footerHtml(o, g, order.filter(isMe).length > 1);
+            const who = k.split('|')[0].trim();
+            /* La parte de otro: mismo boton, pero "for <nombre>" y con nota
+               (dueño, 26/09/2026: el supervisor siempre lo debe tener). */
+            if (g) foot = isMe(k)
+              ? TechDayDone.footerHtml(o, g, order.filter(isMe).length > 1)
+              : TechDayDone.footerHtml(o, g, order.filter(x => x && x.split('|')[0].trim() === who).length > 1, who);
           }
           return (head ? '<div class="svc-person-h">' + head + '</div>' : '') + groups[k].map(svcLineOf).join('') + foot;
         }).join('');
@@ -981,11 +986,15 @@ if (tech) {
                 </div>
                 <div class="tp-strip" data-tp-order="${esc(o.OrderID)}"></div>
                 <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
-                ${isMySupervisorOrder(o) && !o.Waiting
-                  ? (o.TechMarkedComplete
-                      ? '<p class="tech-done-note">✓ You marked this as done — waiting for the office to confirm and close it.</p>'
-                      : '<button type="button" class="gs-ofp-btn-primary" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>')
-                  : ''}
+                ${/* 26/09/2026 (dueño): Supervisor y Developer SIEMPRE tienen el
+                     boton; si la orden no es suya, pide una nota. Las ordenes
+                     por servicio usan el boton de cada parte (arriba). */
+                  (o.Waiting || o.AssignByService) ? ''
+                  : o.TechMarkedComplete
+                    ? '<p class="tech-done-note">✓ Marked as done — waiting for the office to confirm and close it.</p>'
+                    : isMySupervisorOrder(o)
+                      ? '<button type="button" class="gs-ofp-btn-primary" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>'
+                      : '<button type="button" class="gs-ofp-btn-secondary" onclick="markDoneForOther(\'' + jsStr(o.OrderID) + '\')"><span>✓ Mark as Done for</span><span> ' + esc(o.Supervisor || 'the crew') + '</span></button>'}
               </div>
               <div class="col-right" id="editpanel-${esc(o.OrderID)}"></div>
             </div>
@@ -1313,9 +1322,26 @@ if (tech) {
     reader.readAsDataURL(file);
   });
 
+  /* Orden de otra persona: nota obligatoria de por que (dueño, 26/09/2026).
+     La nota se guarda mientras va a la camara (si hace falta la foto). */
+  const ORDER_NOTE_KEY = 'tech_order_done_note:';
+  function markDoneForOther(orderId) {
+    const o = orders.find(x => x.OrderID === orderId);
+    const who = (o && o.Supervisor) || 'the crew';
+    const n = window.prompt('Why are you marking this order done for ' + who + '?');
+    if (n === null) return;
+    if (n.trim().length < 3) { showToast('Please add a short note explaining why.'); return; }
+    try { sessionStorage.setItem(ORDER_NOTE_KEY + orderId, n.trim()); } catch (e) {}
+    if (TechPhotos.count(orderId) > 0) { finishCompletion(orderId); return; }
+    markEmployeeCompleted(orderId);
+  }
+  window.markDoneForOther = markDoneForOther;
+
   async function finishCompletion(orderId) {
+    let note = '';
+    try { note = sessionStorage.getItem(ORDER_NOTE_KEY + orderId) || ''; sessionStorage.removeItem(ORDER_NOTE_KEY + orderId); } catch (e) {}
     try {
-      await GS.api('/submit-employee-complete', { body: { orderId, techId: tech.id, role: tech.role } });
+      await GS.api('/submit-employee-complete', { body: note ? { orderId, techId: tech.id, role: tech.role, note } : { orderId, techId: tech.id, role: tech.role } });
       showToast('Order ' + orderId + ' marked as done — the office will confirm and close it.');
       loadOrders();
     } catch (e) {

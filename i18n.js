@@ -138,6 +138,12 @@
     'The office is reviewing it. See the history below. You can still add photos.': 'La oficina lo está revisando. Mira el historial abajo. Todavía puedes subir fotos.',
     'The office is reviewing a change': 'La oficina está revisando un cambio',
     'See the history below. You can still add photos.': 'Mira el historial abajo. Todavía puedes subir fotos.',
+    /* --- marcar lo de otro, con nota (26/09/2026) --- */
+    '✓ Mark as Done for': '✓ Marcar como terminada por',
+    '✓ Mark done for': '✓ Marcar como terminado por',
+    '✓ Marked as done — waiting for the office to confirm.': '✓ Marcado como terminado; esperando a que la oficina lo confirme.',
+    '✓ Marked as done — waiting for the office to confirm and close it.': '✓ Marcada como terminada; esperando a que la oficina la confirme y la cierre.',
+    'Please add a short note explaining why.': 'Agrega una nota corta explicando por qué.',
     /* --- sub-tabs de Active Orders del supervisor (26/09/2026) --- */
     'My Work': 'Mi trabajo',
     'Team': 'Equipo',
