@@ -138,6 +138,15 @@
     'The office is reviewing it. See the history below. You can still add photos.': 'La oficina lo está revisando. Mira el historial abajo. Todavía puedes subir fotos.',
     'The office is reviewing a change': 'La oficina está revisando un cambio',
     'See the history below. You can still add photos.': 'Mira el historial abajo. Todavía puedes subir fotos.',
+    /* --- "Mark my part done" por dia (26/09/2026) --- */
+    '✓ Mark my part done': '✓ Marcar mi parte como terminada',
+    '✓ You marked your part as done — waiting for the office to confirm.': '✓ Marcaste tu parte como terminada; esperando a que la oficina la confirme.',
+    '✓ Completed': '✓ Completado',
+    'Uploading your photo…': 'Subiendo tu foto…',
+    'Your photo is still uploading. Tap "Mark my part done" again when it finishes.': 'Tu foto se sigue subiendo. Vuelve a tocar "Marcar mi parte como terminada" cuando termine.',
+    'Take at least 1 photo or video of this order before marking your part done.': 'Toma al menos 1 foto o video de esta orden antes de marcar tu parte como terminada.',
+    'There is nothing of yours left to mark for that day.': 'Ya no te queda nada por marcar ese día.',
+    'Not scheduled yet': 'Todavía sin programar',
     /* --- historial (etiquetas de gsocd-shared/order-history) --- */
     'Order created': 'Orden creada',
     'Assigned': 'Asignada',

@@ -65,12 +65,32 @@ async function hasServicePhoto(clientId, businessName, orderId, serviceName) {
   }
 }
 
+/* Cualquier foto o video de la orden (misma carpeta de siempre). */
+async function hasAnyOrderMedia(clientId, businessName, orderId) {
+  const clientLabel = (String(clientId || '').trim() + ' - ' + String(businessName || '').trim())
+    .replace(/[\\/:*?"<>|]/g, '').trim() || orderId;
+  const folderPath = PHOTOS_FOLDER + '/' + clientLabel + '/' + orderId + '/Photos';
+  try {
+    const children = await listChildren(folderPath);
+    return (children || []).some(c => c.isFile !== false);
+  } catch (e) {
+    return false;
+  }
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { error: 'Method not allowed' });
 
   try {
     const b = JSON.parse(event.body || '{}');
-    const required = ['orderId', 'category', 'serviceName', 'techId'];
+    /* dayMode (26/09/2026, pedido del dueño): "un boton por dia, porque
+       cada dia es una orden" -- el tecnico marca de un jalon TODO lo
+       suyo de ese dia (ScheduledDate), y basta con al menos una foto o
+       un video de la orden, aunque no sea de cada servicio. */
+    const dayMode = b.dayMode === true;
+    const day = dayMode ? String(b.day || '').slice(0, 10) : '';
+    if (dayMode && !/^\d{4}-\d{2}-\d{2}$/.test(day)) return jsonResponse(400, { error: 'day is required' });
+    const required = dayMode ? ['orderId', 'techId'] : ['orderId', 'category', 'serviceName', 'techId'];
     for (const k of required) if (!b[k]) return jsonResponse(400, { error: k + ' is required' });
 
     const orderRows = await fetchByField(ORDERS_LIST, 'OrderID', b.orderId);
@@ -99,15 +119,25 @@ exports.handler = async (event) => {
        placeMode, todo exactamente igual que antes. */
     /* Solo se acepta en ordenes por lugar de verdad (recurrente + Assign
        by service); en cualquier otra se ignora y sigue por servicio. */
-    const placeMode = b.placeMode === true && !!f.RecurringServiceID && (f.AssignByService === true || f.AssignByService === 'true');
-    const photoKey = placeMode ? b.category : b.serviceName;
-    const hasPhoto = await hasServicePhoto(f.ClientID, f.BusinessName, b.orderId, photoKey);
-    if (!hasPhoto) return jsonResponse(400, { error: placeMode ? 'Take at least 1 photo of this place before marking it done.' : 'Take at least 1 photo of this service before marking it done.' });
+    const placeMode = !dayMode && b.placeMode === true && !!f.RecurringServiceID && (f.AssignByService === true || f.AssignByService === 'true');
+    if (dayMode) {
+      if (!(await hasAnyOrderMedia(f.ClientID, f.BusinessName, b.orderId))) {
+        return jsonResponse(400, { error: 'Take at least 1 photo or video of this order before marking your part done.' });
+      }
+    } else {
+      const photoKey = placeMode ? b.category : b.serviceName;
+      const hasPhoto = await hasServicePhoto(f.ClientID, f.BusinessName, b.orderId, photoKey);
+      if (!hasPhoto) return jsonResponse(400, { error: placeMode ? 'Take at least 1 photo of this place before marking it done.' : 'Take at least 1 photo of this service before marking it done.' });
+    }
 
     const assignmentRows = await fetchByOrderId(SERVICE_ASSIGNMENTS_LIST, b.orderId, true);
     const mine = it => String(it.fields.AssignedTo || '').split(',').map(n => n.trim()).includes(myName);
     let targets;
-    if (placeMode) {
+    if (dayMode) {
+      targets = assignmentRows.filter(it => it.fields && mine(it) && String(it.fields.ScheduledDate || '').slice(0, 10) === day &&
+        it.fields.WorkStatus !== 'Completed' && it.fields.WorkStatus !== 'Pending Review');
+      if (!targets.length) return jsonResponse(400, { error: 'There is nothing of yours left to mark for that day.' });
+    } else if (placeMode) {
       const inPlace = assignmentRows.filter(it => it.fields && (it.fields.Category || '') === b.category);
       if (!inPlace.length) return jsonResponse(404, { error: 'This place is not scheduled yet.' });
       targets = inPlace.filter(mine);
@@ -134,7 +164,9 @@ exports.handler = async (event) => {
       ChangedBy: myName,
       ChangeDate: new Date().toISOString(),
       Notes: '',
-      NewValue: JSON.stringify(placeMode
+      NewValue: JSON.stringify(dayMode
+        ? { serviceName: targets.map(t => t.fields.ServiceName).join(', '), services: targets.map(t => t.fields.ServiceName), day }
+        : placeMode
         ? { serviceName: b.category, services: targets.map(t => t.fields.ServiceName) }
         : { serviceName: b.serviceName })
     });
@@ -147,7 +179,7 @@ exports.handler = async (event) => {
         event: 'tech-done',
         order: Object.assign({}, f, { OrderID: b.orderId }),
         tech: myName,
-        service: b.serviceName + (b.category ? ' — ' + b.category : '')
+        service: dayMode ? targets.map(t => t.fields.ServiceName).join(', ') : b.serviceName + (b.category ? ' — ' + b.category : '')
       });
     }
 

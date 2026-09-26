@@ -354,6 +354,7 @@ if (tech) {
 
   /* Miniaturas de fotos y "regresar al mismo lugar" (tech-photos.js). */
   TechPhotos.init({ api: GS.api, who: () => ({ techId: tech.id, role: tech.role, division: tech.division }) });
+  TechDayDone.init({ api: GS.api, techId: () => tech.id, reload: () => loadOrders(), toast: m => showToast(m), showTab: v => showTab(v), page: 'supervisor.html' });
   GSCameraQueue.getPending().then(p => TechPhotos.onQueue(p)).catch(() => {});
 
   const $ = id => document.getElementById(id);
@@ -863,7 +864,17 @@ if (tech) {
           const n = groups[k].length + (groups[k].length === 1 ? ' service' : ' services');
           const head = !k ? (order.length > 1 ? 'Not scheduled yet · ' + n : '')
             : '👤 ' + esc(k.split('|')[0]) + ' · ' + new Date(k.split('|')[1] + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + n;
-          return (head ? '<div class="svc-person-h">' + head + '</div>' : '') + groups[k].map(svcLineOf).join('');
+          /* 26/09/2026: si esta parte es DEL supervisor (tambien trabaja
+             servicios), su boton de ese dia -- mismo "Mark my part done"
+             que el empleado (TechDayDone). Lo de los demas, solo se ve. */
+          const isMe = key => !!key && key.split('|')[0].split(',').map(n => n.trim().toLowerCase()).includes(myFullName().toLowerCase());
+          let foot = '';
+          if (isMe(k)) {
+            const rows = groups[k].map(s => asgBy[(s.Category || '') + '|' + (s.ServiceName || '')]).filter(Boolean);
+            const g = TechDayDone.groups(rows)[0];
+            if (g) foot = TechDayDone.footerHtml(o, g, order.filter(isMe).length > 1);
+          }
+          return (head ? '<div class="svc-person-h">' + head + '</div>' : '') + groups[k].map(svcLineOf).join('') + foot;
         }).join('');
       })();
       return `
@@ -1027,6 +1038,7 @@ if (tech) {
      boton ni siquiera se muestra en las que no son suyas, en vez de
      dejarlo ahi deshabilitado (Supervisor ve muchas ordenes que no
      son suyas, se veria saturado). */
+  function myFullName() { return (tech.firstName + ' ' + tech.lastName).trim(); }
   function isMySupervisorOrder(o) {
     const myName = (tech.firstName + ' ' + tech.lastName).trim().toLowerCase();
     return String(o.Supervisor || '').trim().toLowerCase() === myName;
@@ -1746,8 +1758,10 @@ if (tech) {
   const urlParams = new URLSearchParams(location.search);
   const completeOrderId = urlParams.get('completeOrder');
   if (completeOrderId) {
+    const completeDay = urlParams.get('completeDay');
     history.replaceState(null, '', location.pathname);
-    finishCompletion(completeOrderId);
+    if (completeDay) TechDayDone.finish(completeOrderId, completeDay);
+    else finishCompletion(completeOrderId);
   }
 
   /* Exposicion explicita a window -- las funciones normales declaradas

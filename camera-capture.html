@@ -165,7 +165,10 @@
         '&completeServiceCategory=' + encodeURIComponent(serviceCategory || '') +
         '&completeServiceName=' + encodeURIComponent(serviceName);
     } else if (completeAfter && orderId) {
-      location.href = returnTo + sep + 'completeOrder=' + encodeURIComponent(orderId);
+      /* completeDay (26/09/2026): "Mark my part done" de ese dia. */
+      const completeDay = params.get('completeDay');
+      location.href = returnTo + sep + 'completeOrder=' + encodeURIComponent(orderId) +
+        (completeDay ? '&completeDay=' + encodeURIComponent(completeDay) : '');
     } else {
       location.href = returnTo;
     }

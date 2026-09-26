@@ -151,6 +151,7 @@
   .badge.wait{background:#FFF1CC;color:#8C6F2A}
   .card-hist{margin-top:16px;border-top:1px solid var(--border);padding-top:6px}
   .card-hist-t{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-dk);margin:8px 0 0}
+  .svc-person-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-dk);margin:12px 0 2px;padding-bottom:5px;border-bottom:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -260,6 +261,7 @@ if (tech) {
 
   /* Miniaturas de fotos y "regresar al mismo lugar" (tech-photos.js). */
   TechPhotos.init({ api: GS.api, who: () => ({ techId: tech.id, role: tech.role, division: tech.division }) });
+  TechDayDone.init({ api: GS.api, techId: () => tech.id, reload: () => loadOrders(), toast: m => showToast(m), showTab: v => showTab(v), page: 'employee.html' });
   GSCameraQueue.getPending().then(p => TechPhotos.onQueue(p)).catch(() => {});
 
   const $ = id => document.getElementById(id);
@@ -526,12 +528,14 @@ if (tech) {
          del de toda-la-orden de siempre), que solo aparece si YA
          tiene fecha puesta y todavia no se marco ni confirmo. */
       const placeMode = isPlaceOrder(o);
-      const svcLines = placeMode ? placeLinesHtml(o) : o.AssignByService
-        ? (o.MyServiceAssignments || []).map(a => {
+      /* Una fila de servicio (Assign by service): lo mismo de antes, sin
+         el boton por servicio -- ahora va UNO por dia (TechDayDone). */
+      const asgRowHtml = a => {
             const detail = (o.Services || []).find(s => (s.Category || '') === a.Category && s.ServiceName === a.ServiceName) || {};
             const lvl = detail.Level ? ' — ' + esc(detail.Level) : '';
             const qty = detail.Quantity ? ' — Qty: ' + esc(detail.Quantity) : '';
-            const dateNote = a.ScheduledDate ? ' · ' + fmtDateTime(a.ScheduledDate) : '';
+            /* El dia ya va en el encabezado del grupo (TechDayDone). */
+            const dateNote = '';
             const isDone = a.WorkStatus === 'Completed';
             const isPending = a.WorkStatus === 'Pending Review';
             const safe = esc(o.OrderID).replace(/[^a-z0-9]/gi, '_');
@@ -540,9 +544,6 @@ if (tech) {
             const statusBadge = isDone
               ? '<span class="badge" style="background:#EAF3EC;color:#3E7A4C">Completed</span>'
               : (isPending ? '<span class="badge" style="background:#E3ECF7;color:#2E5FA3">Waiting on office</span>' : '');
-            const doneBtn = (!isDone && !isPending && !o.Waiting)
-              ? '<button type="button" class="gs-ofp-btn-primary" style="width:auto;padding:4px 10px;font-size:11px;margin-left:6px" onclick="event.stopPropagation();startServiceComplete(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(a.Category) + '\',\'' + jsStr(a.ServiceName) + '\')">✓ Mark as Done</button>'
-              : '';
             return '<div class="svc-row">' +
               '<div class="svc-row-name">' + svcNameHtml(skuOf(o, a.Category, a.ServiceName), a.ServiceName) + lvl + qty + dateNote + '</div>' +
               statusBadge +
@@ -551,9 +552,21 @@ if (tech) {
                 'title="Add a photo for this service" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(a.Category) + '\',\'' + jsStr(a.ServiceName) + '\')">' +
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>' +
               '</button>' +
-              doneBtn +
             '</div>';
-          }).join('')
+      };
+      /* 26/09/2026 (pedido del dueño): "un boton por dia, porque cada dia
+         es una orden". Solo lo suyo, agrupado por dia. */
+      const dayBlocksHtml = () => {
+        const groups = TechDayDone.groups(o.MyServiceAssignments || []);
+        const several = groups.filter(g => g.day).length > 1;
+        return groups.map(g => {
+          const n = g.rows.length + (g.rows.length === 1 ? ' service' : ' services');
+          const head = g.day ? '📅 ' + esc(TechDayDone.fmtDay(g.day)) + ' · ' + n : 'Not scheduled yet · ' + n;
+          return '<div class="svc-person-h">' + head + '</div>' + g.rows.map(asgRowHtml).join('') + TechDayDone.footerHtml(o, g, several);
+        }).join('');
+      };
+      const svcLines = placeMode ? placeLinesHtml(o) : o.AssignByService
+        ? dayBlocksHtml()
         : (o.Services || []).map(s => {
         const lvl = s.Level ? ' — ' + esc(s.Level) : '';
         const qty = s.Quantity ? ' — Qty: ' + esc(s.Quantity) : '';
@@ -1051,8 +1064,10 @@ if (tech) {
   const urlParams = new URLSearchParams(location.search);
   const completeOrderId = urlParams.get('completeOrder');
   if (completeOrderId) {
+    const completeDay = urlParams.get('completeDay');
     history.replaceState(null, '', location.pathname);
-    finishCompletion(completeOrderId);
+    if (completeDay) TechDayDone.finish(completeOrderId, completeDay);
+    else finishCompletion(completeOrderId);
   }
   /* "Assign by service" -- mismo patron, version por-servicio. */
   const completeServiceOrderId = urlParams.get('completeServiceOrder');

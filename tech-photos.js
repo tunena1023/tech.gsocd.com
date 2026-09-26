@@ -205,7 +205,94 @@
   }
 
   function init(opts) { cfg = opts; styleTag(); }
+  function count(orderId) { return photosOf(orderId).length; }
+  function pendingFor(orderId) { return pending.filter(function (p) { return p.orderId === orderId; }).length; }
+
+  /* ---------------- "Mark my part done" por dia ----------------
+     (26/09/2026, pedido del dueño): en una orden por servicio cada
+     persona ve solo lo suyo y tiene UN boton por dia ("cada dia es una
+     orden") que marca todos sus servicios de ese dia. Basta con al
+     menos una foto o video de la orden. La orden se queda en Tech
+     ("waiting on office") hasta que la oficina cierre toda la orden. */
+  var dayCfg = null;
+  function fmtDay(day) {
+    var d = new Date(String(day).slice(0, 10) + 'T12:00:00');
+    return isNaN(d.getTime()) ? String(day) : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+  /* Grupos por dia de UNA persona: [{day, rows, done, pending}] */
+  function dayGroups(rows) {
+    var by = {}, order = [];
+    (rows || []).forEach(function (a) {
+      var d = String(a.ScheduledDate || '').slice(0, 10);
+      if (!by[d]) { by[d] = []; order.push(d); }
+      by[d].push(a);
+    });
+    order.sort(function (x, y) { return (x ? 0 : 1) - (y ? 0 : 1) || x.localeCompare(y); });
+    return order.map(function (d) {
+      var st = by[d].map(function (a) { return a.WorkStatus || 'Not Started'; });
+      var done = st.every(function (x) { return x === 'Completed'; });
+      var pend = !done && st.every(function (x) { return x === 'Completed' || x === 'Pending Review'; });
+      return { day: d, rows: by[d], done: done, pending: pend };
+    });
+  }
+  /* Pie de cada dia: el boton, o en que va. */
+  function dayFooterHtml(o, g, several) {
+    if (!g.day) return '';
+    if (g.done) return '<p class="tech-done-note" style="background:#EAF3EC;color:#3E7A4C;border-color:#CFE5D5">✓ Completed</p>';
+    if (g.pending) return '<p class="tech-done-note">✓ You marked your part as done — waiting for the office to confirm.</p>';
+    if (o.Waiting) return '';
+    return '<button type="button" class="gs-ofp-btn-primary" style="margin-top:10px" onclick="event.stopPropagation();TechDayDone.start(\'' + jsq(o.OrderID) + '\',\'' + jsq(g.day) + '\')"><span>✓ Mark my part done</span>' +
+      (several ? '<span> · ' + esc(fmtDay(g.day)) + '</span>' : '') + '</button>';
+  }
+  function waitUploads(orderId, ms) {
+    var until = Date.now() + ms;
+    return new Promise(function (resolve) {
+      (function tick() {
+        if (!pendingFor(orderId)) return resolve(true);
+        if (Date.now() > until) return resolve(false);
+        setTimeout(tick, 1500);
+      })();
+    });
+  }
+  var TechDayDone = {
+    init: function (opts) { dayCfg = opts; },
+    fmtDay: fmtDay, groups: dayGroups, footerHtml: dayFooterHtml,
+    start: function (orderId, day) {
+      if (!dayCfg) return;
+      if (count(orderId) > 0) {
+        if (!window.confirm('Mark your part of this order as done for ' + fmtDay(day) + '? The office will confirm it.')) return;
+        TechDayDone.finish(orderId, day);
+        return;
+      }
+      /* Sin ninguna foto/video todavia: a la camara, y al volver se marca. */
+      TechReturn.save();
+      location.href = 'camera-capture.html?context=order-photo&orderId=' + encodeURIComponent(orderId) +
+        '&return=' + encodeURIComponent(dayCfg.page) + '&requireAtLeastOne=1&completeAfter=1&completeDay=' + encodeURIComponent(day) +
+        '&label=' + encodeURIComponent('Order ' + orderId);
+    },
+    finish: function (orderId, day) {
+      if (!dayCfg) return Promise.resolve();
+      var go = function () {
+        return dayCfg.api('/submit-service-complete', { body: { orderId: orderId, techId: dayCfg.techId(), dayMode: true, day: day } })
+          .then(function () {
+            dayCfg.toast('Your part for ' + fmtDay(day) + ' is marked as done — the office will confirm.');
+            TechReturn.save();
+            return Promise.resolve(dayCfg.reload()).then(function () { TechReturn.restore(dayCfg.showTab); });
+          })
+          .catch(function (e) { dayCfg.toast('Could not mark your part done: ' + e.message); });
+      };
+      /* La foto recien tomada puede seguir subiendo: se espera a que
+         suba antes de avisarle al servidor (el revisa que exista). */
+      if (!pendingFor(orderId)) return go();
+      dayCfg.toast('Uploading your photo…');
+      return waitUploads(orderId, 45000).then(function (ok) {
+        if (ok) return go();
+        dayCfg.toast('Your photo is still uploading. Tap "Mark my part done" again when it finishes.');
+      });
+    }
+  };
 
   window.TechReturn = TechReturn;
-  window.TechPhotos = { init: init, load: load, paint: paint, onQueue: onQueue, open: open, stripHtml: stripHtml, svcHtml: svcHtml };
+  window.TechDayDone = TechDayDone;
+  window.TechPhotos = { init: init, load: load, paint: paint, onQueue: onQueue, open: open, stripHtml: stripHtml, svcHtml: svcHtml, count: count };
 })();
