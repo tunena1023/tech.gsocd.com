@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Guía del Portal de Técnicos — GS Tech</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @page { size: Letter; margin: 0.6in 0.65in 0.7in; }
+  :root { --gold:#C9A84C; --gold-dk:#8C6F2A; --gold-bg:#FBF6E8; --ink:#1a1a1a; --gray:#5f5f5f; --line:#E0D9CC; --blue:#2A4E8C; --blue-bg:#EEF3FB; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.55; margin: 0; }
+  h1, h2, h3 { font-family: 'Cormorant Garamond', serif; font-weight: 700; line-height: 1.15; }
+  h1.sec { font-size: 28pt; margin: 0 0 4pt; padding-bottom: 6pt; border-bottom: 2px solid var(--gold); break-before: page; }
+  h1.sec .n { color: var(--gold-dk); margin-right: 8pt; }
+  .lead { color: var(--gray); font-size: 11pt; margin: 6pt 0 14pt; }
+  h2 { font-size: 17pt; margin: 18pt 0 4pt; break-after: avoid; }
+  h3 { font-size: 13pt; margin: 12pt 0 2pt; break-after: avoid; }
+  p { margin: 4pt 0 8pt; }
+  ul, ol { margin: 4pt 0 8pt; padding-left: 18pt; }
+  li { margin: 2pt 0; }
+  b.ui { font-weight: 700; background: #F3EFE6; border: 1px solid #E6DFD0; border-radius: 4px; padding: 0 4px; font-size: 9.5pt; white-space: nowrap; }
+  .shots { display: flex; gap: 16pt; justify-content: center; align-items: flex-start; margin: 10pt 0 14pt; break-inside: avoid; flex-wrap: wrap; }
+  figure { margin: 0; width: 2.2in; break-inside: avoid; }
+  figure.wide { width: 3.2in; }
+  figure.tall { width: 2.35in; }
+  figure img { width: 100%; display: block; border: 1px solid #cfcfcf; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,.12); max-height: 5in; object-fit: cover; object-position: top; }
+  figure.tall img { max-height: 8.2in; }
+  figcaption { font-size: 8.5pt; color: var(--gray); margin-top: 5pt; line-height: 1.4; text-align: center; }
+  figcaption b { color: var(--ink); }
+  .tip, .warn, .sup { border-radius: 8px; padding: 8pt 11pt; margin: 8pt 0 12pt; font-size: 10pt; break-inside: avoid; }
+  .tip { background: var(--gold-bg); border-left: 4px solid var(--gold); }
+  .warn { background: #FDF0EE; border-left: 4px solid #c0392b; }
+  .sup { background: var(--blue-bg); border-left: 4px solid var(--blue); }
+  .tip b.t, .warn b.t, .sup b.t { display: block; font-size: 9pt; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2pt; }
+  .row { display: flex; gap: 18pt; align-items: flex-start; break-inside: avoid; margin: 8pt 0; }
+  .row .txt { flex: 1; }
+  .row figure { flex-shrink: 0; }
+  table.k { border-collapse: collapse; width: 100%; font-size: 9.8pt; margin: 6pt 0 12pt; break-inside: avoid; }
+  table.k td, table.k th { border-bottom: 1px solid var(--line); padding: 5pt 6pt; vertical-align: top; text-align: left; }
+  table.k th { font-size: 8.5pt; text-transform: uppercase; letter-spacing: .05em; color: var(--gray); }
+  .badge { display: inline-block; font-size: 7.5pt; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 1pt 7pt; border-radius: 10px; white-space: nowrap; }
+
+  /* Portada */
+  .cover { height: 9.4in; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+  .cover img.logo { width: 1.9in; margin-bottom: 26pt; }
+  .cover h1 { font-size: 40pt; margin: 0 0 8pt; }
+  .cover .sub { font-size: 13pt; color: var(--gray); max-width: 5in; }
+  .cover .bar { width: 1.3in; height: 3px; background: var(--gold); margin: 22pt auto; }
+  .cover .meta { font-size: 10pt; color: var(--gray); }
+  .cover .phones { display: flex; gap: 14pt; margin-top: 28pt; }
+  .cover .phones img { width: 1.55in; border-radius: 12px; border: 1px solid #ccc; box-shadow: 0 4px 12px rgba(0,0,0,.15); height: 3.1in; object-fit: cover; object-position: top; }
+
+  /* Indice */
+  .toc { break-before: page; }
+  .toc ol.idx { list-style: none; padding: 0; margin: 12pt 0; }
+  .toc ol.idx > li { display: flex; gap: 10pt; padding: 3.5pt 0; border-bottom: 1px dotted var(--line); font-size: 11pt; }
+  .toc ol.idx > li .n { color: var(--gold-dk); font-weight: 700; width: 18pt; }
+  .toc ol.idx > li span.d { color: var(--gray); font-size: 9.5pt; margin-left: auto; text-align: right; max-width: 3.4in; }
+
+  /* ===== LIBRITO: media carta 5.5 x 8.5 in ===== */
+  @page { size: 5.5in 8.5in; margin: 0.42in 0.42in 0.5in; }
+  body { font-size: 8.4pt; line-height: 1.42; }
+  h1.sec { font-size: 17pt; margin: 14pt 0 3pt; padding-bottom: 3pt; break-before: auto; break-after: avoid; }
+  h1.sec.newpage { break-before: page; margin-top: 0; }
+  .lead { font-size: 8.8pt; margin: 3pt 0 8pt; }
+  h2 { font-size: 12.5pt; margin: 10pt 0 2pt; }
+  h3 { font-size: 10.5pt; margin: 8pt 0 1pt; }
+  p { margin: 2pt 0 5pt; }
+  ul, ol { margin: 2pt 0 5pt; padding-left: 14pt; }
+  li { margin: 1pt 0; }
+  b.ui { font-size: 7.6pt; padding: 0 3px; }
+  .row { display: flow-root; margin: 4pt 0 6pt; break-inside: auto; }
+  .row .txt { flex: none; }
+  .row > figure { float: right; margin: 2pt 0 6pt 10pt; }
+  figure { width: 1.55in; }
+  figure.tall { width: 1.6in; }
+  figure.wide { width: 2.5in; }
+  figure img { border-radius: 7px; max-height: none; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  figure.tall img { max-height: none; }
+  figcaption { font-size: 7pt; margin-top: 3pt; }
+  .shots { gap: 9pt; margin: 4pt 0 8pt; }
+  .tip, .warn, .sup { padding: 5pt 8pt; margin: 5pt 0 7pt; font-size: 8pt; border-radius: 6px; }
+  .tip b.t, .warn b.t, .sup b.t { font-size: 7.2pt; }
+  table.k { font-size: 7.9pt; margin: 3pt 0 7pt; }
+  table.k td, table.k th { padding: 3pt 4pt; }
+  table.k th { font-size: 7pt; }
+  .badge { font-size: 6.4pt; padding: 0 5pt; }
+  .cover { height: 7.5in; }
+  .cover img.logo { width: 1.25in; margin-bottom: 14pt; }
+  .cover h1 { font-size: 25pt; margin-bottom: 6pt; }
+  .cover .sub { font-size: 9.5pt; max-width: 3.9in; }
+  .cover .bar { margin: 12pt auto; }
+  .cover .meta { font-size: 8pt; }
+  .cover .phones { gap: 9pt; margin-top: 16pt; }
+  .cover .phones img { width: 1.05in; height: 2.2in; border-radius: 8px; }
+  .toc h1 { font-size: 20pt !important; }
+  .toc ol.idx { margin: 6pt 0; }
+  .toc ol.idx > li { font-size: 9pt; padding: 2.5pt 0; }
+  .toc ol.idx > li span.d { font-size: 7.6pt; max-width: 2.6in; }
+</style>
+</head>
+<body>
+
+<!-- ============ PORTADA ============ -->
+<section class="cover">
+  <img class="logo" src="assets/Logo.jpg" alt="GS Solutions">
+  <h1>Guía del Portal de Técnicos</h1>
+  <div class="sub">Todo lo que necesitas para trabajar desde tu teléfono con <b>GS Tech</b> (tech.gsocd.com): tus órdenes, fotos, trabajos recurrentes e historial.</div>
+  <div class="bar"></div>
+  <div class="meta">Para empleados y supervisores · GS Solutions · Septiembre 2026</div>
+  <div class="phones">
+    <img src="shotsj/b01-active.jpg" alt="">
+    <img src="shotsj/d01-recurring.jpg" alt="">
+    <img src="shotsj/c02-camera-photos.jpg" alt="">
+  </div>
+</section>
+
+<!-- ============ INTRODUCCION ============ -->
+<section class="toc">
+  <h1 style="font-size:28pt;margin:0 0 4pt;padding-bottom:6pt;border-bottom:2px solid var(--gold)">Introducción</h1>
+  <p class="lead">GS Tech es la app donde ves el trabajo que te toca, tomas las fotos, marcas lo que terminaste y le avisas a la oficina de cualquier cosa. Funciona en el navegador de tu teléfono y no se descarga de ninguna tienda: la oficina te deja un ícono en la pantalla de inicio y desde ahí entras.</p>
+
+  <p>En esta guía vas a aprender, paso a paso:</p>
+  <ol class="idx">
+    <li><span class="n">1</span> Cómo entrar <span class="d">El QR de la oficina, entrar con tu nombre, crear cuenta, cambiar a español</span></li>
+    <li><span class="n">2</span> Active Orders <span class="d">Tus órdenes de hoy y de los próximos días, cómo abrirlas y marcarlas como hechas</span></li>
+    <li><span class="n">3</span> La cámara <span class="d">Fotos de la orden, fotos por servicio, video y qué pasa si no hay señal</span></li>
+    <li><span class="n">4</span> Recurring <span class="d">Los trabajos fijos que se repiten cada semana</span></li>
+    <li><span class="n">5</span> History <span class="d">Las órdenes que ya trabajaste, con todo lo que pasó</span></li>
+    <li><span class="n">6</span> Gallery y Docs <span class="d">Tus fotos por orden y los documentos de cada orden</span></li>
+    <li><span class="n">7</span> Solo supervisores <span class="d">Update Services, Report: Unit Not Ready, inspecciones y filtros</span></li>
+    <li><span class="n">8</span> Preguntas frecuentes <span class="d">Qué hacer cuando algo no sale como esperabas</span></li>
+  </ol>
+
+  <div class="tip"><b class="t">Antes de empezar</b>
+    <ul style="margin:2pt 0 0">
+      <li>Los botones y pantallas de la app están en <b>inglés</b>. En esta guía los escribimos igual que en la app, <b class="ui">así</b>, para que los encuentres rápido.</li>
+      <li>Si prefieres la app en español, toca <b class="ui">ESP</b> arriba, junto a tu nombre (te lo explicamos en la sección 1).</li>
+      <li>Las capturas usan <b>clientes y órdenes de ejemplo</b>. En tu teléfono vas a ver tus órdenes reales.</li>
+      <li>Las partes que solo aplican a supervisores están marcadas en azul.</li>
+    </ul>
+  </div>
+
+</section>
+
+<!-- ============ 1. ACCESO ============ -->
+<h1 class="sec newpage"><span class="n">1</span>Cómo entrar</h1>
+<p class="lead">Hay dos formas de entrar. La mejor es configurar tu teléfono una sola vez con el código QR que te da la oficina: después, el ícono te lleva directo a tus órdenes. Si no tienes el QR a la mano, puedes entrar con tu nombre y los últimos 4 dígitos de tu teléfono.</p>
+
+<h2>1.1 Configurar tu teléfono con el QR (recomendado)</h2>
+<div class="row">
+  <figure><img src="shotsj/a05-setup-confirm.jpg"><figcaption><b>Paso 3.</b> Confirma que eres tú.</figcaption></figure>
+  <div class="txt">
+    <ol>
+      <li>Pídele a la oficina tu código QR (lo generan en Admin, en <b>Techs &amp; Roles</b>).</li>
+      <li>Escanéalo con la cámara de tu teléfono y abre el enlace. Verás <b class="ui">Hi, (tu nombre)</b>.</li>
+      <li>Toca <b class="ui">Confirm — This Is Me</b>.</li>
+      <li>Cuando el teléfono pregunte por <b>notificaciones</b>, toca <b>Permitir / Allow</b>. Así te llegan los avisos de tus trabajos (te asignaron, te cambiaron o te quitaron una orden, o se canceló).</li>
+      <li>Verás <b class="ui">You're all set</b> y la app te lleva a tus órdenes.</li>
+    </ol>
+    <div class="warn"><b class="t">Importante</b>Los avisos solo se pueden activar en este paso. Si dijiste que no, o cambiaste de teléfono, pídele a la oficina un <b>New QR</b> y vuelve a hacerlo.</div>
+  </div>
+</div>
+<div class="shots">
+  <figure><img src="shotsj/a07-setup-done.jpg"><figcaption><b>Listo.</b> “Job alerts are on” quiere decir que los avisos quedaron activados.</figcaption></figure>
+  <figure><img src="shotsj/a06-setup-ios.jpg"><figcaption><b>En iPhone</b> primero te pide agregar la app a la pantalla de inicio.</figcaption></figure>
+</div>
+<div class="tip"><b class="t">Si tienes iPhone</b>Apple solo manda avisos a apps que están en la pantalla de inicio. Por eso, al abrir el QR en Safari:
+  <ol style="margin:3pt 0 0">
+    <li>Toca el botón <b>Compartir</b> (el cuadro con la flecha ↑) abajo en Safari.</li>
+    <li>Toca <b>Agregar a pantalla de inicio / Add to Home Screen</b> y luego <b>Agregar / Add</b>.</li>
+    <li>Cierra Safari y abre <b>GS Tech</b> desde el ícono nuevo. Ahí te aparece <b class="ui">Confirm — This Is Me</b> para terminar.</li>
+  </ol>
+</div>
+
+<h2>1.2 Entrar con tu nombre y los últimos 4 dígitos</h2>
+<div class="row">
+  <figure><img src="shotsj/a01-login.jpg"><figcaption>Pantalla para entrar.</figcaption></figure>
+  <div class="txt">
+    <p>Si abres <b>tech.gsocd.com</b> y el teléfono no está configurado, verás la pantalla <b class="ui">Tech Portal</b>:</p>
+    <ol>
+      <li><b class="ui">First Name</b>: tu nombre.</li>
+      <li><b class="ui">Last Name</b>: tu apellido.</li>
+      <li><b class="ui">Last 4 digits of your phone</b>: los últimos 4 números de tu teléfono (el que tiene registrado la oficina).</li>
+      <li>Toca <b class="ui">Sign In</b>.</li>
+    </ol>
+    <p>La app te recuerda por <b>30 días</b> en ese teléfono, así que no tienes que escribir tus datos cada vez.</p>
+    <p>Si sale <i>“We could not find an account…”</i>, revisa que el nombre y los 4 dígitos sean los mismos que tiene la oficina. Si sigue sin entrar, llama a la oficina.</p>
+  </div>
+</div>
+<div class="shots">
+  <figure><img src="shotsj/a02-login-error.jpg"><figcaption>Si los datos no coinciden, sale el aviso en rojo debajo del botón.</figcaption></figure>
+</div>
+
+<h2>1.3 Crear una cuenta nueva</h2>
+<div class="row">
+  <figure><img src="shotsj/a03-register.jpg"><figcaption>Formulario de cuenta nueva.</figcaption></figure>
+  <div class="txt">
+    <p>Si eres nuevo y la oficina todavía no te dio de alta, toca <b class="ui">Create an account</b> en la pantalla de entrada y llena:</p>
+    <ul>
+      <li><b class="ui">First Name</b> y <b class="ui">Last Name</b></li>
+      <li><b class="ui">Phone Number</b>: tu teléfono completo</li>
+      <li><b class="ui">Email</b>: tu correo</li>
+    </ul>
+    <p>Toca <b class="ui">Create Account</b>. Tu cuenta queda <b>esperando a que la oficina la apruebe</b>. Cuando la aprueben, entra con tu nombre y los últimos 4 dígitos de ese teléfono.</p>
+  </div>
+</div>
+<div class="shots">
+  <figure><img src="shotsj/a04-register-pending.jpg"><figcaption><b>Account created</b>: falta que la oficina la apruebe.</figcaption></figure>
+</div>
+
+<h2>1.4 La parte de arriba de la app</h2>
+<div class="shots"><figure class="wide" style="width:5.2in"><img src="shotsj/a08-nav.jpg" style="max-height:none"><figcaption>Tu nombre y división · <b>ENG | ESP</b> para cambiar el idioma · <b>Sign out</b> para salir.</figcaption></figure></div>
+<ul>
+  <li><b>Tu nombre y división</b> (por ejemplo, <i>Carlos Ramírez · Renovations</i>). Así sabes con qué cuenta entraste.</li>
+  <li><b class="ui">ENG</b> / <b class="ui">ESP</b>: cambia toda la app entre inglés y español. Se guarda en tu cuenta, así que la próxima vez abre en el idioma que escogiste.</li>
+  <li><b class="ui">Sign out</b>: cierra tu sesión en ese teléfono. Úsalo solo si le vas a prestar el teléfono a alguien más; si no, no hace falta.</li>
+  <li>Abajo están las 4 tabs. En teléfonos chicos puedes deslizar la barra hacia un lado para ver <b class="ui">Gallery</b>.</li>
+</ul>
+  <h3>Las 4 tabs de un vistazo</h3>
+  <table class="k">
+    <tr><th style="width:1.3in">Tab</th><th>Para qué sirve</th></tr>
+    <tr><td><b class="ui">Active Orders</b></td><td>Las órdenes que tienes asignadas y que todavía no se cierran. Aquí trabajas casi todo el día.</td></tr>
+    <tr><td><b class="ui">Recurring</b></td><td>Los trabajos fijos semanales (por ejemplo, limpieza de un edificio lunes, miércoles y sábado). Salen cuando te tocan en los próximos 3 días.</td></tr>
+    <tr><td><b class="ui">History</b></td><td>Órdenes ya terminadas (Completed) o canceladas (Cancelled), con su historial completo.</td></tr>
+    <tr><td><b class="ui">Gallery</b></td><td>Las fotos que has tomado, agrupadas por orden, y los documentos (Docs) de tus órdenes.</td></tr>
+  </table>
+
+
+<h2>1.5 La app en español</h2>
+<p>Toca <b class="ui">ESP</b> y la página se vuelve a cargar en español: títulos, botones, avisos, fechas y los nombres de los servicios. Los nombres de clientes y direcciones se quedan igual.</p>
+<div class="tip"><b class="t">Nota</b>El resto de esta guía muestra la app en inglés, que es como viene de fábrica. Si usas ESP, los botones están en el mismo lugar, solo cambia el texto.</div>
+<div class="shots">
+  <figure><img src="shotsj/g01-esp-active.jpg"><figcaption>Active Orders en español (<b>Órdenes activas</b>).</figcaption></figure>
+  <figure><img src="shotsj/g02-esp-order.jpg"><figcaption>Una orden abierta: <b>Tomar una foto</b>, <b>Grabar un video</b>, <b>Marcar como terminado</b>.</figcaption></figure>
+</div>
+
+<!-- ============ 2. ACTIVE ORDERS ============ -->
+<h1 class="sec"><span class="n">2</span>Active Orders</h1>
+<p class="lead">Es la primera pantalla que ves al entrar. Aquí salen <b>solo las órdenes que la oficina te asignó a ti</b>, desde que te las programan hasta que la oficina las cierra.</p>
+
+<h2>2.1 La lista de órdenes</h2>
+<div class="row">
+  <figure class="tall"><img src="shotsj/b01-active.jpg"><figcaption>Active Orders con varias órdenes.</figcaption></figure>
+  <div class="txt">
+    <p>Cada tarjeta es una orden. Cerrada, te dice lo más importante:</p>
+    <ul>
+      <li><b>Nombre del cliente</b> (en negritas).</li>
+      <li><b>Número de orden</b> (GS-…) y <b>división</b> (Renovations, Janitorial, Exteriors).</li>
+      <li><b>Unidad</b> y recámaras/baños (<i>Unit 214 · 2bd/1ba</i>), si aplica.</li>
+      <li><b>Dirección, edificio</b>, el <b>día y horario</b> en que te toca, y cuándo se creó la orden.</li>
+    </ul>
+    <p>A la derecha puede haber etiquetas (badges):</p>
+    <table class="k">
+      <tr><td style="width:1.35in"><span class="badge" style="background:#FDF3E0;color:#8C6F2A">Renovations</span></td><td>La división de la orden.</td></tr>
+      <tr><td><span class="badge" style="background:#E3ECF7;color:#2E5FA3">● Occupied unit</span></td><td>Hay gente viviendo en la unidad. Tócala antes de entrar y sé cuidadoso.</td></tr>
+      <tr><td><span class="badge" style="background:#F1E7FA;color:#6B3FA0">● Office access needed</span></td><td>Necesitas algo de la oficina antes de empezar (llaves, código, permiso). Abre la orden para leer qué.</td></tr>
+    </table>
+    <p>Toca cualquier tarjeta para <b>abrirla</b> y vuelve a tocar el encabezado para <b>cerrarla</b>.</p>
+  </div>
+</div>
+
+<h2>2.2 Buscar una orden</h2>
+<div class="row">
+  <figure><img src="shotsj/b04-search.jpg"><figcaption>Buscando “river”.</figcaption></figure>
+  <div class="txt">
+    <p>Usa la caja <b class="ui">Search by order number or client…</b> arriba de la lista. Escribe parte del número de orden (por ejemplo <i>10490</i>) o del nombre del cliente (por ejemplo <i>river</i>) y la lista se filtra mientras escribes.</p>
+    <p>Para ver todo otra vez, borra lo que escribiste.</p>
+  </div>
+</div>
+
+<h2>2.3 Una orden abierta</h2>
+<div class="row">
+  <figure><img src="shotsj/b02-order-open.jpg"><figcaption>Orden abierta con 3 servicios.</figcaption></figure>
+  <div class="txt">
+    <p>Al abrir una orden ves:</p>
+    <ul>
+      <li><b class="ui">Service Date</b>: el día y horario en que te toca.</li>
+      <li><b>La lista de servicios</b> que tienes que hacer, con su nivel (<i>Level 1, 2, 3</i>) o cantidad (<i>Qty: 2</i>). Si un servicio tiene la letra subrayada, tócalo para ver la descripción de lo que incluye.</li>
+      <li>Una <b>camarita</b> <span style="border:1.5px solid #E0D9CC;border-radius:5px;padding:0 5px">📷</span> junto a cada servicio, para tomar la foto de ese servicio en específico.</li>
+      <li><b class="ui">📷 Take a photo for this order</b>: fotos generales de la orden.</li>
+      <li><b class="ui">🎥 Record a video</b>: graba un video con la cámara normal del teléfono (máximo 5 minutos).</li>
+      <li><b class="ui">✓ Mark as Done</b>: para avisar que terminaste (ver 2.5).</li>
+    </ul>
+    <p>Todo lo de la cámara lo explicamos en la sección 3.</p>
+  </div>
+</div>
+
+<h2>2.4 Paquetes y avisos de la oficina</h2>
+<div class="row">
+  <figure><img src="shotsj/b03-order-package.jpg"><figcaption>Paquete con su lista y nota de la oficina.</figcaption></figure>
+  <div class="txt">
+    <p>Algunas órdenes traen un <b>paquete</b> (por ejemplo, <i>Turn package</i>). Debajo del paquete dice <b class="ui">Includes:</b> y la lista de lo que trae, con su nivel (<i>L1, L2</i>). Es tu checklist: tal como estaba el día que se hizo la orden.</p>
+    <p>Si la orden necesita algo de la oficina, verás un recuadro morado <b class="ui">Needed from the office:</b> con la nota. Por ejemplo: <i>“Pick up the keys at the leasing office before 9 AM.”</i></p>
+  </div>
+</div>
+
+<h2>2.5 Marcar la orden como terminada</h2>
+<div class="row">
+  <figure><img src="shotsj/b10-done-toast.jpg"><figcaption>El aviso después de marcarla.</figcaption></figure>
+  <div class="txt">
+    <ol>
+      <li>Abre la orden y toca <b class="ui">✓ Mark as Done</b>.</li>
+      <li>Se abre la cámara. <b>Tienes que tomar al menos 1 foto del trabajo terminado</b>: sin foto, el botón <b class="ui">Done</b> no te deja salir.</li>
+      <li>Toca <b class="ui">Done</b>. La app regresa sola a tus órdenes y marca la orden como hecha: no tienes que tocar nada más.</li>
+    </ol>
+    <p>Verás un aviso abajo (<i>“Order … marked as done — the office will confirm and close it”</i>) y, dentro de la orden, el recuadro azul <b class="ui">✓ You marked this as done — waiting for the office to confirm and close it.</b></p>
+    <p>La orden se queda en tu lista hasta que la oficina la revise y la cierre. Después se pasa a <b class="ui">History</b>.</p>
+  </div>
+</div>
+<div class="shots">
+  <figure><img src="shotsj/b09-marked-done.jpg"><figcaption>Orden ya marcada: esperando a la oficina.</figcaption></figure>
+</div>
+
+<h2>2.6 Órdenes repartidas por servicio</h2>
+<div class="row">
+  <figure><img src="shotsj/b05-by-service.jpg"><figcaption>Un servicio completado, uno esperando y uno por hacer.</figcaption></figure>
+  <div class="txt">
+    <p>A veces la oficina reparte una orden entre varias personas o días (<b>Assign by service</b>). En esas órdenes:</p>
+    <ul>
+      <li>Solo ves <b>tus servicios</b>, cada uno con el día y la hora que te tocan.</li>
+      <li>Cada servicio tiene su propio <b class="ui">✓ Mark as Done</b> (con foto obligatoria, igual que arriba).</li>
+      <li><span class="badge" style="background:#E3ECF7;color:#2E5FA3">Waiting on office</span> = ya lo marcaste y la oficina lo está revisando.</li>
+      <li><span class="badge" style="background:#EAF3EC;color:#3E7A4C">Completed</span> = la oficina ya lo confirmó.</li>
+    </ul>
+    <p>No hay un botón para toda la orden: vas marcando servicio por servicio.</p>
+  </div>
+</div>
+
+<h2>2.7 Órdenes por lugar (limpieza recurrente)</h2>
+<div class="row">
+  <figure class="tall"><img src="shotsj/b06-by-place.jpg"><figcaption>Orden por lugar con 3 lugares.</figcaption></figure>
+  <div class="txt">
+    <p>En los edificios con limpieza fija, la orden del día viene <b>por lugar</b>: <i>Floor 1 / Lobby</i>, <i>Floor 1 / Restrooms</i>, <i>Floor 2 / Offices</i>… Cada lugar trae sus servicios.</p>
+    <ul>
+      <li>Arriba ves el avance: <b class="ui">1 of 3 places marked done</b> y una barrita dorada.</li>
+      <li>En cada lugar: la <b>camarita</b> para fotos de ese lugar y <b class="ui">✓ Mark as Done</b> para marcar el lugar completo (pide foto).</li>
+      <li>Los lugares en azul con <span class="badge" style="background:#E3ECF7;color:#2E5FA3">Waiting on office</span> ya los marcaste.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Cuando el cliente te pide algo que no está en tu lista</h3>
+<div class="row">
+  <figure><img src="shotsj/b07-extra-form.jpg" style="max-height:none"><figcaption>El formulario para avisar a la oficina.</figcaption></figure>
+  <div class="txt">
+    <p><b>No lo hagas por tu cuenta.</b> Primero avísale a la oficina:</p>
+    <ol>
+      <li>Toca <b class="ui">The client asked for something not on my list</b> (abajo de los lugares).</li>
+      <li>En <b class="ui">What did the client ask for?</b> escribe qué te pidió.</li>
+      <li>Toca <b class="ui">Send to office</b>.</li>
+    </ol>
+    <p>Sale el aviso <i>“Sent to the office. Wait for approval before doing it.”</i> La oficina decide si se hace y si se cobra aparte. <b>Espera su respuesta antes de hacerlo.</b></p>
+  </div>
+</div>
+
+<!-- ============ 3. CAMARA ============ -->
+<h1 class="sec"><span class="n">3</span>La cámara</h1>
+<p class="lead">La app tiene su propia cámara. Si no tienes señal, las fotos se suben solas cuando regrese.</p>
+
+<h2>3.1 Cómo tomar fotos</h2>
+<div class="row">
+  <figure><img src="shotsj/c02-camera-photos.jpg"><figcaption>3 fotos tomadas y subidas (✓ verde).</figcaption></figure>
+  <div class="txt">
+    <p>La cámara se abre desde <b class="ui">📷 Take a photo for this order</b>, desde la <b>camarita</b> de un servicio o lugar, o desde <b class="ui">✓ Mark as Done</b>.</p>
+    <ul>
+      <li>Arriba dice para qué es la foto: <i>Order GS-10482</i> o el nombre del servicio (<i>Paint walls</i>).</li>
+      <li>El contador (<b class="ui">3 / 10 photos</b>) te dice cuántas llevas. Puedes tomar hasta <b>10 fotos</b> por vez.</li>
+      <li>Toca el <b>círculo blanco</b> para tomar cada foto. Puedes tomarlas seguidas, una tras otra.</li>
+      <li>Abajo aparecen las miniaturas. La bolita de cada una te dice cómo va:
+        <table class="k" style="margin-top:4pt">
+          <tr><td style="width:.5in;text-align:center"><span class="badge" style="background:#C9A84C;color:#111">↑</span></td><td>Subiendo.</td></tr>
+          <tr><td style="text-align:center"><span class="badge" style="background:#27ae60;color:#fff">✓</span></td><td>Ya se subió.</td></tr>
+          <tr><td style="text-align:center"><span class="badge" style="background:#555;color:#fff">⏳</span></td><td>Esperando señal: se sube sola cuando haya.</td></tr>
+          <tr><td style="text-align:center"><span class="badge" style="background:#c0392b;color:#fff">!</span></td><td>No se pudo subir: tócala para intentar otra vez.</td></tr>
+        </table>
+      </li>
+      <li>Toca <b class="ui">Done</b> para terminar, o la <b>✕</b> de arriba para salir.</li>
+    </ul>
+  </div>
+</div>
+<div class="shots">
+  <figure><img src="shotsj/c01-camera.jpg"><figcaption>Cámara de la orden, antes de tomar fotos.</figcaption></figure>
+  <figure><img src="shotsj/c03-camera-service.jpg"><figcaption>Foto de un servicio: arriba dice <b>Paint walls</b>.</figcaption></figure>
+</div>
+
+<h2>3.2 La foto obligatoria al terminar</h2>
+<div class="row">
+  <figure><img src="shotsj/c04-camera-required.jpg"><figcaption>Sin foto no se puede terminar.</figcaption></figure>
+  <div class="txt">
+    <p>Cuando la cámara se abre desde <b class="ui">✓ Mark as Done</b>, tienes que tomar <b>al menos 1 foto</b>. Si tocas <b class="ui">Done</b> sin fotos, sale abajo: <i>“Take at least 1 photo before finishing.”</i></p>
+    <p>Toma la foto del trabajo <b>ya terminado</b> y vuelve a tocar <b class="ui">Done</b>.</p>
+  </div>
+</div>
+
+<h2>3.3 Sin señal</h2>
+<div class="row">
+  <figure><img src="shotsj/c05-camera-nosignal.jpg"><figcaption>Fotos esperando señal (⏳).</figcaption></figure>
+  <div class="txt">
+    <p>Si estás en un sótano o en un lugar sin señal, <b>sigue tomando fotos normal</b>. Verás <i>“2 photos waiting for signal — will upload automatically.”</i></p>
+    <p>La app las sube sola en cuanto regrese la señal, aunque cierres la cámara o la app. Mientras tanto, arriba de tus órdenes aparece una barra café con cuántas faltan.</p>
+    <p>Si una foto no se pudo subir después de varios intentos, la barra dice <i>“… could not be uploaded — open the order and try again.”</i> Abre la orden y vuelve a intentar.</p>
+    <div class="tip"><b class="t">Nota</b>Si algo se queda guardado en tu teléfono, lo puedes borrar sin problema: no afecta la app.</div>
+  </div>
+</div>
+<div class="shots"><figure class="wide"><img src="shotsj/c06-banner-waiting.jpg" style="max-height:none"><figcaption>La barra arriba de Active Orders mientras hay fotos pendientes.</figcaption></figure></div>
+
+<h2>3.4 Video</h2>
+<p><b class="ui">🎥 Record a video</b> abre la cámara normal de tu teléfono (no la de la app). Graba y acepta el video. Aparece una miniatura en la orden y el aviso <i>“Video saved to this order.”</i></p>
+<ul>
+  <li>Máximo <b>5 minutos</b> por video. Si es más largo, la app te pide grabar uno más corto.</li>
+  <li>El video necesita señal para subirse: si no tienes, mejor toma fotos y graba el video cuando haya señal.</li>
+</ul>
+
+<!-- ============ 4. RECURRING ============ -->
+<h1 class="sec"><span class="n">4</span>Recurring</h1>
+<p class="lead">Los trabajos fijos que se repiten cada semana, como la limpieza de oficinas. No tienen fecha de entrega: se repiten los mismos días cada semana.</p>
+
+<h2>4.1 La lista</h2>
+<div class="row">
+  <figure><img src="shotsj/d01-recurring.jpg"><figcaption>Tres trabajos recurrentes.</figcaption></figure>
+  <div class="txt">
+    <p>Solo salen los trabajos que te tocan en los <b>próximos 3 días</b>. Cada tarjeta dice:</p>
+    <ul>
+      <li>Cliente, dirección y edificio.</li>
+      <li>Los días y la hora (<i>Mon, Wed, Sat · 6:00 PM</i>), también como cuadritos dorados (<b>M W S</b>).</li>
+      <li>Cuándo te toca: <span class="badge" style="background:#FBEAEA;color:#c0392b">Today</span> (hoy), <span class="badge" style="background:#FDF3E0;color:#8C6F2A">In 1 day</span>, <span class="badge" style="background:#FDF3E0;color:#8C6F2A">In 3 days</span>…</li>
+      <li>Las horas asignadas por semana (<span class="badge" style="background:#FDF3E0;color:#8C6F2A">3h/wk</span>).</li>
+    </ul>
+  </div>
+</div>
+
+<h2>4.2 Marcar la visita de hoy</h2>
+<div class="row">
+  <figure class="tall"><img src="shotsj/d02-recurring-today.jpg"><figcaption>Visita de hoy, con su historial.</figcaption></figure>
+  <div class="txt">
+    <p>Abre la tarjeta que dice <b>Today</b>. Verás la lista de servicios y dos botones:</p>
+    <ul>
+      <li><b class="ui">📷 Add a photo (optional)</b>: fotos de la visita. Aquí la foto es <b>opcional</b>.</li>
+      <li><b class="ui">✓ Mark as Done</b>: avisa que terminaste la visita de hoy.</li>
+    </ul>
+    <p>Después verás <i>“✓ Marked done — waiting for the office to confirm and close it.”</i></p>
+    <p>Debajo está el <b>historial</b> de visitas anteriores: quién la marcó y cuándo la cerró la oficina.</p>
+  </div>
+</div>
+<div class="shots">
+  <figure><img src="shotsj/d03-recurring-marked.jpg"><figcaption>Visita marcada: esperando a la oficina.</figcaption></figure>
+  <figure><img src="shotsj/d04-recurring-notdue.jpg"><figcaption>Si todavía no toca: <b>Not due yet — comes up in 3 days.</b></figcaption></figure>
+</div>
+
+<!-- ============ 5. HISTORY ============ -->
+<h1 class="sec"><span class="n">5</span>History</h1>
+<p class="lead">Las órdenes en las que trabajaste y que ya se cerraron: terminadas (<b>Completed</b>) o canceladas (<b>Cancelled</b>).</p>
+<div>
+  <div>
+    <p>Cada tarjeta dice el cliente, el número de orden, la unidad, quién fue el supervisor y la fecha en que se completó. La etiqueta de la derecha dice cómo terminó.</p>
+    <p>Al abrirla ves:</p>
+    <ul>
+      <li><b>Detalles</b>: dirección, <b class="ui">Entry</b> (fecha de entrada), <b class="ui">Due</b> (fecha límite), supervisor, recámaras/baños, horario y contacto.</li>
+      <li><b>Servicios</b>. Si alguno no se hizo, dice <i>not completed</i> y por qué.</li>
+      <li><b>Notas</b> de la orden.</li>
+      <li><b>El historial completo</b>: cuándo se creó, cuándo se asignó, cuándo la marcaste como hecha y cuándo la cerró la oficina. Toca <b>▾ details</b> para ver más de cada paso.</li>
+    </ul>
+  </div>
+</div>
+<div class="shots">
+  <figure><img src="shotsj/e01-history.jpg"><figcaption>Tres órdenes cerradas.</figcaption></figure>
+  <figure><img src="shotsj/e02-history-open.jpg" style="max-height:none"><figcaption>Una orden abierta, con detalles e historial.</figcaption></figure>
+</div>
+
+<!-- ============ 6. GALLERY ============ -->
+<h1 class="sec"><span class="n">6</span>Gallery y Docs</h1>
+<p class="lead">Dentro de la tab <b>Gallery</b> hay dos secciones: <b>Gallery</b> (tus fotos) y <b>Docs</b> (documentos de tus órdenes).</p>
+
+<h2>6.1 Fotos (Gallery)</h2>
+<div class="row">
+  <figure><img src="shotsj/f01-gallery.jpg"><figcaption>Grupos de fotos por orden.</figcaption></figure>
+  <div class="txt">
+    <p>Tus fotos están agrupadas por orden. Cada grupo dice el cliente, la orden, la unidad y cuántas fotos tiene (el numerito dorado).</p>
+    <ol>
+      <li>Toca un grupo para abrirlo.</li>
+      <li>Arriba sale la foto más reciente en grande, con el servicio y la hora.</li>
+      <li>Abajo están las demás miniaturas y la lista de servicios de la orden.</li>
+      <li>Toca cualquier foto para verla en pantalla completa. Usa las flechas de los lados para pasar a la siguiente y toca la <b>✕</b> para cerrar.</li>
+    </ol>
+    <p>Usa <b class="ui">Search by order number or client…</b> para encontrar una orden rápido.</p>
+  </div>
+</div>
+<div class="shots">
+  <figure><img src="shotsj/f01c-gallery-open.jpg"><figcaption>Un grupo abierto.</figcaption></figure>
+  <figure><img src="shotsj/f02-lightbox.jpg"><figcaption>Foto en pantalla completa.</figcaption></figure>
+</div>
+<p>En órdenes con inspección, las fotos se separan en <b>Inspection · before</b> (lo que encontró el supervisor antes del trabajo) y <b>Work · after</b> (el trabajo terminado).</p>
+
+<h2>6.2 Documentos (Docs)</h2>
+<div>
+  <div>
+    <p>Toca <b class="ui">Docs</b>. Aquí están los documentos que la oficina o el cliente subieron a tus órdenes: PDF, Word o texto. Por ejemplo, el alcance del trabajo (scope of work), colores de pintura o instrucciones para entrar.</p>
+    <ol>
+      <li>Toca la orden para ver sus documentos. Cada uno dice quién lo subió, la fecha y el tamaño.</li>
+      <li>Toca el nombre del documento para abrirlo.</li>
+      <li>Arriba tienes <b class="ui">Download</b> para descargarlo y <b class="ui">Close</b> para cerrarlo.</li>
+    </ol>
+    <p>Los técnicos solo pueden <b>ver</b> documentos, no subirlos ni borrarlos.</p>
+  </div>
+</div>
+<div class="shots">
+  <figure><img src="shotsj/f03b-docs-open.jpg"><figcaption>Documentos de una orden.</figcaption></figure>
+  <figure><img src="shotsj/f04-doc-view.jpg"><figcaption>Documento abierto.</figcaption></figure>
+</div>
+
+<!-- ============ 7. SUPERVISORES ============ -->
+<h1 class="sec newpage"><span class="n">7</span>Solo supervisores</h1>
+<p class="lead">Los supervisores usan las mismas 4 tabs, pero ven <b>todo su departamento</b> y tienen herramientas extra para reportar cambios a la oficina.</p>
+
+<div class="sup"><b class="t">Lo que cambia para un supervisor</b>
+  <ul style="margin:2pt 0 0">
+    <li><b>Active Orders, Recurring, History y Gallery</b> muestran las órdenes de toda tu división, no solo las tuyas.</li>
+    <li>Solo puedes marcar como hechas (<b class="ui">✓ Mark as Done</b>) las órdenes donde <b>tú</b> eres el supervisor asignado. En las demás, ese botón no sale.</li>
+    <li>Tienes <b class="ui">Update Services</b>, <b class="ui">Report: Unit Not Ready</b> e inspecciones.</li>
+  </ul>
+</div>
+
+<h2>7.1 Active Orders del departamento y filtros</h2>
+<div class="row">
+  <figure><img src="shotsj/h01-sup-active.jpg"><figcaption>Vista del supervisor con filtros por división.</figcaption></figure>
+  <div class="txt">
+    <p>Si tu división es <b>Mixed</b> (ves varias divisiones), arriba salen los filtros <b class="ui">All</b>, <b class="ui">Janitorial</b>, <b class="ui">Renovations</b> y <b class="ui">Exteriors</b>. Toca uno para ver solo esa división y <b class="ui">All</b> para ver todo.</p>
+    <p>Las órdenes en <b>inspección</b> siempre salen primero, con una raya azul a la izquierda y la etiqueta <span class="badge" style="background:#E6EEFB;color:#2A4E8C">Inspection</span>.</p>
+  </div>
+</div>
+<div class="shots"><figure><img src="shotsj/h02-sup-pills.jpg" style="max-height:none"><figcaption>Filtrando solo <b>Janitorial</b>.</figcaption></figure></div>
+
+<h2>7.2 Una orden abierta (supervisor)</h2>
+<div class="row">
+  <figure><img src="shotsj/h07-sup-order.jpg"><figcaption>Orden del supervisor, con sus botones.</figcaption></figure>
+  <div class="txt">
+    <p>Además de lo que ve un empleado, el supervisor tiene:</p>
+    <ul>
+      <li><b class="ui">Entry</b>, <b class="ui">Due</b> y <b class="ui">Service Window</b> de la orden.</li>
+      <li><b class="ui">Update Services</b>: reportar que un servicio no se hizo, cambiar nivel o cantidad, o agregar uno que hacía falta (7.3).</li>
+      <li><b class="ui">Report: Unit Not Ready</b>: avisar que la unidad no está lista para trabajar (7.4).</li>
+      <li><b class="ui">✓ Mark as Done</b>: solo en las órdenes que son tuyas.</li>
+    </ul>
+  </div>
+</div>
+<div class="shots"><figure><img src="shotsj/h14-sup-other.jpg"><figcaption>Orden de otro supervisor: sin <b>Mark as Done</b>.</figcaption></figure></div>
+
+<h2>7.3 Update Services</h2>
+<p>Sirve para decirle a la oficina que lo que se hizo (o lo que hace falta) es distinto a lo que dice la orden. <b>Nada se cambia directo</b>: se manda a la oficina para revisión, y el cliente no ve nada hasta que GS Solutions se lo mande.</p>
+<div class="row">
+  <figure><img src="shotsj/h08-update-panel.jpg" style="max-height:none"><figcaption>El panel <b>Update Services</b>.</figcaption></figure>
+  <div class="txt">
+    <ol>
+      <li>Abre la orden y toca <b class="ui">Update Services</b>. Se abre el panel debajo.</li>
+      <li>Por cada servicio puedes:
+        <ul>
+          <li>Cambiar el nivel con <b class="ui">L1</b> <b class="ui">L2</b> <b class="ui">L3</b> (en Janitorial).</li>
+          <li>Corregir la cantidad en <b class="ui">Qty</b> (por ejemplo, eran 3 puertas y resultaron 5).</li>
+          <li>Tomar una foto con la <b>camarita</b>.</li>
+          <li>Quitarlo con la <b>✕</b> roja.</li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+</div>
+<div class="row">
+  <figure><img src="shotsj/h09-remove-note.jpg" style="max-height:none"><figcaption>Nota obligatoria para quitar un servicio.</figcaption></figure>
+  <div class="txt">
+    <h3>Quitar un servicio</h3>
+    <p>Al tocar la <b>✕</b> te pide <b class="ui">Why are you removing this? (required)</b>. La nota es obligatoria. Puedes escribirla o tocar el <b>micrófono 🎤</b> y dictarla (en iPhone usa el micrófono del teclado). Luego toca <b class="ui">Confirm Remove</b>.</p>
+    <p>El servicio queda tachado con la razón debajo. Si te equivocaste, toca <b class="ui">Undo</b>.</p>
+  </div>
+</div>
+<div class="row">
+  <figure><img src="shotsj/h11-panel-ready.jpg" style="max-height:none"><figcaption>Servicio quitado, cantidad corregida y servicio agregado, listo para mandar.</figcaption></figure>
+  <div class="txt">
+    <h3>Agregar un servicio que hacía falta</h3>
+    <p>Escribe en <b class="ui">Search the catalog...</b> (por ejemplo <i>outlet</i>) y toca el servicio. Queda en <b class="ui">Added</b>; si te equivocaste, tócalo otra vez para quitarlo.</p>
+    <h3>Mandar</h3>
+    <p>Revisa todo y toca <b class="ui">Send to Office</b>. Sale <i>“Sent to the office for review.”</i> La oficina lo revisa y decide. Con <b class="ui">Cancel</b> cierras el panel sin mandar nada.</p>
+    <div class="tip"><b class="t">Tip</b>Si sales a tomar una foto a mitad de los cambios, no se pierden: al regresar, el panel se abre como lo dejaste.</div>
+  </div>
+</div>
+
+<h2>7.4 Report: Unit Not Ready</h2>
+<p>Úsalo cuando llegas y la unidad no se puede trabajar (sigue ocupada, no hay luz, hay cosas del inquilino…):</p>
+<ol>
+  <li>Abre la orden y toca <b class="ui">Report: Unit Not Ready</b>.</li>
+  <li>El teléfono te pregunta <b>“Why is the unit not ready?”</b>. Escribe una nota corta explicando por qué (es obligatoria).</li>
+  <li>Toca <b>OK</b>. Sale <i>“Reported. Our office will review it.”</i> La oficina decide la nueva fecha: tú no tienes que proponerla.</li>
+</ol>
+
+<h2>7.5 Inspecciones</h2>
+<p>Cuando la oficina manda una orden a <b>inspección</b>, vas a ver el lugar <b>antes</b> de que se programe el trabajo. Terminar la inspección <b>no</b> completa la orden: la oficina la revisa y después la programa.</p>
+<div class="row">
+  <figure class="tall"><img src="shotsj/h03-inspection.jpg"><figcaption>Tarjeta de inspección.</figcaption></figure>
+  <div class="txt">
+    <p>En la tarjeta de inspección tienes:</p>
+    <ul>
+      <li>El recuadro azul <b>Inspection</b> con el día y el horario de la visita.</li>
+      <li>Los servicios que pidió el cliente.</li>
+      <li><b class="ui">Update Services</b>: proponer cambios a los servicios (igual que en 7.3).</li>
+      <li><b class="ui">📷 Take inspection photos</b> y <b class="ui">🎥 Record a video</b>: estas fotos se guardan como <b>Inspection · before</b>.</li>
+      <li><b class="ui">What did you find?</b>: notas de lo que encontraste. <b>El cliente puede ver estas notas</b>, así que escríbelas claras y profesionales.</li>
+      <li><b class="ui">Who should do the work?</b>: toca los nombres de las personas que propones para el trabajo (se marcan en azul).</li>
+    </ul>
+  </div>
+</div>
+<div class="shots">
+  <figure class="tall"><img src="shotsj/h05-inspection-saved.jpg"><figcaption>Notas escritas, 2 personas escogidas y cambios guardados.</figcaption></figure>
+</div>
+<ol>
+  <li>Si cambias servicios, en <b class="ui">Update Services</b> el botón dice <b class="ui">Save changes</b>: los cambios se guardan en la inspección y se mandan todos juntos al final. Verás el aviso amarillo <i>“Service changes saved…”</i>.</li>
+  <li>Cuando termines, toca <b class="ui">✓ Inspection done</b> y confirma. Sale <i>“Inspection sent to the office.”</i></li>
+</ol>
+
+<h2>7.6 Órdenes repartidas por persona</h2>
+<div class="row">
+  <figure><img src="shotsj/h13-sup-by-person.jpg"><figcaption>Servicios agrupados por persona.</figcaption></figure>
+  <div class="txt">
+    <p>En las órdenes <b>Assign by service</b>, el supervisor ve todos los servicios agrupados por <b>persona y día</b>:</p>
+    <ul>
+      <li><b>👤 Carlos Ramírez · Thu, Sep 24 · 2 services</b></li>
+      <li><b>👤 Miguel Ortiz · Sun, Sep 27 · 1 service</b></li>
+      <li><b>Not scheduled yet</b>: servicios que la oficina todavía no programa.</li>
+    </ul>
+    <p>Así sabes quién hace qué y cuándo.</p>
+  </div>
+</div>
+
+<h2>7.7 Recurring del supervisor</h2>
+<div class="row">
+  <figure class="tall"><img src="shotsj/h16-rc-update.jpg"><figcaption>Update Services de un trabajo recurrente.</figcaption></figure>
+  <div class="txt">
+    <p>El supervisor ve todos los trabajos recurrentes de su departamento (no solo los de los próximos 3 días), con las horas totales por semana.</p>
+    <p>En la visita de hoy, además de <b class="ui">📷 Add a photo (optional)</b> y <b class="ui">✓ Mark as Done</b>, tiene <b class="ui">Update Services</b>, para reportar que en esta visita se hizo algo diferente:</p>
+    <ol>
+      <li>Toca <b class="ui">Update Services</b>. Se abre el panel con los servicios por área (<i>Restrooms &amp; Locker Rooms</i>, <i>Hallways &amp; Floors</i>, <i>Lobby &amp; Entry</i>…).</li>
+      <li>Toca un área para abrirla y escoge los servicios y su nivel (<b class="ui">L1</b> <b class="ui">L2</b> <b class="ui">L3</b>), o busca en <b class="ui">Search services…</b>.</li>
+      <li>Abajo se ve el resumen: en verde <b>+</b> lo agregado y en rojo <b>−</b> lo que se quitó. Por cada servicio quitado te pide <b>por qué no se hizo</b> (obligatorio).</li>
+      <li>Toca <b class="ui">Send to Office</b>. La oficina lo revisa: nunca se cambia solo.</li>
+    </ol>
+  </div>
+</div>
+<div class="shots">
+  <figure class="tall"><img src="shotsj/h17-rc-update-added.jpg"><figcaption>Se agregó <b>Clean kitchenette</b> (+ en verde, abajo).</figcaption></figure>
+</div>
+
+<h2>7.8 History y Gallery del supervisor</h2>
+<p>Funcionan igual que para un empleado (secciones 5 y 6), pero muestran las órdenes y fotos de <b>todo tu departamento</b>. En <b class="ui">History</b>, al abrir una orden ves directo su historial completo.</p>
+
+<!-- ============ 8. FAQ ============ -->
+<h1 class="sec"><span class="n">8</span>Preguntas frecuentes</h1>
+<p class="lead">Si algo no sale como esperabas, revisa aquí antes de llamar a la oficina.</p>
+
+<h3>No veo una orden que me dijeron que era mía</h3>
+<p>En <b class="ui">Active Orders</b> solo salen las órdenes asignadas <b>con tu nombre</b>. Revisa que no la tengas filtrada en la búsqueda (borra lo que escribiste). Si sigue sin salir, pídele a la oficina que revise a quién está asignada.</p>
+
+<h3>Entro y me regresa a la pantalla de entrada</h3>
+<p>Tu sesión venció o la oficina desactivó ese teléfono. Entra con tu nombre y tus 4 dígitos, o pide un <b>New QR</b>. Si pasa una y otra vez, pídele a la oficina que revise en <b>Techs &amp; Roles</b> qué rol tienes.</p>
+
+<h3>No me llegan los avisos (notificaciones)</h3>
+<ul>
+  <li>Los avisos se activan solo al configurar el teléfono con el QR (sección 1.1). Pide un <b>New QR</b> y, cuando pregunte, toca <b>Permitir</b>.</li>
+  <li>En iPhone, la app tiene que estar en la pantalla de inicio y debes abrirla desde ese ícono.</li>
+  <li>Revisa en los ajustes del teléfono que las notificaciones de GS Tech (o del navegador) estén activadas.</li>
+</ul>
+
+<h3>Tomé fotos sin señal, ¿se perdieron?</h3>
+<p>No. Se suben solas cuando regresa la señal (sección 3.3). La barra café arriba de tus órdenes te dice cuántas faltan.</p>
+
+<h3>La cámara sale en negro o dice “Could not open the camera”</h3>
+<p>Le negaste el permiso de cámara a la app. Ve a los ajustes del teléfono, busca el navegador (o GS Tech) y activa la <b>Cámara</b>. Luego vuelve a abrir la app.</p>
+
+<h3>Marqué una orden como hecha por error</h3>
+<p>Llama a la oficina. Ellos la revisan antes de cerrarla, así que la pueden regresar.</p>
+
+<h3>El cliente me pide algo extra</h3>
+<p>No lo hagas sin permiso. En órdenes por lugar, usa <b class="ui">The client asked for something not on my list</b> (sección 2.7). En cualquier otra orden, avísale a tu supervisor o a la oficina.</p>
+
+<h3>Quiero la app en español / en inglés</h3>
+<p>Toca <b class="ui">ESP</b> o <b class="ui">ENG</b> arriba, junto a tu nombre. Se queda guardado en tu cuenta.</p>
+
+<div class="tip" style="margin-top:22pt"><b class="t">¿Dudas?</b>Si algo no está en esta guía o la app hace algo raro, toma una captura de pantalla y mándasela a la oficina con el número de orden. Así lo pueden revisar más rápido.</div>
+
+</body>
+</html>
