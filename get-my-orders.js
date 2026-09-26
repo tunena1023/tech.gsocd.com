@@ -11,15 +11,22 @@
    En los dos casos, solo cuentan las que ya pasaron por Scheduling de
    verdad (Status Assigned o Updated -- nunca Received, que todavia no
    tiene supervisor/ventana/fecha real).
+
+   26/09/2026 (pedido del dueño): una orden que estaba en campo y pasa
+   a esperar a la oficina (Change Requested / Cancellation Requested /
+   Inspected) ya NO desaparece -- se queda con Waiting (que se espera)
+   y su historial completo (menos lo interno de oficina). Ver
+   lib/order-waiting.js.
 ============================================================ */
 
 const {
-  ORDERS_LIST, ORDER_SERVICES_LIST, SCHEDULING_LIST, SERVICE_ASSIGNMENTS_LIST,
+  ORDERS_LIST, ORDER_SERVICES_LIST, ORDER_HISTORY_LIST, SCHEDULING_LIST, SERVICE_ASSIGNMENTS_LIST,
   TECHS_LIST, RECURRING_SERVICES_LIST, RECURRING_ASSIGNMENTS_LIST, CLIENTS_LIST,
   jsonResponse
 } = require('./lib/graph');
 
-const LIVE_STATUSES = ['Assigned', 'Updated'];
+const waiting = require('./lib/order-waiting');
+const LIVE_STATUSES = waiting.LIVE_STATUSES;
 /* Velocidad (25/09/2026): antes, cada vez que un tecnico abria la app,
    se bajaban TODAS las ordenes, servicios, clientes, tecnicos, Scheduling
    y asignaciones de la empresa. Ahora solo las ordenes vivas y, de esas,
@@ -38,7 +45,7 @@ exports.handler = async (event) => {
     const division = String(b.division || '').trim();
     if (!techId || !role) return jsonResponse(400, { error: 'techId and role are required' });
 
-    const wanted = lq.statusIn(LIVE_STATUSES.concat(['Inspection']));
+    const wanted = lq.statusIn(LIVE_STATUSES.concat(['Inspection'], waiting.WAITING_STATUSES));
     const [orderRows, techRows, recurringServiceRows] = await Promise.all([
       lq.fetchWhere(ORDERS_LIST, wanted.filter, wanted.test),
       /* Employee: solo su renglon. Supervisor/Developer: todos (crewOptions). */
@@ -65,18 +72,33 @@ exports.handler = async (event) => {
     const myKeys = [myPayrollId, 'tech:' + techId].filter(Boolean);
     const isMine = pn => myKeys.includes(String(pn || '').trim());
     const byPayroll = list => lq.fetchByValues(list, 'PayrollNumber', myKeys);
-    const [serviceAssignRows, schedulingRows, recurringAssignRows] = await Promise.all([
+    const [serviceAssignRows, schedulingRows, recurringAssignRows, histItems] = await Promise.all([
       lq.fetchByValues(SERVICE_ASSIGNMENTS_LIST, 'OrderID', candidateIds),
       role === 'Employee' ? byPayroll(SCHEDULING_LIST) : Promise.resolve([]),
-      role === 'Employee' ? byPayroll(RECURRING_ASSIGNMENTS_LIST) : Promise.resolve([])
+      role === 'Employee' ? byPayroll(RECURRING_ASSIGNMENTS_LIST) : Promise.resolve([]),
+      lq.fetchByValues(ORDER_HISTORY_LIST, 'OrderID', candidateIds)
     ]);
+    const histByOrder = {};
+    histItems.forEach(it => {
+      const oid = it.fields && it.fields.OrderID;
+      if (oid) (histByOrder[oid] = histByOrder[oid] || []).push(it);
+    });
+    const rowsByOrder = {};
+    Object.keys(histByOrder).forEach(oid => { rowsByOrder[oid] = waiting.sortedRows(histByOrder[oid]); });
+    const rowsOf = f => rowsByOrder[f.OrderID || f.Title] || [];
 
-    let liveOrders = orderRows.filter(it => it.fields && LIVE_STATUSES.includes(it.fields.Status));
+    /* En espera cuenta igual que en vivo (mismos filtros de division y
+       asignacion de abajo) si ya estaba en campo antes de la solicitud. */
+    let liveOrders = orderRows.filter(it => it.fields && (LIVE_STATUSES.includes(it.fields.Status) ||
+      ((it.fields.Status === 'Change Requested' || it.fields.Status === 'Cancellation Requested') &&
+        waiting.wasInField(it.fields, rowsOf(it.fields)))));
     /* Inspecciones (25/09/2026): una orden en 'Inspection' la ve SOLO el
        supervisor que va a inspeccionar (InspectionBy = su nombre), en
        cualquier division -- y Developer, que ve todo. Se agregan despues
        de los filtros de abajo para que el filtro de division no las tire. */
-    const inspectionOrders = orderRows.filter(it => it.fields && it.fields.Status === 'Inspection' &&
+    /* 'Inspected' (ya inspeccionada, esperando a la oficina): la sigue
+       viendo el mismo supervisor que inspecciono. */
+    const inspectionOrders = orderRows.filter(it => it.fields && (it.fields.Status === 'Inspection' || it.fields.Status === 'Inspected') &&
       (role === 'Developer' || (role === 'Supervisor' && myName &&
         String(it.fields.InspectionBy || '').trim().toLowerCase() === myName.toLowerCase())));
 
@@ -207,6 +229,16 @@ exports.handler = async (event) => {
         InspectionBy: f.InspectionBy || '',
         InspectionDate: f.InspectionDate || '',
         InspectionWindow: f.InspectionWindow || '',
+        /* Que se espera (null = nada), su historial, y -- si lo que se
+           espera es un Update Services de campo -- lo que se propuso,
+           para que el siguiente cambio arranque de ahi. */
+        Waiting: waiting.waitingInfo(f, rowsOf(f)),
+        PendingServices: (() => {
+          const pend = waiting.pendingSupervisorUpdate(rowsOf(f));
+          const v = pend ? waiting.parseJson(pend.NewValue) : null;
+          return Array.isArray(v) ? v : (v && Array.isArray(v.services) ? v.services : null);
+        })(),
+        History: waiting.historyForTech(rowsOf(f)),
         MyServiceAssignments: myAssignRows.map(a => ({
           Category: a.Category || '', ServiceName: a.ServiceName || '', Sequence: a.Sequence != null ? Number(a.Sequence) : null,
           AssignedTo: a.AssignedTo || '', ScheduledDate: a.ScheduledDate || '', WorkStatus: a.WorkStatus || 'Not Started'

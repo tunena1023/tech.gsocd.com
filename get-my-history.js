@@ -17,18 +17,12 @@ const CLOSED_STATUSES = ['Completed', 'Cancelled'];
 const lq = require('./lib/list-query');
 const techScope = require('./lib/tech-scope');
 
-/* El tecnico solo debe ver CORRECCIONES ya confirmadas -- nunca una
-   peticion todavia sin decidir. Si un cliente pide un cambio de
-   fecha, eso se queda esperando en Review; el tecnico no se entera
-   hasta que la oficina lo aprueba (evento 'Dates Confirmed' o
-   similar). Estos tipos se filtran aqui mismo, del lado del
-   servidor, para que nunca lleguen al frontend por accidente. */
-const PENDING_REQUEST_TYPES = [
-  'Change Requested', 'Cancellation Requested', 'Reschedule Requested', 'Change Requested by Client'
-];
-/* Mismo ruido operativo que ya se oculta en Admin (Active/History) --
-   confirma que un documento se genero o fallo, no un cambio real de
-   la orden. */
+/* 26/09/2026 (pedido del dueño: "a excepcion de eventos internos, todo
+   lo que tenga informacion debe ser visible"): antes aqui se escondian
+   las solicitudes (Change Requested, Reschedule Requested...) para que
+   el tecnico solo viera lo ya aprobado. Ahora se ven, con su detalle;
+   solo se quita lo interno de oficina (Office Change (Internal) y
+   'Order Approved'), mismo criterio que lib/order-waiting.js. */
 const HIDDEN_HISTORY_TYPES = ['Document Generated', 'Document Failed', 'Archived'];
 
 exports.handler = async (event) => {
@@ -75,7 +69,8 @@ exports.handler = async (event) => {
     const historyByOrder = {};
     histRows.forEach(it => {
       if (!it.fields || !it.fields.OrderID) return;
-      if (PENDING_REQUEST_TYPES.includes(it.fields.ChangeType || '')) return;
+      if ((it.fields.FieldChanged || '') === 'Office Change (Internal)') return;
+      if ((it.fields.ChangeType || '') === 'Order Approved') return;
       if (HIDDEN_HISTORY_TYPES.includes(it.fields.ChangeType || '')) return;
       (historyByOrder[it.fields.OrderID] = historyByOrder[it.fields.OrderID] || []).push({
         ChangeDate: it.fields.ChangeDate || '',
@@ -112,6 +107,7 @@ exports.handler = async (event) => {
         /* Mismo criterio que get-my-orders.js -- ver ahi para el detalle. */
         createdDateTime: it.createdDateTime || '',
         OrderID: oid,
+        ClientID: f.ClientID || '',
         BusinessName: f.BusinessName || f.Title || '',
         Division: f.Division || '',
         Status: f.Status || '',

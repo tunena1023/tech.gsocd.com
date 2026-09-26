@@ -218,6 +218,12 @@
   .gal-subtab:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   .gal-subview { display: none; }
   .gal-subview.active { display: block; }
+  /* Orden esperando a la oficina/cliente (26/09/2026): sigue visible. */
+  .wait-banner{background:#FFF7E0;border-left:3px solid var(--gold);padding:10px 12px;font-size:12px;line-height:1.5;margin:0 0 12px}
+  .wait-banner b{display:block;margin-bottom:2px;color:var(--black)}
+  .badge.wait{background:#FFF1CC;color:#8C6F2A}
+  .card-hist{margin-top:16px;border-top:1px solid var(--border);padding-top:6px}
+  .card-hist-t{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-dk);margin:8px 0 0}
 </style>
 </head>
 <body>
@@ -282,15 +288,15 @@
 <script src="shared.js"></script>
 <script src="i18n.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.6/nav-premium/nav-premium.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@04eb775d299d426f3176d8bd2821580cb8656cd2/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.30.0/order-card-header/order-card-header.js"></script>
 <!-- Filas de botones de las tarjetas (26/09/2026): mismo acomodo en los 3 portales. -->
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@68efbd7643c8f3d28c047c3267f6ba3c9d002bd5/action-row/action-row.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@f9af97cecb79115d4a7d51705609b674d513bb89/gallery-groups/gallery-groups.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@de10f09db292e153863b91f7de93552b833c3878/doc-viewer/doc-viewer.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@71670c4e06fbb09c07fe248cf4a5a89c3399b384/camera-queue/camera-queue.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.26.0/photo-hover-preview/photo-hover-preview.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@d309c9378c9e5f97be227606c3ccf2c7706ddb71/order-history/order-history.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@04eb775d299d426f3176d8bd2821580cb8656cd2/photo-hover-preview/photo-hover-preview.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@04eb775d299d426f3176d8bd2821580cb8656cd2/order-history/order-history.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.8.0/order-badges/order-badges.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.50.0/service-tooltip/service-tooltip.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.68.0/service-picker/service-picker.js"></script>
@@ -790,6 +796,24 @@ if (tech) {
       String(o.BusinessName || '').toLowerCase().includes(q));
   }
 
+  /* ===== Orden en espera (26/09/2026, pedido del dueño) =====
+     Una orden que espera a la oficina (o al cliente) ya no desaparece:
+     aviso de que se espera, fotos siempre, y el historial completo con
+     su detalle (menos lo interno de oficina -- modo 'tech'). */
+  function waitBannerHtml(o) {
+    const w = o.Waiting;
+    if (!w) return '';
+    return '<div class="wait-banner"><b>' + esc(w.title) + '</b>' + esc(w.text) + '</div>';
+  }
+  function waitBadgeHtml(o) {
+    if (!o.Waiting) return '';
+    return '<span class="badge wait">' + (o.Waiting.on === 'client' ? 'Waiting on client' : 'Waiting on office') + '</span>';
+  }
+  function cardHistoryHtml(o) {
+    if (!o.History || !o.History.length) return '';
+    return '<div class="card-hist"><p class="card-hist-t">History</p><div class="hist-line">' +
+      GSOrderHistory.html(o.OrderID, o.History, { mode: 'tech', clientId: o.ClientID, clientName: o.BusinessName }) + '</div></div>';
+  }
   function renderActive() {
     const box = $('active-list');
     const q = ($('active-search').value || '').trim().toLowerCase();
@@ -850,13 +874,14 @@ if (tech) {
               })}
             </div>
             <span class="badge-row" style="flex-shrink:0">
-              ${GSOrderBadges.occupied(o)}${GSOrderBadges.officeNeed(o)}
+              ${GSOrderBadges.occupied(o)}${GSOrderBadges.officeNeed(o)}${waitBadgeHtml(o)}
               <span class="badge">${esc(o.Division)}</span>
             </span>
           </div>
           <div class="order-body">
             <div class="order-2col" id="ord2col-${esc(o.OrderID)}">
               <div class="col-left">
+                ${waitBannerHtml(o)}
                 <div class="row">
                   <div><b>Entry</b>${fmtDate(o.EntryDate)}</div>
                   <div><b>Due</b>${fmtDate(o.DueDate)}</div>
@@ -864,20 +889,23 @@ if (tech) {
                 </div>
                 <div class="svc-list">${svcLines || 'No services recorded.'}</div>
                 ${GSOrderBadges.officeNeedNote(o)}
-                <div class="action-row gs-act-row">
+                ${!o.Waiting ? `<div class="action-row gs-act-row">
                   <button type="button" class="gs-ofp-btn-secondary" onclick="toggleUpdatePanel('${esc(o.OrderID)}')">Update Services</button>
                   <button type="button" class="gs-ofp-btn-secondary" onclick="reportUnitNotReady('${esc(o.OrderID)}')">Report: Unit Not Ready</button>
-                </div>
+                </div>` : (o.Waiting.canUpdate ? `<div class="action-row gs-act-row">
+                  <button type="button" class="gs-ofp-btn-secondary" onclick="toggleUpdatePanel('${esc(o.OrderID)}')">Update Services</button>
+                </div>` : '')}
                 <div class="gs-act-row" style="margin-top:10px">
                   <button type="button" class="photo-btn" style="margin-top:0" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
                   <button type="button" class="photo-btn" style="margin-top:0" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
                 </div>
                 <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
-                ${isMySupervisorOrder(o)
+                ${isMySupervisorOrder(o) && !o.Waiting
                   ? (o.TechMarkedComplete
                       ? '<p class="tech-done-note">✓ You marked this as done — waiting for the office to confirm and close it.</p>'
                       : '<button type="button" class="gs-ofp-btn-primary" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>')
                   : ''}
+                ${cardHistoryHtml(o)}
               </div>
               <div class="col-right" id="editpanel-${esc(o.OrderID)}"></div>
             </div>
@@ -949,6 +977,7 @@ if (tech) {
                 ${crew}
               </div>
               <button type="button" class="gs-ofp-btn-primary insp-done-btn" id="insp-done-${esc(o.OrderID)}" onclick="submitInspectionDone('${id}')">✓ Inspection done</button>
+              ${cardHistoryHtml(o)}
             </div>
             <div class="col-right" id="editpanel-${esc(o.OrderID)}"></div>
           </div>
@@ -1217,7 +1246,10 @@ if (tech) {
     try {
       await GS.api('/report-unit-not-ready', { body: { orderId, note: note.trim(), actor: tech.firstName + ' ' + tech.lastName } });
       showToast('Reported. Our office will review it.');
-      loadOrders();
+      loadOrders().then(() => {
+        const card = document.querySelector('.order-card[data-order="' + String(orderId).replace(/"/g, '') + '"] .order-body');
+        if (card) card.classList.add('open');
+      });
     } catch (e) {
       showToast('Could not send the report: ' + e.message);
     }
@@ -1254,7 +1286,7 @@ if (tech) {
           </div>
           <div class="order-body">
             <div class="hist-line">
-              ${GSOrderHistory.html(o.OrderID, o.History, { mode: 'staff' })}
+              ${GSOrderHistory.html(o.OrderID, o.History, { mode: 'tech', clientId: o.ClientID, clientName: o.BusinessName })}
             </div>
           </div>
         </div>`).join('');
@@ -1373,7 +1405,11 @@ if (tech) {
     /* Inspeccion con cambios ya guardados: el panel arranca desde lo
        guardado, no desde los servicios originales. */
     const inspDraft = umOrder.Status === 'Inspection' && inspOf(orderId).services;
-    umServices = (inspDraft || umOrder.Services || []).map(s => ({
+    /* Esperando a la oficina por un Update Services de campo: el
+       siguiente cambio arranca de lo que ya se propuso (lo real de la
+       orden no cambia hasta que la oficina lo apruebe). */
+    const pendingDraft = !inspDraft && umOrder.Waiting && umOrder.Waiting.canUpdate && umOrder.PendingServices;
+    umServices = (inspDraft || pendingDraft || umOrder.Services || []).map(s => ({
       name: s.ServiceName, sku: s.SubOption, level: s.Level || '', quantity: s.Quantity || '',
       category: s.Category, division: s.Division || umOrder.Division
     }));
@@ -1656,9 +1692,10 @@ if (tech) {
     const btn = $('um-submit-btn');
     btn.disabled = true; btn.textContent = 'Sending…';
     try {
+      const sentId = umOrder.OrderID;
       await GS.api('/submit-supervisor-update', {
         body: {
-          orderId: umOrder.OrderID,
+          orderId: sentId,
           services: finalServices,
           removalNotes,
           actor: tech.firstName + ' ' + tech.lastName
@@ -1666,7 +1703,12 @@ if (tech) {
       });
       closeUpdateModal();
       showToast('Sent to the office for review.');
-      loadOrders();
+      /* La orden se queda (en espera): que la tarjeta siga abierta para
+         que el supervisor vea el aviso y el historial con su cambio. */
+      loadOrders().then(() => {
+        const card = document.querySelector('.order-card[data-order="' + String(sentId).replace(/"/g, '') + '"] .order-body');
+        if (card) card.classList.add('open');
+      });
     } catch (e) {
       alert('Could not send this update: ' + e.message);
     } finally {

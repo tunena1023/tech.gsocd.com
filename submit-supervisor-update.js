@@ -26,6 +26,7 @@ const {
   graphFetch, siteListPath, jsonResponse
 } = require('./lib/graph');
 const techScope = require('./lib/tech-scope');
+const waiting = require('./lib/order-waiting');
 
 const LIVE_STATUSES = ['Assigned', 'Updated'];
 
@@ -79,7 +80,20 @@ exports.handler = async (event) => {
     if (!item) return jsonResponse(404, { error: 'Order not found.' });
     const f = item.fields;
 
-    if (LIVE_STATUSES.indexOf(f.Status || '') === -1) {
+    /* 26/09/2026 (pedido del dueño): mientras la oficina contesta un
+       Update Services de campo, se pueden mandar MAS cambios. El
+       renglon nuevo guarda como "antes" lo ORIGINAL (lo que la orden
+       tiene de verdad, que no cambia hasta que se apruebe) y como
+       "despues" la propuesta completa -- Admin (Review y Approve) solo
+       lee la solicitud abierta mas reciente, asi ve TODO junto. Si lo
+       que espera es otra cosa (cliente, oficina, cancelacion), no se
+       deja: se encimaria sobre esa solicitud y la oficina la perderia. */
+    const histRows = await fetchByOrderId(ORDER_HISTORY_LIST, orderId);
+    let pending = null;
+    if (f.Status === 'Change Requested') {
+      pending = waiting.pendingSupervisorUpdate(waiting.sortedRows(histRows));
+    }
+    if (LIVE_STATUSES.indexOf(f.Status || '') === -1 && !pending) {
       return jsonResponse(400, {
         error: 'This order is not in a state that can be updated right now (status: ' + (f.Status || '') + ').'
       });
@@ -87,6 +101,8 @@ exports.handler = async (event) => {
 
     const division = f.Division || '';
     const oldServices = snapshotServices(svcRows, division);
+    const pendOld = pending ? waiting.parseJson(pending.OldValue) : null;
+    const priorStatus = (pendOld && pendOld.status) || f.Status || '';
 
     /* CAMBIO DE DISENO (confirmado con el usuario): la sugerencia del
        supervisor ya NO se aplica a los servicios reales hasta que se
@@ -98,7 +114,6 @@ exports.handler = async (event) => {
       await updateListItemByItemId(ORDERS_LIST, item.id, { Status: 'Change Requested' });
     }
 
-    const histRows = await fetchByOrderId(ORDER_HISTORY_LIST, orderId);
     const prefix = orderId + '-sup';
     let count = histRows.filter(it => String(it.fields?.Title || '').indexOf(prefix) === 0).length;
 
@@ -106,9 +121,19 @@ exports.handler = async (event) => {
     if (removalNotes.length) {
       removalNotes.forEach(r => notesParts.push('Removed ' + (r.serviceName || '') + ': ' + (r.note || '')));
     }
+    /* Las notas de lo que ya se habia quitado en la solicitud anterior
+       se conservan si ese servicio sigue quitado (la oficina lee solo
+       el renglon mas reciente). */
+    if (pending) {
+      const stillOut = n => !services.some(s => String(s.ServiceName || '') === n);
+      String(pending.Notes || '').split(' | ').forEach(part => {
+        const m = /^Removed (.+?): /.exec(part);
+        if (m && stillOut(m[1]) && !removalNotes.some(r => r.serviceName === m[1])) notesParts.unshift(part);
+      });
+    }
     const notes = notesParts.length
       ? notesParts.join(' | ')
-      : ('Service update suggested on-site by ' + actor + '.');
+      : (pending ? 'More service changes suggested on-site by ' + actor + '.' : 'Service update suggested on-site by ' + actor + '.');
 
     await createListItem(ORDER_HISTORY_LIST, {
       OrderID:      orderId,
@@ -118,7 +143,7 @@ exports.handler = async (event) => {
       ChangeType:   'Change Requested',
       FieldChanged: 'Supervisor Update',
       Notes:        notes,
-      OldValue:     JSON.stringify({ services: oldServices, status: f.Status || '' }),
+      OldValue:     JSON.stringify({ services: oldServices, status: priorStatus }),
       NewValue:     JSON.stringify(services)
     });
 

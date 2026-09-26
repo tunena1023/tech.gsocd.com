@@ -145,6 +145,12 @@
   .gal-subtab:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   .gal-subview { display: none; }
   .gal-subview.active { display: block; }
+  /* Orden esperando a la oficina/cliente (26/09/2026): sigue visible. */
+  .wait-banner{background:#FFF7E0;border-left:3px solid var(--gold);padding:10px 12px;font-size:12px;line-height:1.5;margin:0 0 12px}
+  .wait-banner b{display:block;margin-bottom:2px;color:var(--black)}
+  .badge.wait{background:#FFF1CC;color:#8C6F2A}
+  .card-hist{margin-top:16px;border-top:1px solid var(--border);padding-top:6px}
+  .card-hist-t{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--gold-dk);margin:8px 0 0}
 </style>
 </head>
 <body>
@@ -204,15 +210,15 @@
 <script src="i18n.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.50.0/service-tooltip/service-tooltip.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.6/nav-premium/nav-premium.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@04eb775d299d426f3176d8bd2821580cb8656cd2/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.30.0/order-card-header/order-card-header.js"></script>
 <!-- Filas de botones de las tarjetas (26/09/2026): mismo acomodo en los 3 portales. -->
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@68efbd7643c8f3d28c047c3267f6ba3c9d002bd5/action-row/action-row.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@f9af97cecb79115d4a7d51705609b674d513bb89/gallery-groups/gallery-groups.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@de10f09db292e153863b91f7de93552b833c3878/doc-viewer/doc-viewer.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@71670c4e06fbb09c07fe248cf4a5a89c3399b384/camera-queue/camera-queue.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.26.0/photo-hover-preview/photo-hover-preview.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@d309c9378c9e5f97be227606c3ccf2c7706ddb71/order-history/order-history.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@04eb775d299d426f3176d8bd2821580cb8656cd2/photo-hover-preview/photo-hover-preview.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@04eb775d299d426f3176d8bd2821580cb8656cd2/order-history/order-history.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.8.0/order-badges/order-badges.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.24/order-form-premium/order-form-premium.js"></script>
 <script>
@@ -479,6 +485,24 @@ if (tech) {
       String(o.BusinessName || '').toLowerCase().includes(q));
   }
 
+  /* ===== Orden en espera (26/09/2026, pedido del dueño) =====
+     Una orden que espera a la oficina (o al cliente) ya no desaparece:
+     aviso de que se espera, fotos siempre, y el historial completo con
+     su detalle (menos lo interno de oficina -- modo 'tech'). */
+  function waitBannerHtml(o) {
+    const w = o.Waiting;
+    if (!w) return '';
+    return '<div class="wait-banner"><b>' + esc(w.title) + '</b>' + esc(w.text) + '</div>';
+  }
+  function waitBadgeHtml(o) {
+    if (!o.Waiting) return '';
+    return '<span class="badge wait">' + (o.Waiting.on === 'client' ? 'Waiting on client' : 'Waiting on office') + '</span>';
+  }
+  function cardHistoryHtml(o) {
+    if (!o.History || !o.History.length) return '';
+    return '<div class="card-hist"><p class="card-hist-t">History</p><div class="hist-line">' +
+      GSOrderHistory.html(o.OrderID, o.History, { mode: 'tech', clientId: o.ClientID, clientName: o.BusinessName }) + '</div></div>';
+  }
   function renderActive() {
     const box = $('active-list');
     const q = ($('active-search').value || '').trim().toLowerCase();
@@ -510,7 +534,7 @@ if (tech) {
             const statusBadge = isDone
               ? '<span class="badge" style="background:#EAF3EC;color:#3E7A4C">Completed</span>'
               : (isPending ? '<span class="badge" style="background:#E3ECF7;color:#2E5FA3">Waiting on office</span>' : '');
-            const doneBtn = (!isDone && !isPending)
+            const doneBtn = (!isDone && !isPending && !o.Waiting)
               ? '<button type="button" class="gs-ofp-btn-primary" style="width:auto;padding:4px 10px;font-size:11px;margin-left:6px" onclick="event.stopPropagation();startServiceComplete(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(a.Category) + '\',\'' + jsStr(a.ServiceName) + '\')">✓ Mark as Done</button>'
               : '';
             return '<div class="svc-row">' +
@@ -552,11 +576,12 @@ if (tech) {
               })}
             </div>
             <span class="badge-row" style="flex-shrink:0">
-              ${GSOrderBadges.occupied(o)}${GSOrderBadges.officeNeed(o)}
+              ${GSOrderBadges.occupied(o)}${GSOrderBadges.officeNeed(o)}${waitBadgeHtml(o)}
               <span class="badge">${esc(o.Division)}</span>
             </span>
           </div>
           <div class="order-body">
+            ${waitBannerHtml(o)}
             <div class="row">
               <div><b>Service Date</b>${esc(o.ServiceWindow || fmtDateTime(o.DispatchDate))}</div>
             </div>
@@ -567,9 +592,10 @@ if (tech) {
               <button type="button" class="photo-btn" style="margin-top:0" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
             </div>
             <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
-            ${o.AssignByService ? '' : (o.TechMarkedComplete
+            ${(o.AssignByService || o.Waiting) ? '' : (o.TechMarkedComplete
               ? '<p class="tech-done-note">✓ You marked this as done — waiting for the office to confirm and close it.</p>'
               : '<button type="button" class="gs-ofp-btn-primary" onclick="markEmployeeCompleted(\'' + esc(o.OrderID) + '\')">✓ Mark as Done</button>')}
+            ${cardHistoryHtml(o)}
           </div>
         </div>`;
     }).join('');
@@ -682,7 +708,7 @@ if (tech) {
         const detail = (o.Services || []).find(s => (s.Category || '') === i.Category && s.ServiceName === i.ServiceName) || {};
         return svcNameHtml(detail.SubOption, i.ServiceName) + (detail.Level ? ' — ' + esc(detail.Level) : '');
       }).join('<br>');
-      const canMark = !done && !pending && g.items.some(i => i.ScheduledDate);
+      const canMark = !done && !pending && !o.Waiting && g.items.some(i => i.ScheduledDate);
       return '<div class="place ' + cls + '"><div class="place-head"><p class="recurring-title">' + esc(g.place) + '</p>' + badge + '</div>' +
         '<div class="place-svcs">' + svcs + '</div>' +
         (canMark
@@ -690,7 +716,12 @@ if (tech) {
               '<button type="button" class="svc-row-cam gs-act-keep" title="Add a photo of this place" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(g.place) + '\',\'' + jsStr(g.place) + '\')">' + cam + '</button>' +
               '<button type="button" class="gs-ofp-btn-primary" onclick="event.stopPropagation();startServiceComplete(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(g.place) + '\',\'' + jsStr(g.place) + '\')">✓ Mark as Done</button>' +
             '</div>'
-          : '') +
+          : (o.Waiting && !done
+              /* En espera: sin Mark as Done, pero la foto del lugar sigue. */
+              ? '<div class="place-actions gs-act-row gs-act-icon-first">' +
+                  '<button type="button" class="svc-row-cam gs-act-keep" title="Add a photo of this place" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(g.place) + '\',\'' + jsStr(g.place) + '\')">' + cam + '</button>' +
+                '</div>'
+              : '')) +
         '</div>';
     }).join('');
     const pct = groups.length ? Math.round(marked / groups.length * 100) : 0;
@@ -905,7 +936,7 @@ if (tech) {
                 ${o.Notes ? `<p class="order-meta" style="margin-top:8px">Notes: ${esc(o.Notes)}</p>` : ''}
               </div>
               <div>
-                ${GSOrderHistory.html(o.OrderID, o.History, { mode: 'staff' })}
+                ${GSOrderHistory.html(o.OrderID, o.History, { mode: 'tech', clientId: o.ClientID, clientName: o.BusinessName })}
               </div>
             </div>
           </div>
