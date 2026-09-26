@@ -206,6 +206,8 @@
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.6/nav-premium/nav-premium.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.30.0/order-card-header/order-card-header.js"></script>
+<!-- Filas de botones de las tarjetas (26/09/2026): mismo acomodo en los 3 portales. -->
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@e41c4c23fb7205e762adfea2a49d1dfd9f381fcc/action-row/action-row.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@f9af97cecb79115d4a7d51705609b674d513bb89/gallery-groups/gallery-groups.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@3a752aba65890da6b375d3c9ee4bad034cf29dc1/doc-viewer/doc-viewer.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@71670c4e06fbb09c07fe248cf4a5a89c3399b384/camera-queue/camera-queue.js"></script>
@@ -441,8 +443,10 @@ if (tech) {
     if (recurringMarkedDone.has(r.id)) {
       return '<p class="recurring-done-note">✓ Marked done — waiting for the office to confirm and close it.</p>';
     }
-    return '<button type="button" class="photo-btn" onclick="takeRecurringPhoto(\'' + esc(r.id) + '\',\'' + visitDate + '\')">📷 Add a photo (optional)</button>' +
-      '<button type="button" class="recurring-mark-done" onclick="markRecurringDone(\'' + esc(r.id) + '\',\'' + visitDate + '\')">✓ Mark as Done</button>';
+    return '<div class="gs-act-row" style="margin-top:10px">' +
+      '<button type="button" class="photo-btn" style="margin-top:0" onclick="takeRecurringPhoto(\'' + esc(r.id) + '\',\'' + visitDate + '\')">📷 Add a photo (optional)</button>' +
+      '<button type="button" class="recurring-mark-done" style="margin-top:0" onclick="markRecurringDone(\'' + esc(r.id) + '\',\'' + visitDate + '\')">✓ Mark as Done</button>' +
+      '</div>';
   }
 
   /* Mismo motivo que en supervisor.html: renderRecurring() completo
@@ -558,8 +562,10 @@ if (tech) {
             </div>
             <div class="svc-list">${svcLines || 'No services recorded.'}</div>
             ${GSOrderBadges.officeNeedNote(o)}
-            <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
-            <button type="button" class="photo-btn" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
+            <div class="gs-act-row" style="margin-top:10px">
+              <button type="button" class="photo-btn" style="margin-top:0" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
+              <button type="button" class="photo-btn" style="margin-top:0" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
+            </div>
             <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
             ${o.AssignByService ? '' : (o.TechMarkedComplete
               ? '<p class="tech-done-note">✓ You marked this as done — waiting for the office to confirm and close it.</p>'
@@ -680,8 +686,8 @@ if (tech) {
       return '<div class="place ' + cls + '"><div class="place-head"><p class="recurring-title">' + esc(g.place) + '</p>' + badge + '</div>' +
         '<div class="place-svcs">' + svcs + '</div>' +
         (canMark
-          ? '<div class="place-actions">' +
-              '<button type="button" class="svc-row-cam" title="Add a photo of this place" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(g.place) + '\',\'' + jsStr(g.place) + '\')">' + cam + '</button>' +
+          ? '<div class="place-actions gs-act-row gs-act-icon-first">' +
+              '<button type="button" class="svc-row-cam gs-act-keep" title="Add a photo of this place" onclick="event.stopPropagation();startServicePhoto(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(g.place) + '\',\'' + jsStr(g.place) + '\')">' + cam + '</button>' +
               '<button type="button" class="gs-ofp-btn-primary" onclick="event.stopPropagation();startServiceComplete(\'' + jsStr(o.OrderID) + '\',\'' + jsStr(g.place) + '\',\'' + jsStr(g.place) + '\')">✓ Mark as Done</button>' +
             '</div>'
           : '') +

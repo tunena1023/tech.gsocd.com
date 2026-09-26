@@ -284,6 +284,8 @@
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.25.6/nav-premium/nav-premium.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.0.0/lightbox/lightbox.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@v1.30.0/order-card-header/order-card-header.js"></script>
+<!-- Filas de botones de las tarjetas (26/09/2026): mismo acomodo en los 3 portales. -->
+<script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@e41c4c23fb7205e762adfea2a49d1dfd9f381fcc/action-row/action-row.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@f9af97cecb79115d4a7d51705609b674d513bb89/gallery-groups/gallery-groups.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@3a752aba65890da6b375d3c9ee4bad034cf29dc1/doc-viewer/doc-viewer.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/tunena1023/gsocd-shared@71670c4e06fbb09c07fe248cf4a5a89c3399b384/camera-queue/camera-queue.js"></script>
@@ -657,7 +659,7 @@ if (tech) {
       '<div class="rc-update-title">Update Services — ' + esc(visitDate) + '</div>' +
       '<div id="rc-update-mount-' + esc(r.id) + '"></div>' +
       '<div id="rc-update-diff-' + esc(r.id) + '"></div>' +
-      '<div class="rc-update-actions">' +
+      '<div class="rc-update-actions gs-act-row">' +
         '<button class="rc-update-save" onclick="saveRcUpdate(\'' + esc(r.id) + '\',\'' + visitDate + '\')">Send to Office</button>' +
         '<button class="rc-update-cancel" onclick="toggleRcUpdate(\'' + esc(r.id) + '\')">Cancel</button>' +
       '</div>' +
@@ -859,12 +861,14 @@ if (tech) {
                 </div>
                 <div class="svc-list">${svcLines || 'No services recorded.'}</div>
                 ${GSOrderBadges.officeNeedNote(o)}
-                <div class="action-row">
+                <div class="action-row gs-act-row">
                   <button type="button" class="gs-ofp-btn-secondary" onclick="toggleUpdatePanel('${esc(o.OrderID)}')">Update Services</button>
                   <button type="button" class="gs-ofp-btn-secondary" onclick="reportUnitNotReady('${esc(o.OrderID)}')">Report: Unit Not Ready</button>
                 </div>
-                <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
-                <button type="button" class="photo-btn" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
+                <div class="gs-act-row" style="margin-top:10px">
+                  <button type="button" class="photo-btn" style="margin-top:0" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take a photo for this order</button>
+                  <button type="button" class="photo-btn" style="margin-top:0" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
+                </div>
                 <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
                 ${isMySupervisorOrder(o)
                   ? (o.TechMarkedComplete
@@ -925,11 +929,13 @@ if (tech) {
               </div>
               <div class="svc-list">${svcLines || 'No services recorded.'}</div>
               ${draft}
-              <div class="action-row">
+              <div class="action-row gs-act-row">
                 <button type="button" class="gs-ofp-btn-secondary" onclick="toggleUpdatePanel('${esc(o.OrderID)}')">${st.services ? 'Edit service changes' : 'Update Services'}</button>
               </div>
-              <button type="button" class="photo-btn" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take inspection photos</button>
-              <button type="button" class="photo-btn" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
+              <div class="gs-act-row" style="margin-top:10px">
+                <button type="button" class="photo-btn" style="margin-top:0" onclick="takePhoto('${esc(o.OrderID)}')">📷 Take inspection photos</button>
+                <button type="button" class="photo-btn" style="margin-top:0" onclick="recordVideo('${esc(o.OrderID)}')">🎥 Record a video</button>
+              </div>
               <div class="photo-preview-row" id="photos-${esc(o.OrderID)}"></div>
               <div class="insp-sec">
                 <div class="insp-sec-t">What did you find?</div>
@@ -1458,7 +1464,7 @@ if (tech) {
           '</div>' +
           (hasVoiceApi ? '' : '<p class="um-voice-hint">💡 On iPhone: tap the microphone icon on your keyboard to dictate this note.</p>') +
           '<p class="um-note-error" id="um-note-error-' + i + '">Please add a note explaining why.</p>' +
-          '<div class="um-note-btns">' +
+          '<div class="um-note-btns gs-act-row">' +
           '<button type="button" class="um-note-cancel" onclick="umCancelRemove(' + i + ')">Cancel</button>' +
           '<button type="button" class="um-note-confirm" onclick="umConfirmRemove(' + i + ')">Confirm Remove</button>' +
           '</div></div>';
@@ -1481,7 +1487,7 @@ if (tech) {
         : 'This goes to the office for review — the client won\'t see it until GS Solutions sends it.') + '</div>' +
       '<div id="um-current-list">' + currentListHtml + '</div>' +
       '<div id="um-add-section">' + addSectionHtml + '</div>' +
-      '<div class="send-row" style="margin-top:16px;display:flex;gap:10px">' +
+      '<div class="send-row gs-act-row" style="margin-top:16px">' +
       '<button type="button" class="gs-ofp-btn-secondary" onclick="toggleUpdatePanel(\'' + esc(umOrder.OrderID) + '\')">Cancel</button>' +
       '<button type="button" class="gs-ofp-btn-primary" id="um-submit-btn" onclick="submitUpdate()">' + (umOrder.Status === 'Inspection' ? 'Save changes' : 'Send to Office') + '</button>' +
       '</div>';
